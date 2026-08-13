@@ -162,8 +162,12 @@ function LoginPage() {
             <div className="rounded-2xl border border-border/60 bg-secondary/40 p-4 text-left text-xs space-y-2 text-muted-foreground">
               <p className="font-bold text-foreground">Langkah Penyelesaian Pendaftaran:</p>
               <ol className="list-decimal list-inside space-y-1">
-                <li>Buka aplikasi email Anda (cek juga folder <strong>Spam</strong>).</li>
-                <li>Klik tautan <strong>Verifikasi Email</strong> pada pesan dari Firebase/TreeNest.</li>
+                <li>
+                  Buka aplikasi email Anda (cek juga folder <strong>Spam</strong>).
+                </li>
+                <li>
+                  Klik tautan <strong>Verifikasi Email</strong> pada pesan dari Firebase/TreeNest.
+                </li>
                 <li>Setelah mengklik tautan di email, tekan tombol di bawah ini.</li>
               </ol>
             </div>
@@ -282,7 +286,9 @@ function LoginPage() {
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
               {isRegister && (
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-muted-foreground">Username</label>
+                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                    Username
+                  </label>
                   <div className="relative">
                     <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
@@ -313,7 +319,9 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-muted-foreground">Password</label>
+                <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                  Password
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input

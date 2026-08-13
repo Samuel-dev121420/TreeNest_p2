@@ -14,13 +14,7 @@ export type DailyQuestState = {
 };
 
 export type ActivityType =
-  | "daily_login"
-  | "pinote_note"
-  | "pinote_file"
-  | "flashcard"
-  | "study"
-  | "gallery"
-  | "add_friend";
+  "daily_login" | "pinote_note" | "pinote_file" | "flashcard" | "study" | "gallery" | "add_friend";
 
 export type ExpAwardResult = {
   gainedExp: number;
@@ -169,7 +163,8 @@ export async function awardActivityExp(
       if (questState.pinoteCount < 3) {
         gainedExp = 5;
         questState.pinoteCount += 1;
-        activityLabel = activity === "pinote_note" ? "Catatan PiNote (+5 EXP)" : "Upload File PiNote (+5 EXP)";
+        activityLabel =
+          activity === "pinote_note" ? "Catatan PiNote (+5 EXP)" : "Upload File PiNote (+5 EXP)";
       }
       break;
     }

@@ -101,7 +101,7 @@ function AdminDashboardPage() {
             <button
               onClick={async () => {
                 await logout();
-                navigate({ to: "/login" as any });
+                navigate({ to: "/login" });
               }}
               className="inline-flex items-center justify-center rounded-2xl bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/20"
             >
@@ -121,7 +121,9 @@ function AdminDashboardPage() {
           ].map((item) => (
             <button
               key={item.key}
-              onClick={() => handleFilterChange(item.key as any)}
+              onClick={() =>
+                handleFilterChange(item.key as "all" | "pending" | "approved" | "rejected")
+              }
               className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all ${
                 filter === item.key
                   ? "bg-primary text-primary-foreground shadow-sm"
@@ -171,8 +173,7 @@ function AdminDashboardPage() {
                     <div>
                       <h3 className="font-bold text-foreground text-base">{video.title}</h3>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Pengunggah (UID):{" "}
-                        <code className="font-mono text-[10px]">{video.uid}</code>
+                        Pengunggah (UID): <code className="font-mono text-[10px]">{video.uid}</code>
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         Diunggah: {timeAgo(video.submittedAt)}

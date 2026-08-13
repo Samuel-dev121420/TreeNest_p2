@@ -105,10 +105,7 @@ function TreeGalleryPage() {
   // ─── Load data ────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoadingVideos(true);
-    const [myVids, fid] = await Promise.all([
-      getUserVideos(uid),
-      getFeaturedVideoId(uid),
-    ]);
+    const [myVids, fid] = await Promise.all([getUserVideos(uid), getFeaturedVideoId(uid)]);
     setMyVideos(myVids);
     setFeaturedId(fid);
     if (isAdmin) {
@@ -156,7 +153,10 @@ function TreeGalleryPage() {
 
   function handleTriggerSubmit() {
     const t = title.trim();
-    if (!t) { setUploadError("Judul wajib diisi."); return; }
+    if (!t) {
+      setUploadError("Judul wajib diisi.");
+      return;
+    }
     if (!canUpload) return;
     if (uploadTab === "file" && !file) {
       setUploadError("Pilih file video terlebih dahulu.");
@@ -181,7 +181,11 @@ function TreeGalleryPage() {
 
     try {
       if (uploadTab === "file") {
-        if (!file) { setUploadError("Pilih file video terlebih dahulu."); setUploading(false); return; }
+        if (!file) {
+          setUploadError("Pilih file video terlebih dahulu.");
+          setUploading(false);
+          return;
+        }
 
         let videoUrl: string;
         if (isFirebaseConfigured && storage) {
@@ -191,7 +195,8 @@ function TreeGalleryPage() {
             const task = uploadBytesResumable(sRef, file);
             task.on(
               "state_changed",
-              (snap) => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+              (snap) =>
+                setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
               reject,
               async () => {
                 videoUrl = await getDownloadURL(task.snapshot.ref);
@@ -206,7 +211,11 @@ function TreeGalleryPage() {
         }
       } else {
         const u = url.trim();
-        if (!u) { setUploadError("Masukkan URL video."); setUploading(false); return; }
+        if (!u) {
+          setUploadError("Masukkan URL video.");
+          setUploading(false);
+          return;
+        }
         const src = detectSource(u);
         await addGalleryVideo(uid, { title: t, url: u, sourceType: src });
       }
@@ -296,7 +305,9 @@ function TreeGalleryPage() {
           <div className="space-y-4">
             {/* Judul */}
             <div>
-              <label className="mb-1 block text-xs font-bold text-muted-foreground">Judul Video</label>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                Judul Video
+              </label>
               <input
                 value={title}
                 disabled={uploading}
@@ -312,14 +323,25 @@ function TreeGalleryPage() {
                 <button
                   key={tab}
                   disabled={uploading}
-                  onClick={() => { setUploadTab(tab); setUploadError(null); }}
+                  onClick={() => {
+                    setUploadTab(tab);
+                    setUploadError(null);
+                  }}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     uploadTab === tab
                       ? "bg-card text-foreground shadow-soft"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab === "file" ? <><Upload className="size-3.5" /> Upload File</> : <><Link2 className="size-3.5" /> Tempel Link</>}
+                  {tab === "file" ? (
+                    <>
+                      <Upload className="size-3.5" /> Upload File
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="size-3.5" /> Tempel Link
+                    </>
+                  )}
                 </button>
               ))}
             </div>
@@ -327,18 +349,25 @@ function TreeGalleryPage() {
             {/* File upload */}
             {uploadTab === "file" && (
               <div
-                onDragOver={(e) => { if (!uploading) { e.preventDefault(); setDragOver(true); } }}
+                onDragOver={(e) => {
+                  if (!uploading) {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }
+                }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleFileDrop}
-                onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
+                onClick={() => {
+                  if (!uploading) fileInputRef.current?.click();
+                }}
                 className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-colors ${
                   uploading
                     ? "cursor-not-allowed opacity-50 border-border bg-secondary/20"
                     : dragOver
-                    ? "cursor-pointer border-primary bg-primary/5"
-                    : file
-                    ? "cursor-pointer border-leaf/60 bg-leaf/5"
-                    : "cursor-pointer border-border/60 bg-secondary/40 hover:border-primary/60 hover:bg-primary/5"
+                      ? "cursor-pointer border-primary bg-primary/5"
+                      : file
+                        ? "cursor-pointer border-leaf/60 bg-leaf/5"
+                        : "cursor-pointer border-border/60 bg-secondary/40 hover:border-primary/60 hover:bg-primary/5"
                 }`}
               >
                 <input
@@ -353,10 +382,15 @@ function TreeGalleryPage() {
                   <>
                     <Film className="size-7 text-leaf" />
                     <p className="text-center text-sm font-semibold text-leaf">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
                     {!uploading && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFile(null);
+                        }}
                         className="mt-1 text-xs text-muted-foreground underline hover:text-destructive"
                       >
                         Ganti file
@@ -367,9 +401,12 @@ function TreeGalleryPage() {
                   <>
                     <Upload className="size-7 text-muted-foreground/60" />
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Klik</span> atau seret file video ke sini
+                      <span className="font-semibold text-foreground">Klik</span> atau seret file
+                      video ke sini
                     </p>
-                    <p className="text-xs text-muted-foreground">MP4, WebM, MOV · Maks. {MAX_FILE_MB}MB</p>
+                    <p className="text-xs text-muted-foreground">
+                      MP4, WebM, MOV · Maks. {MAX_FILE_MB}MB
+                    </p>
                   </>
                 )}
               </div>
@@ -378,7 +415,9 @@ function TreeGalleryPage() {
             {/* Link input */}
             {uploadTab === "link" && (
               <div className="space-y-2">
-                <label className="mb-1 block text-xs font-bold text-muted-foreground">URL Video / Tautan</label>
+                <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                  URL Video / Tautan
+                </label>
                 <input
                   value={url}
                   disabled={uploading}
@@ -580,7 +619,7 @@ function TreeGalleryPage() {
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setAdminTab(tab.key as any)}
+                onClick={() => setAdminTab(tab.key as "all" | "pending" | "approved" | "rejected")}
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                   adminTab === tab.key
                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -626,7 +665,9 @@ function TreeGalleryPage() {
 
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${meta.bg} ${meta.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${meta.bg} ${meta.color}`}
+                        >
                           <StatusIcon className="size-3" />
                           {meta.label}
                         </span>
@@ -636,7 +677,9 @@ function TreeGalleryPage() {
                       </div>
 
                       <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
-                      <p className="text-xs text-muted-foreground">Diunggah: {timeAgo(v.submittedAt)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Diunggah: {timeAgo(v.submittedAt)}
+                      </p>
                       {v.reason && (
                         <p className="text-xs text-destructive">Alasan Penolakan: {v.reason}</p>
                       )}
@@ -653,7 +696,10 @@ function TreeGalleryPage() {
                       )}
                       {v.status !== "rejected" && (
                         <button
-                          onClick={() => { setRejectTarget(v.id); setRejectReason(""); }}
+                          onClick={() => {
+                            setRejectTarget(v.id);
+                            setRejectReason("");
+                          }}
                           className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/20"
                         >
                           <X className="size-3.5" /> Tolak
@@ -691,7 +737,8 @@ function TreeGalleryPage() {
             <div>
               <h3 className="text-base font-bold text-foreground">Konfirmasi Upload Video</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Apakah Anda yakin ingin mengunggah video <strong>"{title.trim()}"</strong> untuk dimoderasi Admin?
+                Apakah Anda yakin ingin mengunggah video <strong>"{title.trim()}"</strong> untuk
+                dimoderasi Admin?
               </p>
             </div>
 
@@ -889,7 +936,9 @@ function PreviewModal({ video, onClose }: { video: GalleryVideo; onClose: () => 
           </button>
         </div>
         {renderPlayer()}
-        <p className="px-4 py-3 text-xs text-muted-foreground">Diunggah {timeAgo(video.submittedAt)}</p>
+        <p className="px-4 py-3 text-xs text-muted-foreground">
+          Diunggah {timeAgo(video.submittedAt)}
+        </p>
       </div>
     </div>
   );

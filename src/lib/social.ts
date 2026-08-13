@@ -200,6 +200,15 @@ export function timeAgo(ts: number): string {
 /* Account                                                             */
 /* ------------------------------------------------------------------ */
 
+export type SocialPlatform = "whatsapp" | "tiktok" | "x" | "instagram" | "github";
+export type VisibilityLevel = "public" | "friends_only" | "private";
+
+export type SocialLink = {
+  platform: SocialPlatform;
+  value: string;
+  visibility: VisibilityLevel;
+};
+
 export type Profile = {
   username: string;
   accountId: string;
@@ -210,6 +219,10 @@ export type Profile = {
   level: number;
   exp: number;
   friendCount: number;
+  avatarUrl?: string;
+  totalLogins?: number;
+  socialLinks?: SocialLink[];
+  themePreference?: "light" | "dark";
 };
 
 export function seedProfile(): Profile {
@@ -223,5 +236,9 @@ export function seedProfile(): Profile {
     level: 8,
     exp: 32,
     friendCount: 3,
+    avatarUrl: "",
+    totalLogins: 1,
+    socialLinks: [],
+    themePreference: "light",
   };
 }

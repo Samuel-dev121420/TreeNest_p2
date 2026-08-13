@@ -1,9 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signOut,
+  deleteUser,
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
@@ -12,6 +14,8 @@ import {
   getUserProfile,
   createUserProfile,
   isAdminEmail,
+  incrementTotalLogins,
+  deleteUserAccountFully,
   type UserProfile,
   type UserRole,
 } from "./firestore-service";
@@ -43,6 +47,8 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; profile?: UserProfile; error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -54,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfileForUser(uid: string, fallbackEmail?: string) {
+  async function loadProfileForUser(uid: string, fallbackEmail?: string, isNewLogin?: boolean) {
     let p = await getUserProfile(uid);
     if (!p) {
       // Auto create profile if missing
@@ -62,6 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       p = await createUserProfile(uid, username, fallbackEmail || "user@treenest.com");
     }
     setProfile(p);
+    // Apply theme from profile
+    if (p?.themePreference === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    if (isNewLogin) {
+      incrementTotalLogins(uid).catch(console.error);
+    }
     awardActivityExp(uid, "daily_login").then(() => {
       getUserProfile(uid).then((updated) => {
         if (updated) setProfile(updated);
@@ -88,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        await loadProfileForUser(firebaseUser.uid, firebaseUser.email || undefined);
+        await loadProfileForUser(firebaseUser.uid, firebaseUser.email || undefined, true);
       } else {
         setProfile(null);
       }
@@ -98,11 +113,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       await loadProfileForUser(user.uid, user.email || undefined);
     } else if (profile?.uid) {
       await loadProfileForUser(profile.uid);
+    }
+  }, [user, profile?.uid]);
+
+  async function sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
+    if (!isFirebaseConfigured || !auth) {
+      return { success: false, error: "Firebase tidak dikonfigurasi." };
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { success: true };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Gagal mengirim email reset password.";
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
+    const currentUser = user || auth?.currentUser;
+    const uid = currentUser?.uid || profile?.uid;
+    if (!uid) return { success: false, error: "User tidak ditemukan." };
+    try {
+      await deleteUserAccountFully(uid);
+      if (currentUser && isFirebaseConfigured && auth) {
+        await deleteUser(currentUser);
+      }
+      setUser(null);
+      setProfile(null);
+      localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
+      return { success: true };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Gagal menghapus akun.";
+      return { success: false, error: errorMsg };
     }
   }
 
@@ -189,11 +236,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!userToVerify.emailVerified) {
         return {
           success: false,
-          error: "Email Anda belum terverifikasi. Silakan periksa inbox/spam dan klik tautan verifikasi.",
+          error:
+            "Email Anda belum terverifikasi. Silakan periksa inbox/spam dan klik tautan verifikasi.",
         };
       }
       const role: UserRole =
-        (userToVerify.email && isAdminEmail(userToVerify.email)) || username.toLowerCase().includes("admin")
+        (userToVerify.email && isAdminEmail(userToVerify.email)) ||
+        username.toLowerCase().includes("admin")
           ? "admin"
           : "user";
       const p = await createUserProfile(
@@ -232,6 +281,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         completeVerification,
         logout,
         refreshProfile,
+        sendPasswordReset,
+        deleteAccount,
       }}
     >
       {children}

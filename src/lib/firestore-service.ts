@@ -104,6 +104,10 @@ export async function createUserProfile(
     level: 1,
     exp: 0,
     friendCount: 0,
+    avatarUrl: "",
+    totalLogins: 1,
+    socialLinks: [],
+    themePreference: "light",
     role: resolvedRole,
     featuredFriends: [],
   };
@@ -147,9 +151,39 @@ export async function updateUserExpAndLevel(
   }
 }
 
+export async function incrementTotalLogins(uid: string): Promise<void> {
+  if (!uid || uid === "guest") return;
+  if (!isFirebaseConfigured || !db) {
+    const local = localStorage.getItem(`treenest_user_${uid}`);
+    if (local) {
+      const data = JSON.parse(local);
+      data.totalLogins = (data.totalLogins || 0) + 1;
+      localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+    }
+    return;
+  }
+  try {
+    const userRef = doc(db, "users", uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const current = (data?.["totalLogins"] as number) || 0;
+      await updateDoc(userRef, { totalLogins: current + 1 });
+    }
+  } catch (err) {
+    console.error("Error incrementing total logins:", err);
+  }
+}
+
 export async function updateUserProfile(
   uid: string,
-  patch: { username?: string; bio?: string },
+  patch: {
+    username?: string;
+    bio?: string;
+    avatarUrl?: string;
+    socialLinks?: import("./social").SocialLink[];
+    themePreference?: "light" | "dark";
+  },
 ): Promise<void> {
   const initials = patch.username?.slice(0, 2).toUpperCase();
 
@@ -162,6 +196,9 @@ export async function updateUserProfile(
         data.initials = initials;
       }
       if (patch.bio !== undefined) data.bio = patch.bio;
+      if (patch.avatarUrl !== undefined) data.avatarUrl = patch.avatarUrl;
+      if (patch.socialLinks !== undefined) data.socialLinks = patch.socialLinks;
+      if (patch.themePreference !== undefined) data.themePreference = patch.themePreference;
       localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
     }
     return;
@@ -169,15 +206,31 @@ export async function updateUserProfile(
 
   try {
     const userRef = doc(db, "users", uid);
-    const updates: Record<string, string> = {};
+    const updates: Record<string, unknown> = {};
     if (patch.username !== undefined) {
-      updates.username = patch.username;
-      if (initials) updates.initials = initials;
+      updates["username"] = patch.username;
+      if (initials) updates["initials"] = initials;
     }
-    if (patch.bio !== undefined) updates.bio = patch.bio;
+    if (patch.bio !== undefined) updates["bio"] = patch.bio;
+    if (patch.avatarUrl !== undefined) updates["avatarUrl"] = patch.avatarUrl;
+    if (patch.socialLinks !== undefined) updates["socialLinks"] = patch.socialLinks;
+    if (patch.themePreference !== undefined) updates["themePreference"] = patch.themePreference;
     await updateDoc(userRef, updates);
   } catch (err) {
     console.error("Error updating user profile:", err);
+  }
+}
+
+export async function deleteUserAccountFully(uid: string): Promise<void> {
+  if (!uid || uid === "guest") return;
+  localStorage.removeItem(`treenest_user_${uid}`);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "users", uid));
+    } catch (err) {
+      console.error("Error deleting user profile from Firestore:", err);
+    }
   }
 }
 
@@ -207,6 +260,53 @@ export async function searchUserByAccountId(accountId: string): Promise<UserProf
   }
 }
 
+/** Cari user berdasarkan nama pengguna (username) atau ID Akun (accountId) */
+export async function searchUsers(searchTerm: string, currentUid?: string): Promise<UserProfile[]> {
+  const term = searchTerm.trim().toLowerCase();
+  if (!term) return [];
+
+  if (!isFirebaseConfigured || !db) {
+    const results: UserProfile[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("treenest_user_")) {
+        try {
+          const user: UserProfile = JSON.parse(localStorage.getItem(key) || "");
+          if (currentUid && user.uid === currentUid) continue;
+          if (
+            user.username?.toLowerCase().includes(term) ||
+            user.accountId?.toLowerCase().includes(term)
+          ) {
+            results.push(user);
+          }
+        } catch {
+          // ignore error
+        }
+      }
+    }
+    return results;
+  }
+
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    const results: UserProfile[] = [];
+    snap.forEach((docSnap) => {
+      const user = docSnap.data() as UserProfile;
+      if (currentUid && user.uid === currentUid) return;
+      if (
+        user.username?.toLowerCase().includes(term) ||
+        user.accountId?.toLowerCase().includes(term)
+      ) {
+        results.push(user);
+      }
+    });
+    return results;
+  } catch (err) {
+    console.error("Error searching users:", err);
+    return [];
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* TreeGallery Service                                                */
 /* ------------------------------------------------------------------ */
@@ -223,10 +323,7 @@ export async function getUserVideos(uid: string): Promise<GalleryVideo[]> {
     return [];
   }
   try {
-    const q = query(
-      collection(db, GALLERY_COLLECTION),
-      where("uid", "==", uid),
-    );
+    const q = query(collection(db, GALLERY_COLLECTION), where("uid", "==", uid));
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
     return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
@@ -251,10 +348,7 @@ export async function getAllGalleryVideosAdmin(
     if (statusFilter === "all") {
       q = query(collection(db, GALLERY_COLLECTION));
     } else {
-      q = query(
-        collection(db, GALLERY_COLLECTION),
-        where("status", "==", statusFilter),
-      );
+      q = query(collection(db, GALLERY_COLLECTION), where("status", "==", statusFilter));
     }
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
@@ -322,8 +416,8 @@ export async function moderateVideo(
   if (!isFirebaseConfigured || !db) return;
   try {
     const updates: Record<string, unknown> = { status, moderatedAt: Date.now() };
-    if (reason) updates.reason = reason;
-    else if (status === "approved") updates.reason = "";
+    if (reason) updates["reason"] = reason;
+    else if (status === "approved") updates["reason"] = "";
     await updateDoc(doc(db, GALLERY_COLLECTION, videoId), updates);
   } catch (err) {
     console.error("Error moderating video:", err);
@@ -372,7 +466,10 @@ export async function getFeaturedVideoId(uid: string): Promise<string | null> {
   }
   try {
     const snap = await getDoc(doc(db, GALLERY_FEATURED_COLLECTION, uid));
-    if (snap.exists()) return snap.data().videoId as string | null;
+    if (snap.exists()) {
+      const data = snap.data();
+      return (data?.["videoId"] as string | null) ?? null;
+    }
     return null;
   } catch (err) {
     console.error("Error fetching featured video:", err);

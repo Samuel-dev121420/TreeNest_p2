@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Users, Search, UserPlus, UserCheck, Clock, X, Trash2, Star, Check } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { generateId } from "@/lib/grow-tools";
 import {
   MAX_FEATURED,
-  SEARCHABLE_USERS,
   seedFriends,
   seedRequests,
   seedSent,
@@ -16,7 +16,7 @@ import {
   type Person,
   type SentRequest,
 } from "@/lib/social";
-import { searchUserByAccountId } from "@/lib/firestore-service";
+import { searchUsers } from "@/lib/firestore-service";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
 
@@ -54,6 +54,7 @@ function FriendClubPage() {
   const [sent, setSent] = useLocalStorage<SentRequest[]>(LS_SENT, seedSent());
   const [featured, setFeatured] = useLocalStorage<string[]>(LS_FEATURED, []);
   const [tab, setTab] = useState<Tab>("search");
+  const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
 
   const pendingIn = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const pendingOut = useMemo(() => sent.filter((s) => s.status === "pending"), [sent]);
@@ -154,6 +155,7 @@ function FriendClubPage() {
           sent={sent}
           onSend={sendRequest}
           goList={() => setTab("list")}
+          onViewProfile={setViewingAccountId}
         />
       )}
 
@@ -175,6 +177,25 @@ function FriendClubPage() {
           onToggleFeatured={toggleFeatured}
           onRemove={removeFriend}
           ensureFeatured={ensureFeatured}
+          onViewProfile={setViewingAccountId}
+        />
+      )}
+
+      {viewingAccountId && (
+        <PublicProfileModal
+          accountId={viewingAccountId}
+          viewerUid={uid}
+          viewerFriends={friends}
+          isFriend={friends.some((f) => f.accountId === viewingAccountId)}
+          onClose={() => setViewingAccountId(null)}
+          onAddFriend={() => {
+            const person = friends.find((f) => f.accountId === viewingAccountId);
+            if (!person) {
+              // Build minimal person from available data — the modal will handle
+              sendRequest({ accountId: viewingAccountId, name: viewingAccountId, initials: viewingAccountId.slice(0, 2), hue: 150 });
+            }
+            setViewingAccountId(null);
+          }}
         />
       )}
     </PageShell>
@@ -188,46 +209,46 @@ function SearchPanel({
   sent,
   onSend,
   goList,
+  onViewProfile,
 }: {
   friends: Friend[];
   sent: SentRequest[];
   onSend: (p: Person) => void;
   goList: () => void;
+  onViewProfile: (accountId: string) => void;
 }) {
+  const { profile } = useAuth();
+  const uid = profile?.uid;
   const [query, setQuery] = useState("");
-  const [liveUser, setLiveUser] = useState<Person | null>(null);
+  const [results, setResults] = useState<Person[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const q = query.trim();
-    if (q.toUpperCase().startsWith("TN-") && q.length >= 7) {
-      searchUserByAccountId(q).then((found) => {
-        if (found) {
-          setLiveUser({
-            accountId: found.accountId,
-            name: found.username,
-            initials: found.initials,
-            hue: found.hue,
-          });
-        } else {
-          setLiveUser(null);
-        }
-      });
-    } else {
-      setLiveUser(null);
+    if (!q) {
+      setResults([]);
+      setIsSearching(false);
+      return;
     }
-  }, [query]);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = [...SEARCHABLE_USERS];
-    if (liveUser && !list.some((u) => u.accountId === liveUser.accountId)) {
-      list = [liveUser, ...list];
-    }
-    if (!q) return list;
-    return list.filter(
-      (u) => u.name.toLowerCase().includes(q) || u.accountId.toLowerCase().includes(q),
-    );
-  }, [query, liveUser]);
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      searchUsers(q, uid).then((foundProfiles) => {
+        const people: Person[] = foundProfiles.map((p) => ({
+          accountId: p.accountId,
+          name: p.username,
+          initials: p.initials,
+          hue: p.hue,
+        }));
+        setResults(people);
+        setIsSearching(false);
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, uid]);
+
+  const hasTyped = query.trim().length > 0;
 
   return (
     <div>
@@ -236,18 +257,38 @@ function SearchPanel({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari berdasarkan nama atau ID Akun (cth: TN-1024)"
+          placeholder="Cari berdasarkan nama (cth: Asep) atau ID Akun (cth: TN-1024)"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {results.length === 0 ? (
+        {!hasTyped ? (
+          <div className="sm:col-span-2">
+            <EmptyState
+              icon={Search}
+              title="Cari Teman Baru"
+              description="Ketik nama pengguna atau ID Akun untuk menemukan teman di TreeNest."
+            />
+          </div>
+        ) : isSearching ? (
+          <div className="sm:col-span-2 text-center py-8 text-xs text-muted-foreground font-semibold">
+            Mencari teman... 🔍
+          </div>
+        ) : results.length === 0 ? (
           <div className="sm:col-span-2">
             <EmptyState
               icon={Search}
               title="Tidak ditemukan"
-              description="Coba nama atau ID Akun lain."
+              description="Pengguna dengan nama atau ID Akun tersebut tidak ditemukan."
             />
           </div>
         ) : (
@@ -259,11 +300,20 @@ function SearchPanel({
                 key={u.accountId}
                 className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
               >
-                <Avatar initials={u.initials} hue={u.hue} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{u.name}</p>
+                <button
+                  onClick={() => onViewProfile(u.accountId)}
+                  className="shrink-0"
+                  title="Lihat profil"
+                >
+                  <Avatar initials={u.initials} hue={u.hue} size="md" />
+                </button>
+                <button
+                  onClick={() => onViewProfile(u.accountId)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate text-sm font-bold text-foreground hover:underline">{u.name}</p>
                   <p className="text-xs text-muted-foreground">{u.accountId}</p>
-                </div>
+                </button>
                 {isFriend ? (
                   <button
                     onClick={goList}
@@ -400,6 +450,7 @@ function ListPanel({
   onToggleFeatured,
   onRemove,
   ensureFeatured,
+  onViewProfile,
 }: {
   friends: Friend[];
   featured: string[];
@@ -407,6 +458,7 @@ function ListPanel({
   onToggleFeatured: (id: string) => void;
   onRemove: (id: string) => void;
   ensureFeatured: () => void;
+  onViewProfile: (accountId: string) => void;
 }) {
   // tampilkan featured terlebih dahulu
   const sorted = useMemo(() => {
@@ -444,9 +496,18 @@ function ListPanel({
                 key={f.id}
                 className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
               >
-                <Avatar initials={f.initials} hue={f.hue} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{f.name}</p>
+                <button
+                  onClick={() => onViewProfile(f.accountId)}
+                  className="shrink-0"
+                  title="Lihat profil"
+                >
+                  <Avatar initials={f.initials} hue={f.hue} size="md" />
+                </button>
+                <button
+                  onClick={() => onViewProfile(f.accountId)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate text-sm font-bold text-foreground hover:underline">{f.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {f.accountId} · sejak{" "}
                     {new Date(f.since).toLocaleDateString("id-ID", {
@@ -454,7 +515,7 @@ function ListPanel({
                       month: "short",
                     })}
                   </p>
-                </div>
+                </button>
                 <button
                   onClick={() => {
                     if (canFeature) onToggleFeatured(f.id);

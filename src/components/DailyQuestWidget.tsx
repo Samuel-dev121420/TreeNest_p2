@@ -45,7 +45,7 @@ export function DailyQuestWidget() {
     const unsubscribeExp = subscribeExpUpdates(fetchState);
 
     return () => unsubscribeExp();
-  }, [uid]);
+  }, [uid, refreshProfile]);
 
   // Subscribe to toasts
   useEffect(() => {
@@ -94,7 +94,7 @@ export function DailyQuestWidget() {
       </div>
 
       {/* ── DAILY QUEST WIDGET CONTAINER ── */}
-      <div className="fixed top-4 right-4 z-40 flex flex-col items-end">
+      <div className="fixed top-14 right-4 z-40 flex flex-col items-end">
         {/* Toggle Button */}
         <button
           onClick={() => setExpanded(!expanded)}
@@ -109,9 +109,7 @@ export function DailyQuestWidget() {
               <TreePine className="size-3.5" />
             </span>
             <span>Lv.{currentLevel}</span>
-            <span className="text-muted-foreground font-normal">
-              ({currentExp}/50 EXP)
-            </span>
+            <span className="text-muted-foreground font-normal">({currentExp}/50 EXP)</span>
           </div>
           {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </button>
@@ -199,9 +197,7 @@ export function DailyQuestWidget() {
                       <p className="text-[10px] text-muted-foreground">+15 EXP / teman</p>
                     </div>
                   </div>
-                  <span className="font-bold text-primary">
-                    {questState.friendCount} teman
-                  </span>
+                  <span className="font-bold text-primary">{questState.friendCount} teman</span>
                 </div>
               </div>
             </div>
@@ -223,7 +219,7 @@ function QuestRow({
   current,
   max,
 }: {
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   subtitle: string;
   current: number;

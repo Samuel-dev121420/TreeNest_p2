@@ -29,7 +29,10 @@ const PRESETS = [15, 25, 45, 60];
 function StudyPage() {
   const { profile, refreshProfile } = useAuth();
   const uid = profile?.uid ?? "guest";
-  const [sessions, setSessions] = useLocalStorage<StudySession[]>(`treenest.study.sessions.${uid}`, []);
+  const [sessions, setSessions] = useLocalStorage<StudySession[]>(
+    `treenest.study.sessions.${uid}`,
+    [],
+  );
   const [duration, setDuration] = useState(25);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);

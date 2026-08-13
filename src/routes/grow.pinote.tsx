@@ -57,8 +57,14 @@ export function PiNotePage() {
   const uid = profile?.uid ?? "guest";
 
   const [items, setItems] = useLocalStorage<PinoteItem[]>(`treenest.pinote.items_v2.${uid}`, []);
-  const [legacyFolders, setLegacyFolders] = useLocalStorage<PinoteFolder[]>(`treenest.pinote.folders.${uid}`, []);
-  const [legacyNotes, setLegacyNotes] = useLocalStorage<PinoteNote[]>(`treenest.pinote.notes.${uid}`, []);
+  const [legacyFolders, setLegacyFolders] = useLocalStorage<PinoteFolder[]>(
+    `treenest.pinote.folders.${uid}`,
+    [],
+  );
+  const [legacyNotes, setLegacyNotes] = useLocalStorage<PinoteNote[]>(
+    `treenest.pinote.notes.${uid}`,
+    [],
+  );
   const [hasMigrated, setHasMigrated] = useLocalStorage<boolean>(
     `treenest.pinote.migrated_v2.${uid}`,
     false,
