@@ -1,0 +1,276 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * TreeNest design system — Flat Illustration + Soft Gradient.
+ * Palette: langit lembut, hijau daun, coklat kayu, coklat tanah, putih awan.
+ * Semua warna oklch. Jangan tulis warna mentah di komponen.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-sky: var(--sky);
+  --color-sky-deep: var(--sky-deep);
+  --color-leaf: var(--leaf);
+  --color-leaf-soft: var(--leaf-soft);
+  --color-grass: var(--grass);
+  --color-wood: var(--wood);
+  --color-soil: var(--soil);
+  --color-cloud: var(--cloud);
+  --color-sun: var(--sun);
+
+  --font-display: "Baloo 2", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1.25rem;
+
+  --sky: oklch(0.9 0.045 220);
+  --sky-deep: oklch(0.78 0.075 226);
+  --leaf: oklch(0.72 0.13 145);
+  --leaf-soft: oklch(0.86 0.09 140);
+  --grass: oklch(0.8 0.12 138);
+  --wood: oklch(0.55 0.075 62);
+  --soil: oklch(0.45 0.06 58);
+  --cloud: oklch(0.985 0.005 240);
+  --sun: oklch(0.9 0.09 88);
+
+  --background: oklch(0.985 0.008 150);
+  --foreground: oklch(0.32 0.035 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.32 0.035 150);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.32 0.035 150);
+  --primary: oklch(0.66 0.125 148);
+  --primary-foreground: oklch(0.99 0.01 150);
+  --secondary: oklch(0.94 0.03 150);
+  --secondary-foreground: oklch(0.38 0.05 150);
+  --muted: oklch(0.95 0.015 150);
+  --muted-foreground: oklch(0.56 0.03 150);
+  --accent: oklch(0.92 0.05 220);
+  --accent-foreground: oklch(0.36 0.05 230);
+  --destructive: oklch(0.63 0.17 25);
+  --destructive-foreground: oklch(0.99 0.01 25);
+  --border: oklch(0.91 0.02 150);
+  --input: oklch(0.91 0.02 150);
+  --ring: oklch(0.72 0.1 148);
+
+  --gradient-sky: linear-gradient(
+    180deg,
+    var(--sky-deep) 0%,
+    var(--sky) 45%,
+    oklch(0.95 0.03 160) 100%
+  );
+  --gradient-ground: linear-gradient(180deg, var(--grass) 0%, var(--leaf) 35%, var(--wood) 100%);
+  --gradient-soft: linear-gradient(160deg, oklch(0.98 0.02 150) 0%, oklch(0.96 0.025 210) 100%);
+  --gradient-leaf: linear-gradient(135deg, var(--leaf) 0%, var(--leaf-soft) 100%);
+  --gradient-wood: linear-gradient(180deg, oklch(0.62 0.07 62) 0%, var(--soil) 100%);
+
+  --shadow-soft: 0 8px 24px -12px oklch(0.4 0.05 150 / 0.35);
+  --shadow-float: 0 16px 40px -18px oklch(0.4 0.05 150 / 0.45);
+}
+
+.dark {
+  --background: oklch(0.24 0.03 200);
+  --foreground: oklch(0.95 0.01 150);
+  --card: oklch(0.29 0.03 200);
+  --card-foreground: oklch(0.95 0.01 150);
+  --popover: oklch(0.29 0.03 200);
+  --popover-foreground: oklch(0.95 0.01 150);
+  --primary: oklch(0.72 0.13 148);
+  --primary-foreground: oklch(0.2 0.03 150);
+  --secondary: oklch(0.34 0.03 200);
+  --secondary-foreground: oklch(0.95 0.01 150);
+  --muted: oklch(0.34 0.03 200);
+  --muted-foreground: oklch(0.72 0.02 180);
+  --accent: oklch(0.38 0.05 220);
+  --accent-foreground: oklch(0.95 0.01 150);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.6 0.08 148);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility bg-gradient-sky {
+  background-image: var(--gradient-sky);
+}
+@utility bg-gradient-ground {
+  background-image: var(--gradient-ground);
+}
+@utility bg-gradient-soft {
+  background-image: var(--gradient-soft);
+}
+@utility bg-gradient-leaf {
+  background-image: var(--gradient-leaf);
+}
+@utility bg-gradient-wood {
+  background-image: var(--gradient-wood);
+}
+@utility shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
+}
+
+/* --- Animasi lembut khas TreeNest --- */
+@keyframes drift {
+  from {
+    transform: translateX(-20vw);
+  }
+  to {
+    transform: translateX(120vw);
+  }
+}
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes stroll {
+  0% {
+    left: var(--stroll-from, 8%);
+  }
+  50% {
+    left: var(--stroll-to, 78%);
+  }
+  100% {
+    left: var(--stroll-from, 8%);
+  }
+}
+
+@keyframes fly-by {
+  0% {
+    transform: translate(-10vw, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(50vw, -24px);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(115vw, 8px);
+    opacity: 0;
+  }
+}
+@keyframes grow-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-1.6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.6deg) translateY(-1px);
+  }
+}
+@keyframes flap {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.45);
+  }
+}
+
+@utility animate-drift {
+  animation: drift linear infinite;
+}
+@utility animate-float-y {
+  animation: float-y 3.2s ease-in-out infinite;
+}
+@utility animate-stroll {
+  animation: stroll linear infinite alternate;
+}
+@utility animate-fly-by {
+  animation: fly-by linear infinite;
+}
+@utility animate-grow-in {
+  animation: grow-in 0.6s ease-out both;
+}
+@utility animate-sway {
+  animation: sway 5s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@utility animate-flap {
+  animation: flap 0.5s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
