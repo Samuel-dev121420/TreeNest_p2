@@ -53,12 +53,23 @@ export function generateAccountId(): string {
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   if (!isFirebaseConfigured || !db) {
     const local = localStorage.getItem(`treenest_user_${uid}`);
-    if (local) return JSON.parse(local);
+    if (local) {
+      const data = JSON.parse(local) as UserProfile;
+      if (data.role === "admin" || uid === "admin-demo-id" || (data.email && isAdminEmail(data.email))) {
+        data.role = "admin";
+        data.level = 20;
+        data.exp = 50;
+      }
+      return data;
+    }
     const initial = seedProfile();
+    const isAdmin = uid === "admin-demo-id";
     const mockUser: UserProfile = {
       ...initial,
       uid,
-      role: uid === "admin-demo-id" ? "admin" : "user",
+      role: isAdmin ? "admin" : "user",
+      level: isAdmin ? 20 : initial.level,
+      exp: isAdmin ? 50 : initial.exp,
       featuredFriends: [],
     };
     return mockUser;
@@ -71,6 +82,10 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       const data = snap.data() as UserProfile;
       if (data.email && isAdminEmail(data.email) && data.role !== "admin") {
         data.role = "admin";
+      }
+      if (data.role === "admin") {
+        data.level = 20;
+        data.exp = 50;
       }
       return data;
     }
@@ -101,8 +116,8 @@ export async function createUserProfile(
     bio: "Tumbuh pelan, tapi pasti. 🌱",
     initials,
     hue,
-    level: 1,
-    exp: 0,
+    level: resolvedRole === "admin" ? 20 : 1,
+    exp: resolvedRole === "admin" ? 50 : 0,
     friendCount: 0,
     avatarUrl: "",
     totalLogins: 1,
@@ -183,24 +198,61 @@ export async function updateUserProfile(
     avatarUrl?: string;
     socialLinks?: import("./social").SocialLink[];
     themePreference?: "light" | "dark";
+    accountId?: string;
   },
 ): Promise<void> {
   const initials = patch.username?.slice(0, 2).toUpperCase();
 
-  if (!isFirebaseConfigured || !db) {
-    const local = localStorage.getItem(`treenest_user_${uid}`);
-    if (local) {
-      const data = JSON.parse(local);
-      if (patch.username !== undefined) {
-        data.username = patch.username;
-        data.initials = initials;
-      }
-      if (patch.bio !== undefined) data.bio = patch.bio;
-      if (patch.avatarUrl !== undefined) data.avatarUrl = patch.avatarUrl;
-      if (patch.socialLinks !== undefined) data.socialLinks = patch.socialLinks;
-      if (patch.themePreference !== undefined) data.themePreference = patch.themePreference;
-      localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+  // 1. Simpan ke local user store
+  const local = localStorage.getItem(`treenest_user_${uid}`);
+  let currentAccId = patch.accountId || "";
+  if (local) {
+    const data = JSON.parse(local);
+    if (!currentAccId && data.accountId) currentAccId = data.accountId;
+    if (patch.username !== undefined) {
+      data.username = patch.username;
+      data.initials = initials;
     }
+    if (patch.bio !== undefined) data.bio = patch.bio;
+    if (patch.avatarUrl !== undefined) data.avatarUrl = patch.avatarUrl;
+    if (patch.socialLinks !== undefined) data.socialLinks = patch.socialLinks;
+    if (patch.themePreference !== undefined) data.themePreference = patch.themePreference;
+    localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+  }
+
+  // 2. Perbarui snapshot profil di semua relasi pertemanan lokal
+  const rawGlobal = localStorage.getItem("treenest_global_friendships");
+  if (rawGlobal) {
+    try {
+      const list: StoredFriendship[] = JSON.parse(rawGlobal);
+      let changed = false;
+      list.forEach((f) => {
+        if (f.userA.uid === uid || (currentAccId && f.userA.accountId === currentAccId)) {
+          if (patch.avatarUrl !== undefined) f.userA.avatarUrl = patch.avatarUrl;
+          if (patch.username !== undefined) {
+            f.userA.name = patch.username;
+            f.userA.initials = initials || patch.username.slice(0, 2).toUpperCase();
+          }
+          changed = true;
+        }
+        if (f.userB.uid === uid || (currentAccId && f.userB.accountId === currentAccId)) {
+          if (patch.avatarUrl !== undefined) f.userB.avatarUrl = patch.avatarUrl;
+          if (patch.username !== undefined) {
+            f.userB.name = patch.username;
+            f.userB.initials = initials || patch.username.slice(0, 2).toUpperCase();
+          }
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem("treenest_global_friendships", JSON.stringify(list));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!isFirebaseConfigured || !db) {
     return;
   }
 
@@ -216,6 +268,26 @@ export async function updateUserProfile(
     if (patch.socialLinks !== undefined) updates["socialLinks"] = patch.socialLinks;
     if (patch.themePreference !== undefined) updates["themePreference"] = patch.themePreference;
     await updateDoc(userRef, updates);
+
+    // Perbarui dokumen friendships di Firestore
+    try {
+      const qA = query(collection(db, FRIENDSHIPS_COLLECTION), where("users", "array-contains", uid));
+      const snapA = await getDocs(qA);
+      snapA.docs.forEach(async (d) => {
+        const data = d.data() as StoredFriendship;
+        const isUserA = data.userA.uid === uid;
+        const targetKey = isUserA ? "userA" : "userB";
+        const updateObj: Record<string, unknown> = {};
+        if (patch.avatarUrl !== undefined) updateObj[`${targetKey}.avatarUrl`] = patch.avatarUrl;
+        if (patch.username !== undefined) {
+          updateObj[`${targetKey}.name`] = patch.username;
+          if (initials) updateObj[`${targetKey}.initials`] = initials;
+        }
+        await updateDoc(d.ref, updateObj).catch(() => {});
+      });
+    } catch {
+      // ignore
+    }
   } catch (err) {
     console.error("Error updating user profile:", err);
   }
@@ -238,8 +310,23 @@ export async function deleteUserAccountFully(uid: string): Promise<void> {
 /* Search & Friend System                                             */
 /* ------------------------------------------------------------------ */
 
+const FRIEND_REQUESTS_COLLECTION = "friend_requests";
+
 export async function searchUserByAccountId(accountId: string): Promise<UserProfile | null> {
   if (!isFirebaseConfigured || !db) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("treenest_user_")) {
+        try {
+          const user: UserProfile = JSON.parse(localStorage.getItem(key) || "");
+          if (user.accountId?.toUpperCase() === accountId.trim().toUpperCase()) {
+            return user;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
     return null;
   }
 
@@ -304,6 +391,680 @@ export async function searchUsers(searchTerm: string, currentUid?: string): Prom
   } catch (err) {
     console.error("Error searching users:", err);
     return [];
+  }
+}
+
+export type StoredFriendRequest = {
+  id: string;
+  fromUid: string;
+  fromAccountId: string;
+  fromName: string;
+  fromInitials: string;
+  fromHue: number;
+  fromAvatarUrl?: string | undefined;
+  toUid: string;
+  toAccountId: string;
+  toName: string;
+  toInitials: string;
+  toHue: number;
+  toAvatarUrl?: string | undefined;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: number;
+};
+
+/** Kirim permintaan pertemanan dari fromUser ke toUser */
+export async function sendFriendRequest(
+  fromUser: { uid: string; accountId: string; name: string; initials: string; hue: number; avatarUrl?: string | undefined },
+  toUser: { uid?: string | undefined; accountId: string; name: string; initials: string; hue: number; avatarUrl?: string | undefined },
+): Promise<{ success: boolean; error?: string }> {
+  // Resolve target UID if missing
+  let resolvedToUid = toUser.uid;
+  if (!resolvedToUid) {
+    const found = await searchUserByAccountId(toUser.accountId);
+    if (found) {
+      resolvedToUid = found.uid;
+    } else {
+      resolvedToUid = `uid_${toUser.accountId}`;
+    }
+  }
+
+  if (fromUser.uid === resolvedToUid) {
+    return { success: false, error: "Tidak dapat menambahkan diri sendiri." };
+  }
+
+  const reqData: Omit<StoredFriendRequest, "id"> = {
+    fromUid: fromUser.uid,
+    fromAccountId: fromUser.accountId,
+    fromName: fromUser.name,
+    fromInitials: fromUser.initials,
+    fromHue: fromUser.hue,
+    fromAvatarUrl: fromUser.avatarUrl || "",
+    toUid: resolvedToUid,
+    toAccountId: toUser.accountId,
+    toName: toUser.name,
+    toInitials: toUser.initials,
+    toHue: toUser.hue,
+    toAvatarUrl: toUser.avatarUrl || "",
+    status: "pending",
+    createdAt: Date.now(),
+  };
+
+  if (!isFirebaseConfigured || !db) {
+    const raw = localStorage.getItem("treenest_global_friend_requests");
+    const list: StoredFriendRequest[] = raw ? JSON.parse(raw) : [];
+    // Cek apakah sudah pernah kirim request pending
+    const exists = list.some(
+      (r) => r.fromUid === fromUser.uid && r.toUid === resolvedToUid && r.status === "pending",
+    );
+    if (!exists) {
+      list.push({ id: generateId(), ...reqData });
+      localStorage.setItem("treenest_global_friend_requests", JSON.stringify(list));
+    }
+    return { success: true };
+  }
+
+  try {
+    // Check if already pending
+    const q = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("fromUid", "==", fromUser.uid),
+      where("toUid", "==", resolvedToUid),
+      where("status", "==", "pending"),
+    );
+    const existingSnap = await getDocs(q);
+    if (!existingSnap.empty) {
+      return { success: true };
+    }
+
+    await addDoc(collection(db, FRIEND_REQUESTS_COLLECTION), reqData);
+    return { success: true };
+  } catch (err) {
+    console.error("Error sending friend request:", err);
+    return { success: false, error: "Gagal mengirim permintaan." };
+  }
+}
+
+/** Ambil permintaan pertemanan masuk untuk user tertentu */
+export async function getIncomingFriendRequests(
+  uid: string,
+  accountId?: string,
+): Promise<FriendRequest[]> {
+  if (!uid || uid === "guest") return [];
+
+  const map = new Map<string, FriendRequest>();
+
+  // 1. Baca dari local storage
+  const raw = localStorage.getItem("treenest_global_friend_requests");
+  if (raw) {
+    const list: StoredFriendRequest[] = JSON.parse(raw);
+    list
+      .filter(
+        (r) =>
+          (r.toUid === uid || (accountId && r.toAccountId === accountId)) &&
+          r.status === "pending",
+      )
+      .forEach((r) => {
+        map.set(r.id, {
+          id: r.id,
+          from: {
+            uid: r.fromUid,
+            accountId: r.fromAccountId,
+            name: r.fromName,
+            initials: r.fromInitials,
+            hue: r.fromHue,
+            avatarUrl: r.fromAvatarUrl || undefined,
+          },
+          createdAt: r.createdAt,
+          status: r.status,
+        });
+      });
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return Array.from(map.values());
+  }
+
+  // 2. Baca dari Firestore jika ada
+  try {
+    const q = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("toUid", "==", uid),
+      where("status", "==", "pending"),
+    );
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      const data = d.data() as StoredFriendRequest;
+      map.set(d.id, {
+        id: d.id,
+        from: {
+          uid: data.fromUid,
+          accountId: data.fromAccountId,
+          name: data.fromName,
+          initials: data.fromInitials,
+          hue: data.fromHue,
+          avatarUrl: data.fromAvatarUrl || undefined,
+        },
+        createdAt: data.createdAt,
+        status: data.status,
+      });
+    });
+  } catch (err) {
+    console.warn("Firestore incoming requests check warning:", err);
+  }
+
+  return Array.from(map.values());
+}
+
+/** Ambil permintaan pertemanan yang dikirim oleh user tertentu */
+export async function getSentFriendRequests(
+  uid: string,
+  accountId?: string,
+): Promise<SentRequest[]> {
+  if (!uid || uid === "guest") return [];
+
+  const map = new Map<string, SentRequest>();
+
+  // 1. Baca dari local storage
+  const raw = localStorage.getItem("treenest_global_friend_requests");
+  if (raw) {
+    const list: StoredFriendRequest[] = JSON.parse(raw);
+    list
+      .filter(
+        (r) =>
+          (r.fromUid === uid || (accountId && r.fromAccountId === accountId)) &&
+          r.status === "pending",
+      )
+      .forEach((r) => {
+        map.set(r.id, {
+          id: r.id,
+          to: {
+            uid: r.toUid,
+            accountId: r.toAccountId,
+            name: r.toName,
+            initials: r.toInitials,
+            hue: r.toHue,
+            avatarUrl: r.toAvatarUrl || undefined,
+          },
+          createdAt: r.createdAt,
+          status: r.status,
+        });
+      });
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return Array.from(map.values());
+  }
+
+  // 2. Baca dari Firestore jika ada
+  try {
+    const q = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("fromUid", "==", uid),
+      where("status", "==", "pending"),
+    );
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      const data = d.data() as StoredFriendRequest;
+      map.set(d.id, {
+        id: d.id,
+        to: {
+          uid: data.toUid,
+          accountId: data.toAccountId,
+          name: data.toName,
+          initials: data.toInitials,
+          hue: data.toHue,
+          avatarUrl: data.toAvatarUrl || undefined,
+        },
+        createdAt: data.createdAt,
+        status: data.status,
+      });
+    });
+  } catch (err) {
+    console.warn("Firestore sent requests check warning:", err);
+  }
+
+  return Array.from(map.values());
+}
+
+export type StoredFriendship = {
+  id: string;
+  users: string[]; // [uid1, uid2]
+  accountIds: string[]; // [accountId1, accountId2]
+  userA: {
+    uid: string;
+    accountId: string;
+    name: string;
+    initials: string;
+    hue: number;
+    avatarUrl?: string | undefined;
+  };
+  userB: {
+    uid: string;
+    accountId: string;
+    name: string;
+    initials: string;
+    hue: number;
+    avatarUrl?: string | undefined;
+  };
+  since: number;
+};
+
+const FRIENDSHIPS_COLLECTION = "friendships";
+
+/** Terima permintaan pertemanan (kedua akun saling berteman secara dua arah) */
+export async function acceptFriendRequest(
+  requestId: string,
+  currentUser: { uid: string; accountId: string; name: string; initials: string; hue: number; avatarUrl?: string | undefined },
+  requestFrom: { uid?: string | undefined; accountId: string; name: string; initials: string; hue: number; avatarUrl?: string | undefined },
+): Promise<void> {
+  const fromUid = requestFrom.uid || `uid_${requestFrom.accountId}`;
+  const toUid = currentUser.uid;
+  const now = Date.now();
+  const docId = [fromUid, toUid].sort().join("_");
+
+  const friendshipData: StoredFriendship = {
+    id: docId,
+    users: [fromUid, toUid],
+    accountIds: [requestFrom.accountId, currentUser.accountId],
+    userA: {
+      uid: fromUid,
+      accountId: requestFrom.accountId,
+      name: requestFrom.name,
+      initials: requestFrom.initials,
+      hue: requestFrom.hue,
+      avatarUrl: requestFrom.avatarUrl || undefined,
+    },
+    userB: {
+      uid: toUid,
+      accountId: currentUser.accountId,
+      name: currentUser.name,
+      initials: currentUser.initials,
+      hue: currentUser.hue,
+      avatarUrl: currentUser.avatarUrl || undefined,
+    },
+    since: now,
+  };
+
+  const friendForCurrent: Friend = {
+    id: docId,
+    uid: fromUid,
+    accountId: requestFrom.accountId,
+    name: requestFrom.name,
+    initials: requestFrom.initials,
+    hue: requestFrom.hue,
+    avatarUrl: requestFrom.avatarUrl || undefined,
+    since: now,
+  };
+
+  const friendForSender: Friend = {
+    id: docId,
+    uid: toUid,
+    accountId: currentUser.accountId,
+    name: currentUser.name,
+    initials: currentUser.initials,
+    hue: currentUser.hue,
+    avatarUrl: currentUser.avatarUrl || undefined,
+    since: now,
+  };
+
+  // 1. Selalu simpan ke Local Storage terlebih dahulu agar relasi instan & permanen
+  const rawReq = localStorage.getItem("treenest_global_friend_requests");
+  if (rawReq) {
+    const reqs: StoredFriendRequest[] = JSON.parse(rawReq);
+    localStorage.setItem(
+      "treenest_global_friend_requests",
+      JSON.stringify(reqs.filter((r) => r.id !== requestId)),
+    );
+  }
+
+  const rawGlobal = localStorage.getItem("treenest_global_friendships");
+  const globalList: StoredFriendship[] = rawGlobal ? JSON.parse(rawGlobal) : [];
+  if (!globalList.some((f) => f.id === docId)) {
+    globalList.push(friendshipData);
+    localStorage.setItem("treenest_global_friendships", JSON.stringify(globalList));
+  }
+
+  // Simpan di local friend list untuk kedua user
+  const curFriendsRaw = localStorage.getItem(`treenest_friends_${toUid}`);
+  const curFriends: Friend[] = curFriendsRaw ? JSON.parse(curFriendsRaw) : [];
+  if (!curFriends.some((f) => f.accountId === requestFrom.accountId)) {
+    curFriends.push(friendForCurrent);
+    localStorage.setItem(`treenest_friends_${toUid}`, JSON.stringify(curFriends));
+  }
+
+  const sndFriendsRaw = localStorage.getItem(`treenest_friends_${fromUid}`);
+  const sndFriends: Friend[] = sndFriendsRaw ? JSON.parse(sndFriendsRaw) : [];
+  if (!sndFriends.some((f) => f.accountId === currentUser.accountId)) {
+    sndFriends.push(friendForSender);
+    localStorage.setItem(`treenest_friends_${fromUid}`, JSON.stringify(sndFriends));
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return;
+  }
+
+  // 2. Tulis ke Firestore
+  try {
+    await deleteDoc(doc(db, FRIEND_REQUESTS_COLLECTION, requestId));
+    await setDoc(doc(db, FRIENDSHIPS_COLLECTION, docId), friendshipData);
+
+    try {
+      await setDoc(doc(db, "users", toUid, "friends", fromUid), friendForCurrent);
+    } catch {
+      // ignore
+    }
+    try {
+      await setDoc(doc(db, "users", fromUid, "friends", toUid), friendForSender);
+    } catch {
+      // ignore
+    }
+  } catch (err) {
+    console.warn("Firestore accept friend request notice:", err);
+  }
+}
+
+/** Tolak permintaan pertemanan */
+export async function rejectFriendRequest(requestId: string): Promise<void> {
+  const rawReq = localStorage.getItem("treenest_global_friend_requests");
+  if (rawReq) {
+    const reqs: StoredFriendRequest[] = JSON.parse(rawReq);
+    localStorage.setItem(
+      "treenest_global_friend_requests",
+      JSON.stringify(reqs.filter((r) => r.id !== requestId)),
+    );
+  }
+
+  if (!isFirebaseConfigured || !db) return;
+
+  try {
+    await deleteDoc(doc(db, FRIEND_REQUESTS_COLLECTION, requestId));
+  } catch (err) {
+    console.warn("Firestore reject friend request notice:", err);
+  }
+}
+
+/** Batalkan permintaan pertemanan yang telah dikirim */
+export async function cancelFriendRequest(requestId: string): Promise<void> {
+  return rejectFriendRequest(requestId);
+}
+
+/** Ambil daftar teman dari user tertentu (100% dua arah terjamin & selalu sinkron dengan profil terbaru) */
+export async function getUserFriends(uid: string, accountId?: string): Promise<Friend[]> {
+  if (!uid || uid === "guest") return [];
+
+  const friendsMap = new Map<string, Friend>();
+
+  // 1. Ambil dari global friendships lokal
+  const rawGlobal = localStorage.getItem("treenest_global_friendships");
+  if (rawGlobal) {
+    try {
+      const list: StoredFriendship[] = JSON.parse(rawGlobal);
+      list
+        .filter(
+          (f) =>
+            (f.users && f.users.includes(uid)) ||
+            (accountId && f.accountIds && f.accountIds.includes(accountId)),
+        )
+        .forEach((f) => {
+          const isUserA = f.userA.uid === uid || (accountId && f.userA.accountId === accountId);
+          const other = isUserA ? f.userB : f.userA;
+          friendsMap.set(other.accountId, {
+            id: f.id,
+            uid: other.uid,
+            accountId: other.accountId,
+            name: other.name,
+            initials: other.initials,
+            hue: other.hue,
+            avatarUrl: other.avatarUrl || undefined,
+            since: f.since,
+          });
+        });
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Ambil dari local user store jika ada
+  const curFriendsRaw = localStorage.getItem(`treenest_friends_${uid}`);
+  if (curFriendsRaw) {
+    try {
+      const curList: Friend[] = JSON.parse(curFriendsRaw);
+      curList.forEach((f) => {
+        if (!friendsMap.has(f.accountId)) {
+          friendsMap.set(f.accountId, f);
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Gabungkan dengan data Firestore jika ada
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(
+        collection(db, FRIENDSHIPS_COLLECTION),
+        where("users", "array-contains", uid),
+      );
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        const data = d.data() as StoredFriendship;
+        const isUserA = data.userA.uid === uid || (accountId && data.userA.accountId === accountId);
+        const other = isUserA ? data.userB : data.userA;
+        friendsMap.set(other.accountId, {
+          id: d.id,
+          uid: other.uid,
+          accountId: other.accountId,
+          name: other.name,
+          initials: other.initials,
+          hue: other.hue,
+          avatarUrl: other.avatarUrl || undefined,
+          since: data.since || Date.now(),
+        });
+      });
+
+      try {
+        const subSnap = await getDocs(collection(db, "users", uid, "friends"));
+        subSnap.forEach((d) => {
+          const f = d.data() as Friend;
+          if (!friendsMap.has(f.accountId)) {
+            friendsMap.set(f.accountId, { ...f, id: d.id });
+          }
+        });
+      } catch {
+        // ignore
+      }
+    } catch (err) {
+      console.warn("Firestore getUserFriends warning:", err);
+    }
+  }
+
+  const friendsList = Array.from(friendsMap.values());
+
+  // 4. Sinkronisasi data avatar/username terbaru teman dari live profile
+  for (const friend of friendsList) {
+    try {
+      let liveProfile: UserProfile | null = null;
+      if (friend.uid && !friend.uid.startsWith("uid_")) {
+        const rawLocal = localStorage.getItem(`treenest_user_${friend.uid}`);
+        if (rawLocal) liveProfile = JSON.parse(rawLocal);
+      }
+      if (!liveProfile && friend.accountId) {
+        liveProfile = await searchUserByAccountId(friend.accountId);
+      }
+      if (liveProfile) {
+        if (liveProfile.avatarUrl !== undefined) friend.avatarUrl = liveProfile.avatarUrl || undefined;
+        if (liveProfile.username) friend.name = liveProfile.username;
+        if (liveProfile.initials) friend.initials = liveProfile.initials;
+        if (liveProfile.hue !== undefined) friend.hue = liveProfile.hue;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return friendsList;
+}
+
+/** Hapus hubungan pertemanan secara tuntas di kedua akun */
+export async function removeFriendship(
+  currentUid: string,
+  friendAccountId: string,
+  friendUid?: string | undefined,
+): Promise<void> {
+  const resolvedFriendUid = friendUid || `uid_${friendAccountId}`;
+  const docId = [currentUid, resolvedFriendUid].sort().join("_");
+
+  // 1. Hapus dari global friendships lokal untuk semua record yang cocok
+  const rawGlobal = localStorage.getItem("treenest_global_friendships");
+  if (rawGlobal) {
+    try {
+      const list: StoredFriendship[] = JSON.parse(rawGlobal);
+      const updated = list.filter(
+        (f) =>
+          f.id !== docId &&
+          !(
+            (f.users?.includes(currentUid) || f.userA?.uid === currentUid || f.userB?.uid === currentUid) &&
+            (f.accountIds?.includes(friendAccountId) ||
+              f.userA?.accountId === friendAccountId ||
+              f.userB?.accountId === friendAccountId ||
+              f.users?.includes(resolvedFriendUid))
+          ),
+      );
+      localStorage.setItem("treenest_global_friendships", JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Hapus dari daftar teman lokal akun saat ini
+  const curFriendsRaw = localStorage.getItem(`treenest_friends_${currentUid}`);
+  if (curFriendsRaw) {
+    try {
+      const list: Friend[] = JSON.parse(curFriendsRaw);
+      localStorage.setItem(
+        `treenest_friends_${currentUid}`,
+        JSON.stringify(
+          list.filter((f) => f.accountId !== friendAccountId && f.uid !== resolvedFriendUid),
+        ),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Hapus dari daftar teman lokal akun teman
+  const sndFriendsRaw = localStorage.getItem(`treenest_friends_${resolvedFriendUid}`);
+  if (sndFriendsRaw) {
+    try {
+      const list: Friend[] = JSON.parse(sndFriendsRaw);
+      localStorage.setItem(
+        `treenest_friends_${resolvedFriendUid}`,
+        JSON.stringify(list.filter((f) => f.uid !== currentUid)),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  // 4. Hapus dari teman tampil jika sedang dipilih
+  const featRaw = localStorage.getItem(`treenest_featured_friends_${currentUid}`);
+  if (featRaw) {
+    try {
+      const featList: string[] = JSON.parse(featRaw);
+      localStorage.setItem(
+        `treenest_featured_friends_${currentUid}`,
+        JSON.stringify(
+          featList.filter(
+            (id) => id !== friendAccountId && id !== resolvedFriendUid && id !== docId,
+          ),
+        ),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return;
+  }
+
+  // 5. Hapus dari Firestore
+  try {
+    await deleteDoc(doc(db, FRIENDSHIPS_COLLECTION, docId)).catch(() => {});
+
+    const q = query(
+      collection(db, FRIENDSHIPS_COLLECTION),
+      where("users", "array-contains", currentUid),
+    );
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      const data = d.data() as StoredFriendship;
+      if (
+        data.accountIds?.includes(friendAccountId) ||
+        data.users?.includes(resolvedFriendUid) ||
+        data.userA?.accountId === friendAccountId ||
+        data.userB?.accountId === friendAccountId
+      ) {
+        await deleteDoc(d.ref).catch(() => {});
+      }
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", currentUid, "friends", resolvedFriendUid));
+    } catch {
+      // ignore
+    }
+    try {
+      await deleteDoc(doc(db, "users", resolvedFriendUid, "friends", currentUid));
+    } catch {
+      // ignore
+    }
+  } catch (err) {
+    console.warn("Error removing friendship from Firestore:", err);
+  }
+}
+
+/** Ambil ID teman yang dipilih tampil di Home */
+export async function getFeaturedFriends(uid: string): Promise<string[]> {
+  if (!uid || uid === "guest") return [];
+  const raw = localStorage.getItem(`treenest_featured_friends_${uid}`);
+  if (raw !== null) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+  }
+  if (!isFirebaseConfigured || !db) {
+    return [];
+  }
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (snap.exists()) {
+      const data = snap.data();
+      const list = (data?.["featuredFriends"] as string[]) || [];
+      localStorage.setItem(`treenest_featured_friends_${uid}`, JSON.stringify(list));
+      return list;
+    }
+    return [];
+  } catch (err) {
+    console.error("Error getting featured friends:", err);
+    return [];
+  }
+}
+
+/** Simpan ID teman yang dipilih tampil di Home */
+export async function updateFeaturedFriends(uid: string, featuredIds: string[]): Promise<void> {
+  if (!uid || uid === "guest") return;
+  localStorage.setItem(`treenest_featured_friends_${uid}`, JSON.stringify(featuredIds));
+  if (!isFirebaseConfigured || !db) {
+    return;
+  }
+  try {
+    await updateDoc(doc(db, "users", uid), { featuredFriends: featuredIds });
+  } catch (err) {
+    console.error("Error updating featured friends:", err);
   }
 }
 

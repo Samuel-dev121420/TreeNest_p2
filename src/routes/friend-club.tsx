@@ -1,22 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Users, Search, UserPlus, UserCheck, Clock, X, Trash2, Star, Check } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
-import { useLocalStorage } from "@/hooks/use-local-storage";
-import { generateId } from "@/lib/grow-tools";
 import {
   MAX_FEATURED,
-  seedFriends,
-  seedRequests,
-  seedSent,
   type Friend,
   type FriendRequest,
   type Person,
   type SentRequest,
 } from "@/lib/social";
-import { searchUsers } from "@/lib/firestore-service";
+import {
+  searchUsers,
+  sendFriendRequest,
+  getIncomingFriendRequests,
+  getSentFriendRequests,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  cancelFriendRequest,
+  getUserFriends,
+  removeFriendship,
+  getFeaturedFriends,
+  updateFeaturedFriends,
+  type UserProfile,
+} from "@/lib/firestore-service";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
 
@@ -39,75 +47,161 @@ export const Route = createFileRoute("/friend-club")({
   component: FriendClubPage,
 });
 
-const LS_FRIENDS = "treenest.friends.list";
-const LS_REQUESTS = "treenest.friends.requests";
-const LS_SENT = "treenest.friends.sent";
-const LS_FEATURED = "treenest.friends.featured";
-
 type Tab = "search" | "requests" | "list";
 
 function FriendClubPage() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const uid = profile?.uid ?? "guest";
-  const [friends, setFriends] = useLocalStorage<Friend[]>(LS_FRIENDS, seedFriends());
-  const [requests, setRequests] = useLocalStorage<FriendRequest[]>(LS_REQUESTS, seedRequests());
-  const [sent, setSent] = useLocalStorage<SentRequest[]>(LS_SENT, seedSent());
-  const [featured, setFeatured] = useLocalStorage<string[]>(LS_FEATURED, []);
+
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [sent, setSent] = useState<SentRequest[]>([]);
+  const [featured, setFeatured] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>("search");
   const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Modals konfirmasi
+  const [confirmDeleteFriend, setConfirmDeleteFriend] = useState<Friend | null>(null);
+  const [confirmFeaturedAction, setConfirmFeaturedAction] = useState<{
+    friend: Friend;
+    action: "add" | "remove";
+  } | null>(null);
+
+  // Load all social data from Firestore / storage for this specific user
+  const loadSocialData = useCallback(async () => {
+    if (!uid || uid === "guest") {
+      setLoading(false);
+      return;
+    }
+    try {
+      const [fList, inReqs, outReqs, featList] = await Promise.all([
+        getUserFriends(uid, profile?.accountId),
+        getIncomingFriendRequests(uid, profile?.accountId),
+        getSentFriendRequests(uid, profile?.accountId),
+        getFeaturedFriends(uid),
+      ]);
+      setFriends(fList);
+      setRequests(inReqs);
+      setSent(outReqs);
+      setFeatured(featList);
+    } catch (err) {
+      console.error("Error loading social data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [uid, profile?.accountId]);
+
+  useEffect(() => {
+    loadSocialData();
+  }, [loadSocialData]);
 
   const pendingIn = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const pendingOut = useMemo(() => sent.filter((s) => s.status === "pending"), [sent]);
 
-  function ensureFeatured() {
-    setFeatured((prev) => prev.slice(0, MAX_FEATURED));
-  }
-
-  function acceptRequest(req: FriendRequest) {
-    const friend: Friend = {
-      id: generateId(),
-      accountId: req.from.accountId,
-      name: req.from.name,
-      initials: req.from.initials,
-      hue: req.from.hue,
-      since: Date.now(),
-    };
-    setFriends((prev) => [...prev, friend]);
-    setRequests((prev) => prev.filter((r) => r.id !== req.id));
-    if (uid !== "guest") awardActivityExp(uid, "add_friend", req.from.accountId);
-  }
-
-  function rejectRequest(id: string) {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  function sendRequest(person: Person) {
+  async function handleSendRequest(person: Person) {
+    if (!profile) return;
     if (friends.some((f) => f.accountId === person.accountId)) return;
     if (sent.some((s) => s.to.accountId === person.accountId)) return;
-    const s: SentRequest = {
-      id: generateId(),
-      to: person,
-      createdAt: Date.now(),
-      status: "pending",
+
+    const fromUser = {
+      uid: profile.uid,
+      accountId: profile.accountId,
+      name: profile.username,
+      initials: profile.initials,
+      hue: profile.hue,
+      avatarUrl: profile.avatarUrl,
     };
-    setSent((prev) => [...prev, s]);
+
+    const res = await sendFriendRequest(fromUser, person);
+    if (res.success) {
+      await loadSocialData();
+    }
   }
 
-  function cancelSent(id: string) {
-    setSent((prev) => prev.filter((s) => s.id !== id));
+  async function handleAcceptRequest(req: FriendRequest) {
+    if (!profile) return;
+    const currentUser = {
+      uid: profile.uid,
+      accountId: profile.accountId,
+      name: profile.username,
+      initials: profile.initials,
+      hue: profile.hue,
+      avatarUrl: profile.avatarUrl,
+    };
+
+    await acceptFriendRequest(req.id, currentUser, req.from);
+    if (uid !== "guest") {
+      await awardActivityExp(uid, "add_friend", req.from.accountId);
+      await refreshProfile();
+    }
+
+    // Auto-feature teman baru jika kuota teman tampil masih ada (< 5)
+    try {
+      const currentFeat = await getFeaturedFriends(uid);
+      const friendKey = req.from.uid || req.from.accountId;
+      if (
+        currentFeat.length < MAX_FEATURED &&
+        !currentFeat.includes(friendKey) &&
+        !currentFeat.includes(req.from.accountId)
+      ) {
+        const nextFeat = [...currentFeat, friendKey];
+        await updateFeaturedFriends(uid, nextFeat);
+      }
+    } catch {
+      // ignore
+    }
+
+    await loadSocialData();
+    setTab("list");
   }
 
-  function removeFriend(id: string) {
-    setFriends((prev) => prev.filter((f) => f.id !== id));
-    setFeatured((prev) => prev.filter((fid) => fid !== id));
+  async function handleRejectRequest(id: string) {
+    await rejectFriendRequest(id);
+    await loadSocialData();
   }
 
-  function toggleFeatured(id: string) {
-    setFeatured((prev) => {
-      if (prev.includes(id)) return prev.filter((fid) => fid !== id);
-      if (prev.length >= MAX_FEATURED) return prev; // batas 5
-      return [...prev, id];
+  async function handleCancelSent(id: string) {
+    await cancelFriendRequest(id);
+    await loadSocialData();
+  }
+
+  function handleRequestRemoveFriend(friend: Friend) {
+    setConfirmDeleteFriend(friend);
+  }
+
+  async function executeRemoveFriend(friend: Friend) {
+    setConfirmDeleteFriend(null);
+    await removeFriendship(uid, friend.accountId, friend.uid);
+    const updatedFeat = featured.filter((fid) => fid !== friend.id && fid !== friend.accountId);
+    setFeatured(updatedFeat);
+    await updateFeaturedFriends(uid, updatedFeat);
+    await loadSocialData();
+    await refreshProfile();
+  }
+
+  function handleRequestToggleFeatured(friend: Friend) {
+    const friendKey = friend.id || friend.accountId;
+    const isFeatured = featured.includes(friend.id) || featured.includes(friend.accountId);
+    if (!isFeatured && featured.length >= MAX_FEATURED) return;
+    setConfirmFeaturedAction({
+      friend,
+      action: isFeatured ? "remove" : "add",
     });
+  }
+
+  async function executeToggleFeatured(friend: Friend, action: "add" | "remove") {
+    setConfirmFeaturedAction(null);
+    const friendKey = friend.id || friend.accountId;
+    let updated: string[];
+    if (action === "remove") {
+      updated = featured.filter((fid) => fid !== friend.id && fid !== friend.accountId);
+    } else {
+      if (featured.length >= MAX_FEATURED) return;
+      updated = [...featured, friendKey];
+    }
+    setFeatured(updated);
+    await updateFeaturedFriends(uid, updated);
   }
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
@@ -121,7 +215,7 @@ function FriendClubPage() {
       title="Friend Club"
       description="Cari teman, kelola permintaan, dan pilih Teman Tampil di Home."
     >
-      {/* Tab */}
+      {/* Tab Selector */}
       <div className="mb-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft">
         {tabs.map((t) => (
           <button
@@ -153,7 +247,7 @@ function FriendClubPage() {
         <SearchPanel
           friends={friends}
           sent={sent}
-          onSend={sendRequest}
+          onSend={handleSendRequest}
           goList={() => setTab("list")}
           onViewProfile={setViewingAccountId}
         />
@@ -163,9 +257,9 @@ function FriendClubPage() {
         <RequestsPanel
           pendingIn={pendingIn}
           pendingOut={pendingOut}
-          onAccept={acceptRequest}
-          onReject={rejectRequest}
-          onCancel={cancelSent}
+          onAccept={handleAcceptRequest}
+          onReject={handleRejectRequest}
+          onCancel={handleCancelSent}
         />
       )}
 
@@ -174,11 +268,103 @@ function FriendClubPage() {
           friends={friends}
           featured={featured}
           maxFeatured={MAX_FEATURED}
-          onToggleFeatured={toggleFeatured}
-          onRemove={removeFriend}
-          ensureFeatured={ensureFeatured}
+          onToggleFeatured={handleRequestToggleFeatured}
+          onRemove={handleRequestRemoveFriend}
           onViewProfile={setViewingAccountId}
         />
+      )}
+
+      {/* Modal Konfirmasi Hapus Teman */}
+      {confirmDeleteFriend && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setConfirmDeleteFriend(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
+              <Trash2 className="size-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Hapus Hubungan Pertemanan?</h3>
+              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                Apakah kamu yakin ingin menghapus <strong>{confirmDeleteFriend.name}</strong> ({confirmDeleteFriend.accountId}) dari daftar temanmu?
+              </p>
+              <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
+                Tindakan ini akan menghapus pertemanan di kedua akun secara permanen.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteFriend(null)}
+                className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => executeRemoveFriend(confirmDeleteFriend)}
+                className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Teman Tampil */}
+      {confirmFeaturedAction && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setConfirmFeaturedAction(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-leaf/30 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner">
+              <Star className="size-7 fill-current" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">
+                {confirmFeaturedAction.action === "add"
+                  ? "Jadikan Teman Tampil?"
+                  : "Keluarkan dari Teman Tampil?"}
+              </h3>
+              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                {confirmFeaturedAction.action === "add" ? (
+                  <>
+                    Tampilkan bola profil <strong>{confirmFeaturedAction.friend.name}</strong> untuk ikut berjalan-jalan di Home Page pohonmu? (Maksimal {MAX_FEATURED} teman tampil)
+                  </>
+                ) : (
+                  <>
+                    Keluarkan <strong>{confirmFeaturedAction.friend.name}</strong> dari daftar teman yang tampil di Home Page?
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmFeaturedAction(null)}
+                className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => executeToggleFeatured(confirmFeaturedAction.friend, confirmFeaturedAction.action)}
+                className="flex-1 rounded-2xl bg-leaf py-2.5 text-xs font-bold text-white hover:bg-leaf/90 transition-colors shadow-soft"
+              >
+                {confirmFeaturedAction.action === "add" ? "Ya, Tampilkan" : "Ya, Keluarkan"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {viewingAccountId && (
@@ -189,11 +375,12 @@ function FriendClubPage() {
           isFriend={friends.some((f) => f.accountId === viewingAccountId)}
           onClose={() => setViewingAccountId(null)}
           onAddFriend={() => {
-            const person = friends.find((f) => f.accountId === viewingAccountId);
-            if (!person) {
-              // Build minimal person from available data — the modal will handle
-              sendRequest({ accountId: viewingAccountId, name: viewingAccountId, initials: viewingAccountId.slice(0, 2), hue: 150 });
-            }
+            handleSendRequest({
+              accountId: viewingAccountId,
+              name: viewingAccountId,
+              initials: viewingAccountId.slice(0, 2),
+              hue: 150,
+            });
             setViewingAccountId(null);
           }}
         />
@@ -217,61 +404,48 @@ function SearchPanel({
   goList: () => void;
   onViewProfile: (accountId: string) => void;
 }) {
-  const { profile } = useAuth();
-  const uid = profile?.uid;
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Person[]>([]);
+  const [results, setResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    const q = query.trim();
-    if (!q) {
+    const term = query.trim();
+    if (!term) {
       setResults([]);
-      setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    const timer = setTimeout(() => {
-      searchUsers(q, uid).then((foundProfiles) => {
-        const people: Person[] = foundProfiles.map((p) => ({
-          accountId: p.accountId,
-          name: p.username,
-          initials: p.initials,
-          hue: p.hue,
-        }));
-        setResults(people);
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const list = await searchUsers(term);
+        setResults(list);
+      } catch (err) {
+        console.error("Error searching users:", err);
+        setResults([]);
+      } finally {
         setIsSearching(false);
-      });
-    }, 300);
+      }
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [query, uid]);
-
-  const hasTyped = query.trim().length > 0;
+  }, [query]);
 
   return (
-    <div>
-      <div className="flex items-center gap-2 rounded-2xl border border-input bg-background px-3 py-2 shadow-soft">
-        <Search className="size-4 text-muted-foreground" />
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
+          type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari berdasarkan nama (cth: Asep) atau ID Akun (cth: TN-1024)"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="Cari berdasarkan nama atau ID Akun (mis. TN-4821)..."
+          className="w-full rounded-2xl border border-input bg-card py-3 pl-10 pr-4 text-sm font-medium text-foreground shadow-soft placeholder:text-muted-foreground focus:border-primary focus:outline-none"
         />
-        {query && (
-          <button
-            onClick={() => setQuery("")}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        )}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {!hasTyped ? (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {!query.trim() ? (
           <div className="sm:col-span-2">
             <EmptyState
               icon={Search}
@@ -305,13 +479,13 @@ function SearchPanel({
                   className="shrink-0"
                   title="Lihat profil"
                 >
-                  <Avatar initials={u.initials} hue={u.hue} size="md" />
+                  <Avatar initials={u.initials} hue={u.hue} avatarUrl={u.avatarUrl} size="md" />
                 </button>
                 <button
                   onClick={() => onViewProfile(u.accountId)}
                   className="min-w-0 flex-1 text-left"
                 >
-                  <p className="truncate text-sm font-bold text-foreground hover:underline">{u.name}</p>
+                  <p className="truncate text-sm font-bold text-foreground hover:underline">{u.username}</p>
                   <p className="text-xs text-muted-foreground">{u.accountId}</p>
                 </button>
                 {isFriend ? (
@@ -327,7 +501,14 @@ function SearchPanel({
                   </span>
                 ) : (
                   <button
-                    onClick={() => onSend(u)}
+                    onClick={() => onSend({
+                      uid: u.uid,
+                      accountId: u.accountId,
+                      name: u.username,
+                      initials: u.initials,
+                      hue: u.hue,
+                      avatarUrl: u.avatarUrl
+                    })}
                     className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     <UserPlus className="size-4" /> Tambah
@@ -361,7 +542,7 @@ function RequestsPanel({
     <div className="space-y-8">
       <section>
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-          Permintaan Masuk
+          Permintaan Masuk ({pendingIn.length})
         </h2>
         {pendingIn.length === 0 ? (
           <div className="mt-3">
@@ -378,24 +559,32 @@ function RequestsPanel({
                 key={r.id}
                 className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
               >
-                <Avatar initials={r.from.initials} hue={r.from.hue} size="md" />
+                <Avatar
+                  initials={r.from.initials}
+                  hue={r.from.hue}
+                  avatarUrl={r.from.avatarUrl}
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-foreground">{r.from.name}</p>
                   <p className="text-xs text-muted-foreground">{r.from.accountId}</p>
                 </div>
-                <button
-                  onClick={() => onAccept(r)}
-                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <Check className="size-4" /> Terima
-                </button>
-                <button
-                  onClick={() => onReject(r.id)}
-                  aria-label="Tolak permintaan"
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="size-4" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => onAccept(r)}
+                    aria-label="Terima permintaan"
+                    className="flex items-center gap-1 rounded-xl bg-leaf px-3 py-2 text-xs font-bold text-white shadow-soft transition-colors hover:bg-leaf/90"
+                  >
+                    <Check className="size-3.5" /> Terima
+                  </button>
+                  <button
+                    onClick={() => onReject(r.id)}
+                    aria-label="Tolak permintaan"
+                    className="flex items-center gap-1 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="size-3.5" /> Tolak
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -404,7 +593,7 @@ function RequestsPanel({
 
       <section>
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-          Terkirim
+          Terkirim ({pendingOut.length})
         </h2>
         {pendingOut.length === 0 ? (
           <div className="mt-3">
@@ -421,10 +610,10 @@ function RequestsPanel({
                 key={s.id}
                 className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
               >
-                <Avatar initials={s.to.initials} hue={s.to.hue} size="md" />
+                <Avatar initials={s.to.initials} hue={s.to.hue} avatarUrl={s.to.avatarUrl} size="md" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-foreground">{s.to.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.to.accountId} · menunggu</p>
+                  <p className="text-xs text-muted-foreground">{s.to.accountId} · Menunggu konfirmasi</p>
                 </div>
                 <button
                   onClick={() => onCancel(s.id)}
@@ -449,22 +638,20 @@ function ListPanel({
   maxFeatured,
   onToggleFeatured,
   onRemove,
-  ensureFeatured,
   onViewProfile,
 }: {
   friends: Friend[];
   featured: string[];
   maxFeatured: number;
-  onToggleFeatured: (id: string) => void;
-  onRemove: (id: string) => void;
-  ensureFeatured: () => void;
+  onToggleFeatured: (friend: Friend) => void;
+  onRemove: (friend: Friend) => void;
   onViewProfile: (accountId: string) => void;
 }) {
   // tampilkan featured terlebih dahulu
   const sorted = useMemo(() => {
     return [...friends].sort((a, b) => {
-      const af = featured.includes(a.id) ? 0 : 1;
-      const bf = featured.includes(b.id) ? 0 : 1;
+      const af = featured.includes(a.id) || featured.includes(a.accountId) ? 0 : 1;
+      const bf = featured.includes(b.id) || featured.includes(b.accountId) ? 0 : 1;
       return af - bf || b.since - a.since;
     });
   }, [friends, featured]);
@@ -484,16 +671,16 @@ function ListPanel({
         <EmptyState
           icon={Users}
           title="Belum punya teman"
-          description="Cari teman lewat tab Cari Teman."
+          description="Cari teman lewat tab Cari Teman untuk mulai terhubung."
         />
       ) : (
         <div className="space-y-2">
           {sorted.map((f) => {
-            const isFeatured = featured.includes(f.id);
+            const isFeatured = featured.includes(f.id) || featured.includes(f.accountId);
             const canFeature = isFeatured || featured.length < maxFeatured;
             return (
               <div
-                key={f.id}
+                key={f.id || f.accountId}
                 className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
               >
                 <button
@@ -501,7 +688,7 @@ function ListPanel({
                   className="shrink-0"
                   title="Lihat profil"
                 >
-                  <Avatar initials={f.initials} hue={f.hue} size="md" />
+                  <Avatar initials={f.initials} hue={f.hue} avatarUrl={f.avatarUrl} size="md" />
                 </button>
                 <button
                   onClick={() => onViewProfile(f.accountId)}
@@ -517,10 +704,7 @@ function ListPanel({
                   </p>
                 </button>
                 <button
-                  onClick={() => {
-                    if (canFeature) onToggleFeatured(f.id);
-                    else ensureFeatured();
-                  }}
+                  onClick={() => onToggleFeatured(f)}
                   disabled={!canFeature}
                   aria-label={isFeatured ? "Keluarkan dari Teman Tampil" : "Jadikan Teman Tampil"}
                   className={`flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-40 ${
@@ -533,7 +717,7 @@ function ListPanel({
                   {isFeatured ? "Tampil" : "Pilih"}
                 </button>
                 <button
-                  onClick={() => onRemove(f.id)}
+                  onClick={() => onRemove(f)}
                   aria-label="Hapus teman"
                   className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
@@ -553,14 +737,27 @@ function ListPanel({
 function Avatar({
   initials,
   hue,
+  avatarUrl,
   size = "md",
 }: {
   initials: string;
   hue: number;
-  size?: "sm" | "md" | "lg";
+  avatarUrl?: string | undefined;
+  size?: ("sm" | "md" | "lg") | undefined;
 }) {
   const sz =
     size === "lg" ? "size-16 text-lg" : size === "sm" ? "size-9 text-xs" : "size-11 text-sm";
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={initials}
+        className={`shrink-0 rounded-full object-cover shadow-soft ring-2 ring-card/60 ${sz}`}
+      />
+    );
+  }
+
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-full font-bold text-primary-foreground shadow-soft ${sz}`}

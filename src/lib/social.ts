@@ -5,10 +5,12 @@ import { generateId } from "./grow-tools";
 /* ------------------------------------------------------------------ */
 
 export type Person = {
+  uid?: string | undefined;
   accountId: string;
   name: string;
   initials: string;
   hue: number;
+  avatarUrl?: string | undefined;
 };
 
 export type Friend = Person & {
@@ -31,73 +33,19 @@ export type SentRequest = {
 };
 
 /** Pengguna yang bisa ditemukan lewat Cari Teman (data demo statis). */
-export const SEARCHABLE_USERS: Person[] = [
-  { accountId: "TN-1024", name: "Dewi Lestari", initials: "DE", hue: 320 },
-  { accountId: "TN-2098", name: "Arga Wijaya", initials: "AR", hue: 280 },
-  { accountId: "TN-3310", name: "Lukman Hakim", initials: "LU", hue: 100 },
-  { accountId: "TN-4521", name: "Maya Sari", initials: "MA", hue: 200 },
-  { accountId: "TN-5762", name: "Rendi Pratama", initials: "RE", hue: 40 },
-  { accountId: "TN-6840", name: "Putri Anggraini", initials: "PU", hue: 350 },
-  { accountId: "TN-7901", name: "Bayu Nugroho", initials: "BA", hue: 160 },
-];
+export const SEARCHABLE_USERS: Person[] = [];
 
-/** Teman awal (selaras dengan DEMO_FRIENDS di home page). */
+/** Teman awal (kosong secara default jika belum berteman). */
 export function seedFriends(): Friend[] {
-  const now = Date.now();
-  return [
-    {
-      id: generateId(),
-      accountId: "TN-9901",
-      name: "Nadia",
-      initials: "NA",
-      hue: 200,
-      since: now - 86400000 * 12,
-    },
-    {
-      id: generateId(),
-      accountId: "TN-9902",
-      name: "Bima",
-      initials: "BI",
-      hue: 140,
-      since: now - 86400000 * 7,
-    },
-    {
-      id: generateId(),
-      accountId: "TN-9903",
-      name: "Sari",
-      initials: "SA",
-      hue: 60,
-      since: now - 86400000 * 3,
-    },
-  ];
+  return [];
 }
 
 export function seedRequests(): FriendRequest[] {
-  return [
-    {
-      id: generateId(),
-      from: { accountId: "TN-1024", name: "Dewi Lestari", initials: "DE", hue: 320 },
-      createdAt: Date.now() - 3600000 * 5,
-      status: "pending",
-    },
-    {
-      id: generateId(),
-      from: { accountId: "TN-7901", name: "Bayu Nugroho", initials: "BA", hue: 160 },
-      createdAt: Date.now() - 3600000 * 26,
-      status: "pending",
-    },
-  ];
+  return [];
 }
 
 export function seedSent(): SentRequest[] {
-  return [
-    {
-      id: generateId(),
-      to: { accountId: "TN-2098", name: "Arga Wijaya", initials: "AR", hue: 280 },
-      createdAt: Date.now() - 3600000 * 9,
-      status: "pending",
-    },
-  ];
+  return [];
 }
 
 /** Batas teman yang tampil di Home page. */
@@ -118,7 +66,7 @@ export type GalleryVideo = {
   sourceType: GalleryVideoSource;
   thumbnail: string;
   status: "pending" | "approved" | "rejected";
-  reason?: string;
+  reason?: string | undefined;
   submittedAt: number;
 };
 
@@ -219,10 +167,10 @@ export type Profile = {
   level: number;
   exp: number;
   friendCount: number;
-  avatarUrl?: string;
-  totalLogins?: number;
-  socialLinks?: SocialLink[];
-  themePreference?: "light" | "dark";
+  avatarUrl?: string | undefined;
+  totalLogins?: number | undefined;
+  socialLinks?: SocialLink[] | undefined;
+  themePreference?: ("light" | "dark") | undefined;
 };
 
 export function seedProfile(): Profile {

@@ -47,6 +47,9 @@ export type FriendOrb = {
 export const DEMO_USER = {
   username: "Rafi",
   accountId: "TN-4821",
+  initials: "RA",
+  hue: 150,
+  avatarUrl: "",
   level: 8,
   exp: 32,
 };

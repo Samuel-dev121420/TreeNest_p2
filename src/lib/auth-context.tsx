@@ -67,6 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const username = fallbackEmail?.split("@")[0] || "Pengguna TreeNest";
       p = await createUserProfile(uid, username, fallbackEmail || "user@treenest.com");
     }
+    if (p && (p.role === "admin" || (fallbackEmail && isAdminEmail(fallbackEmail)))) {
+      p.role = "admin";
+      p.level = 20;
+      p.exp = 50;
+    }
     setProfile(p);
     // Apply theme from profile
     if (p?.themePreference === "dark") {
@@ -79,7 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     awardActivityExp(uid, "daily_login").then(() => {
       getUserProfile(uid).then((updated) => {
-        if (updated) setProfile(updated);
+        if (updated) {
+          if (updated.role === "admin") {
+            updated.level = 20;
+            updated.exp = 50;
+          }
+          setProfile(updated);
+        }
       });
     });
   }
@@ -126,10 +137,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Firebase tidak dikonfigurasi." };
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       return { success: true };
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Gagal mengirim email reset password.";
+      console.error("Firebase sendPasswordResetEmail error:", err);
+      let errorMsg = "Gagal mengirim email reset password.";
+      if (err && typeof err === "object" && "code" in err) {
+        const code = (err as { code: string }).code;
+        if (code === "auth/user-not-found") {
+          errorMsg = "Alamat email ini belum terdaftar di sistem TreeNest.";
+        } else if (code === "auth/invalid-email") {
+          errorMsg = "Format alamat email tidak valid.";
+        } else if (code === "auth/too-many-requests") {
+          errorMsg = "Terlalu banyak percobaan. Harap tunggu beberapa saat.";
+        } else if (code === "auth/network-request-failed") {
+          errorMsg = "Koneksi internet bermasalah. Periksa jaringan Anda.";
+        }
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
       return { success: false, error: errorMsg };
     }
   }
@@ -267,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
+    document.documentElement.classList.remove("dark");
   }
 
   return (

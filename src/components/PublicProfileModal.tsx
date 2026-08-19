@@ -89,18 +89,17 @@ export function PublicProfileModal({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Find profile by accountId from Firestore via searchUsers
+    // Find profile by accountId from Firestore
     import("@/lib/firestore-service")
-      .then(({ searchUsers }) => searchUsers(accountId, viewerUid))
-      .then((results) => {
-        const found = results.find((u) => u.accountId === accountId);
+      .then(({ searchUserByAccountId }) => searchUserByAccountId(accountId))
+      .then((found) => {
         if (found) {
           setTargetProfile(found);
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [accountId, viewerUid]);
+  }, [accountId]);
 
   const isOwner = targetProfile?.uid === viewerUid;
   const stage = targetProfile ? stageForLevel(targetProfile.level || 1) : null;
@@ -119,7 +118,7 @@ export function PublicProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

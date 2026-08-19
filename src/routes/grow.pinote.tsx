@@ -515,7 +515,7 @@ export function PiNotePage() {
 
       {/* Modal: Create Folder */}
       {isCreatingFolder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-lg">
             <h3 className="text-base font-bold text-foreground">Buat Folder Baru</h3>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -553,7 +553,7 @@ export function PiNotePage() {
 
       {/* Modal: Rename Item */}
       {renamingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-lg">
             <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
             <input
@@ -584,7 +584,7 @@ export function PiNotePage() {
 
       {/* Modal / Editor: Text Note Editor */}
       {editingNoteItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="flex h-full max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-xl">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div className="flex items-center gap-2">
@@ -632,7 +632,7 @@ export function PiNotePage() {
 
       {/* Modal: Media / Document Previewer */}
       {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
           <div className="flex h-full max-h-[85vh] w-full max-w-3xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div className="flex items-center gap-2 min-w-0">

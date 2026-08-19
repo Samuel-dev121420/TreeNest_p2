@@ -8,8 +8,6 @@ import {
   X,
   Sprout,
   ShieldCheck,
-  Eye,
-  EyeOff,
   KeyRound,
   Camera,
   LogIn,
@@ -23,8 +21,11 @@ import {
   Instagram,
   Github,
   Twitter,
+  Mail,
+  CheckCircle2,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { ImageCropperModal } from "@/components/ImageCropperModal";
 import { useAuth } from "@/lib/auth-context";
 import { seedProfile } from "@/lib/social";
 import type { SocialLink, SocialPlatform, VisibilityLevel } from "@/lib/social";
@@ -79,7 +80,7 @@ const PLATFORMS: Record<SocialPlatform, PlatformMeta> = {
     placeholder: "@username",
     icon: ({ className }: { className?: string }) => (
       <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.79 1.52V6.7a4.85 4.85 0 01-1.02-.01z" />
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.79 1.52V6.7a4.85 4.85 0 01-1.02-.01z" />
       </svg>
     ),
   },
@@ -100,32 +101,105 @@ const VISIBILITY_OPTS: { value: VisibilityLevel; label: string; icon: typeof Glo
   { value: "private", label: "Privat", icon: Lock },
 ];
 
-// ─── IMAGE RESIZE HELPER ─────────────────────────────────────────────────────
+// ─── CHANGE PASSWORD MODAL ───────────────────────────────────────────────────
 
-function resizeImageFile(file: File, maxPx = 240): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const size = Math.min(img.width, img.height, maxPx);
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas not supported"));
-        // Center-crop to square
-        const sx = (img.width - size) / 2;
-        const sy = (img.height - size) / 2;
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
-      };
-      img.onerror = reject;
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function ChangePasswordModal({
+  email,
+  onClose,
+  onSendReset,
+}: {
+  email: string;
+  onClose: () => void;
+  onSendReset: () => Promise<{ success: boolean; error?: string }>;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleSend() {
+    setErrorMsg("");
+    setLoading(true);
+    const res = await onSendReset();
+    setLoading(false);
+    if (res.success) {
+      setSent(true);
+    } else {
+      setErrorMsg(res.error || "Gagal mengirim email reset. Pastikan email terdaftar di Firebase.");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary mx-auto">
+          <KeyRound className="size-6" />
+        </div>
+
+        <h2 className="mt-4 text-center text-lg font-bold text-foreground">Ubah Kata Sandi</h2>
+
+        {sent ? (
+          <div className="mt-3 text-center space-y-3">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-leaf bg-leaf/10 p-3 rounded-2xl">
+              <CheckCircle2 className="size-4 shrink-0" />
+              <span>Tautan reset password berhasil dikirim!</span>
+            </div>
+            <p className="font-bold text-xs text-foreground break-all">{email}</p>
+            <div className="rounded-xl bg-secondary/50 p-2.5 text-left text-[11px] text-muted-foreground space-y-1">
+              <p className="font-bold text-foreground">📌 Tips Pemeriksaan:</p>
+              <p>• Periksa folder <strong>Kotak Masuk (Inbox)</strong>.</p>
+              <p>• Jika belum muncul, periksa folder <strong>Spam / Promosi / Sampah</strong>.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-4 w-full rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+            >
+              Selesai
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 text-center space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Tautan instruksi untuk membuat kata sandi baru akan dikirimkan ke alamat email terdaftar:
+            </p>
+            <div className="flex items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-secondary/50 p-2.5 text-xs font-bold text-foreground">
+              <Mail className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{email}</span>
+            </div>
+
+            {errorMsg && (
+              <div className="rounded-xl bg-destructive/15 p-2.5 text-xs font-semibold text-destructive text-left">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={loading || email === "—"}
+                onClick={handleSend}
+                className="flex-1 rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {loading ? "Mengirim..." : "Kirim Email Reset"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── DELETE MODAL ────────────────────────────────────────────────────────────
@@ -156,27 +230,33 @@ function DeleteAccountModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="w-full max-w-sm rounded-3xl border border-destructive/30 bg-card p-6 shadow-float animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-sm rounded-3xl border-2 border-destructive/50 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
         {step === "warning" && (
           <>
-            <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 mx-auto">
-              <AlertTriangle className="size-6 text-destructive" />
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/15 mx-auto text-destructive ring-4 ring-destructive/10">
+              <AlertTriangle className="size-7" />
             </div>
-            <h2 className="mt-4 text-center text-lg font-bold text-foreground">Hapus Akun?</h2>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              Tindakan ini <strong className="text-destructive">tidak dapat dibatalkan</strong>. Seluruh data kamu — pohon, teman, video, dan progres EXP — akan <strong>dihapus selamanya</strong>.
+            <h2 className="mt-4 text-center text-lg font-black text-destructive tracking-tight">
+              HAPUS AKUN PERMANEN?
+            </h2>
+            <p className="mt-2 text-center text-xs text-muted-foreground leading-relaxed">
+              Tindakan ini <strong className="text-destructive font-bold">TIDAK DAPAT DIBATALKAN</strong>. Seluruh progres pohon, daftar teman, catatan, dan data EXP kamu akan <strong className="text-destructive">dihapus selamanya</strong>.
             </p>
             <div className="mt-6 flex gap-2">
               <button
+                type="button"
                 onClick={onClose}
-                className="flex-1 rounded-2xl bg-secondary py-2.5 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={() => setStep("phrase")}
                 className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90"
               >
@@ -188,24 +268,31 @@ function DeleteAccountModal({
 
         {step === "phrase" && (
           <>
-            <h2 className="text-lg font-bold text-foreground">Konfirmasi Penghapusan</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Ketik <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs font-bold text-destructive">{CONFIRM_PHRASE}</code> untuk melanjutkan.
+            <h2 className="text-base font-bold text-foreground">Konfirmasi Kalimat</h2>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Ketik persis kalimat berikut untuk mengonfirmasi:
             </p>
+            <div className="mt-2 rounded-xl bg-destructive/10 border border-destructive/30 p-2 text-center">
+              <code className="font-mono text-xs font-black text-destructive select-all">
+                {CONFIRM_PHRASE}
+              </code>
+            </div>
             <input
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
               placeholder={CONFIRM_PHRASE}
-              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-destructive/50"
+              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2.5 font-mono text-xs outline-none focus:ring-2 focus:ring-destructive/50"
             />
             <div className="mt-4 flex gap-2">
               <button
+                type="button"
                 onClick={() => setStep("warning")}
-                className="flex-1 rounded-2xl bg-secondary py-2.5 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
               >
                 Kembali
               </button>
               <button
+                type="button"
                 disabled={phrase !== CONFIRM_PHRASE}
                 onClick={() => setStep("email")}
                 className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
@@ -218,26 +305,28 @@ function DeleteAccountModal({
 
         {step === "email" && (
           <>
-            <h2 className="text-lg font-bold text-foreground">Verifikasi Email</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Ketik email akun kamu untuk konfirmasi terakhir.
+            <h2 className="text-base font-bold text-foreground">Verifikasi Alamat Email</h2>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Ketik alamat email akun kamu untuk eksekusi terakhir:
             </p>
-            <p className="mt-1 text-xs font-semibold text-muted-foreground">{userEmail}</p>
+            <p className="mt-1 font-mono text-xs font-bold text-foreground break-all">{userEmail}</p>
             <input
               type="email"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="Masukkan email akun"
-              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/50"
+              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-destructive/50"
             />
             <div className="mt-4 flex gap-2">
               <button
+                type="button"
                 onClick={() => setStep("phrase")}
-                className="flex-1 rounded-2xl bg-secondary py-2.5 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
               >
                 Kembali
               </button>
               <button
+                type="button"
                 disabled={emailInput.trim().toLowerCase() !== userEmail.trim().toLowerCase() || deleting}
                 onClick={handleDelete}
                 className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
@@ -264,14 +353,13 @@ function AccountPage() {
   const [draftUsername, setDraftUsername] = useState(activeProfile.username);
   const [draftBio, setDraftBio] = useState(activeProfile.bio ?? "");
 
-  // Avatar
+  // Avatar & Cropper
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
 
-  // Password
-  const [showPassword, setShowPassword] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
+  // Password modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Social links
   const [editingSocial, setEditingSocial] = useState(false);
@@ -291,7 +379,7 @@ function AccountPage() {
   const expPct = Math.min(100, Math.round((activeProfile.exp / need) * 100));
   const stageIndex = TREE_STAGES.findIndex((s) => s.key === stage.key);
 
-  // ─── handlers ──────────────────────────────────────────────────────────────
+  // ─── Handlers ──────────────────────────────────────────────────────────────
 
   function startEdit() {
     setDraftUsername(activeProfile.username);
@@ -305,7 +393,7 @@ function AccountPage() {
     const bio = draftBio.trim();
     if (!username) return;
     setSaving(true);
-    await updateUserProfile(authProfile.uid, { username, bio });
+    await updateUserProfile(authProfile.uid, { username, bio, accountId: authProfile.accountId });
     await refreshProfile();
     setSaving(false);
     setEditing(false);
@@ -317,28 +405,40 @@ function AccountPage() {
     setEditing(false);
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Handle file picker selection -> opens Cropper modal instantly (0ms lag)
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !authProfile?.uid) return;
-    setUploadingAvatar(true);
-    try {
-      const dataUrl = await resizeImageFile(file);
-      await updateUserProfile(authProfile.uid, { avatarUrl: dataUrl });
-      await refreshProfile();
-    } catch (err) {
-      console.error("Avatar upload error:", err);
+    if (!file) return;
+
+    if (rawImageSrc && rawImageSrc.startsWith("blob:")) {
+      URL.revokeObjectURL(rawImageSrc);
     }
-    setUploadingAvatar(false);
-    // reset input
+    const objectUrl = URL.createObjectURL(file);
+    setRawImageSrc(objectUrl);
+    setShowCropper(true);
+
+    // Reset input agar bisa pilih file yang sama jika diinginkan
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  async function handlePasswordReset() {
-    if (!activeProfile.email || activeProfile.email === "—") return;
-    setResetLoading(true);
-    const result = await sendPasswordReset(activeProfile.email);
-    setResetLoading(false);
-    if (result.success) setResetSent(true);
+  // When crop is confirmed in ImageCropperModal
+  async function handleCropComplete(croppedDataUrl: string) {
+    setShowCropper(false);
+    if (rawImageSrc && rawImageSrc.startsWith("blob:")) {
+      URL.revokeObjectURL(rawImageSrc);
+    }
+    setRawImageSrc(null);
+    if (!authProfile?.uid) return;
+
+    await updateUserProfile(authProfile.uid, { avatarUrl: croppedDataUrl, accountId: authProfile.accountId });
+    await refreshProfile();
+  }
+
+  async function handleSendPasswordReset(): Promise<{ success: boolean; error?: string }> {
+    if (!activeProfile.email || activeProfile.email === "—") {
+      return { success: false, error: "Alamat email tidak valid." };
+    }
+    return await sendPasswordReset(activeProfile.email);
   }
 
   async function handleThemeToggle() {
@@ -346,7 +446,6 @@ function AccountPage() {
     setThemeLoading(true);
     const newTheme: "light" | "dark" = isDark ? "light" : "dark";
     await updateUserProfile(authProfile.uid, { themePreference: newTheme });
-    // Apply immediately
     if (newTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
@@ -366,9 +465,7 @@ function AccountPage() {
     setDraftLinks((prev) => {
       const existing = prev.find((l) => l.platform === platform);
       if (existing) {
-        return prev.map((l) =>
-          l.platform === platform ? { ...l, value } : l,
-        );
+        return prev.map((l) => (l.platform === platform ? { ...l, value } : l));
       }
       return [...prev, { platform, value, visibility: "public" }];
     });
@@ -407,22 +504,21 @@ function AccountPage() {
     }
   }
 
-  // ─── render ─────────────────────────────────────────────────────────────────
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <PageShell title="Account" description="Informasi dan pengaturan akunmu.">
+    <PageShell title="Account" description="Informasi dan pengaturan profil TreeNest kamu.">
       {/* ── Kartu Profil Utama ── */}
-      <div className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-soft">
+      <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-soft">
         <div className="h-20 bg-gradient-leaf" />
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between">
-            {/* Avatar with upload overlay */}
+            {/* Avatar with click-to-change */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="relative group"
-              title="Ganti foto profil"
+              className="relative group rounded-full overflow-hidden focus:outline-none focus:ring-4 focus:ring-primary/30"
+              title="Klik untuk ganti & sesuaikan foto profil"
             >
               {activeProfile.avatarUrl ? (
                 <img
@@ -440,13 +536,10 @@ function AccountPage() {
                   {activeProfile.initials}
                 </span>
               )}
-              {/* Hover overlay */}
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 group-disabled:opacity-100">
-                {uploadingAvatar ? (
-                  <span className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <Camera className="size-5 text-white" />
-                )}
+              {/* Hover camera badge overlay */}
+              <span className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs">
+                <Camera className="size-5 text-white" />
+                <span className="text-[9px] font-bold text-white mt-0.5">Ubah</span>
               </span>
             </button>
             <input
@@ -454,29 +547,29 @@ function AccountPage() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={handleAvatarChange}
+              onChange={handleFileSelect}
             />
 
             {!editing ? (
               <button
                 onClick={startEdit}
-                className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
+                className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
               >
-                <Pencil className="size-3.5" /> Edit
+                <Pencil className="size-3.5" /> Edit Profil
               </button>
             ) : (
               <div className="flex gap-2">
                 <button
                   onClick={saveEdit}
                   disabled={saving}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
                 >
                   <Check className="size-3.5" /> {saving ? "Menyimpan..." : "Simpan"}
                 </button>
                 <button
                   onClick={cancelEdit}
                   aria-label="Batal edit"
-                  className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
+                  className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -512,7 +605,7 @@ function AccountPage() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">ID {activeProfile.accountId}</p>
+              <p className="text-xs font-medium text-muted-foreground">ID {activeProfile.accountId}</p>
               {activeProfile.bio ? (
                 <p className="mt-2 text-sm text-muted-foreground">{activeProfile.bio}</p>
               ) : null}
@@ -522,9 +615,9 @@ function AccountPage() {
       </div>
 
       {/* ── Info Akun ── */}
-      <div className="mt-4 rounded-3xl border border-border/70 bg-card p-5 shadow-soft space-y-4">
-        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
-          <Sparkles className="size-4 text-sun" /> Info Akun
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft space-y-3">
+        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <Sparkles className="size-4 text-sun" /> Informasi Akun & Keamanan
         </h3>
 
         {/* Email */}
@@ -540,52 +633,39 @@ function AccountPage() {
         {/* Jumlah Teman */}
         <InfoRow label="Jumlah Teman" value={String(activeProfile.friendCount)} />
 
-        {/* Password */}
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-            <KeyRound className="size-3.5" /> Password
-          </p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 rounded-xl border border-input bg-secondary/50 px-3 py-2 text-sm font-mono tracking-widest text-foreground select-none">
-              {showPassword ? activeProfile.email.split("@")[0] + "••••••" : "•••••••••••"}
+        {/* Password Management */}
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <KeyRound className="size-4" />
             </div>
-            <button
-              onClick={() => setShowPassword((v) => !v)}
-              className="rounded-xl border border-input bg-secondary p-2.5 text-muted-foreground hover:text-foreground transition-colors"
-              title={showPassword ? "Sembunyikan" : "Lihat"}
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
+            <div>
+              <p className="text-sm font-bold text-foreground">Kata Sandi</p>
+              <p className="text-xs text-muted-foreground">Tersimpan aman & terenkripsi</p>
+            </div>
           </div>
-          <div className="pt-1">
-            {resetSent ? (
-              <p className="text-xs text-leaf font-semibold">
-                ✅ Email reset password dikirim ke {activeProfile.email}
-              </p>
-            ) : (
-              <button
-                onClick={handlePasswordReset}
-                disabled={resetLoading || activeProfile.email === "—"}
-                className="text-xs font-semibold text-primary underline underline-offset-2 hover:opacity-80 disabled:opacity-40"
-              >
-                {resetLoading ? "Mengirim..." : "Reset / Ubah Password via Email →"}
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowPasswordModal(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors shadow-xs"
+          >
+            <KeyRound className="size-3.5 text-primary" /> Ubah Password
+          </button>
         </div>
 
-        {/* Theme */}
-        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/40 px-4 py-3">
+        {/* Theme Preference */}
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Tampilan</p>
+            <p className="text-sm font-bold text-foreground">Tampilan Tema</p>
             <p className="text-xs text-muted-foreground">{isDark ? "Mode Gelap aktif" : "Mode Terang aktif"}</p>
           </div>
           <button
+            type="button"
             onClick={handleThemeToggle}
             disabled={themeLoading}
             className={`relative flex h-8 w-14 items-center rounded-full transition-colors duration-300 ${
               isDark ? "bg-primary" : "bg-secondary"
-            } border border-border/60 disabled:opacity-60`}
+            } border border-border/70 disabled:opacity-60`}
           >
             <span
               className={`absolute flex size-6 items-center justify-center rounded-full bg-card shadow-soft transition-all duration-300 ${
@@ -599,15 +679,15 @@ function AccountPage() {
       </div>
 
       {/* ── Sosial Media ── */}
-      <div className="mt-4 rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+          <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Globe className="size-4 text-sky-deep" /> Sosial Media
           </h3>
           {!editingSocial ? (
             <button
               onClick={startEditSocial}
-              className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
+              className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
             >
               <Pencil className="size-3.5" /> Edit
             </button>
@@ -616,13 +696,13 @@ function AccountPage() {
               <button
                 onClick={saveSocial}
                 disabled={savingSocial}
-                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
               >
                 <Check className="size-3.5" /> {savingSocial ? "Menyimpan..." : "Simpan"}
               </button>
               <button
                 onClick={() => setEditingSocial(false)}
-                className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                className="rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground hover:bg-secondary/70"
               >
                 <X className="size-3.5" />
               </button>
@@ -643,7 +723,7 @@ function AccountPage() {
                 <div key={platform} className="flex items-center gap-3">
                   <Icon className="size-4 shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{link.value}</p>
+                    <p className="text-sm font-bold text-foreground truncate">{link.value}</p>
                     <p className="text-[10px] text-muted-foreground">{meta.label}</p>
                   </div>
                   {/* Visibility badge */}
@@ -651,7 +731,7 @@ function AccountPage() {
                     const vis = VISIBILITY_OPTS.find((v) => v.value === link.visibility);
                     const VisIcon = vis?.icon ?? Globe;
                     return (
-                      <span className="flex items-center gap-1 rounded-full border border-border/50 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
                         <VisIcon className="size-3" /> {vis?.label}
                       </span>
                     );
@@ -680,11 +760,12 @@ function AccountPage() {
                     const active = (link?.visibility ?? "public") === opt.value;
                     return (
                       <button
+                        type="button"
                         key={opt.value}
                         onClick={() => setLinkVisibility(platform, opt.value)}
                         className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-bold transition-colors border ${
                           active
-                            ? "bg-primary/10 border-primary/40 text-primary"
+                            ? "bg-primary/15 border-primary/50 text-primary shadow-xs"
                             : "bg-secondary border-border/50 text-muted-foreground hover:bg-secondary/70"
                         }`}
                       >
@@ -698,24 +779,24 @@ function AccountPage() {
           })}
 
           {!editingSocial && (activeProfile.socialLinks ?? []).filter((l) => l.value.trim()).length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Belum ada sosial media. Klik <strong>Edit</strong> untuk menambahkan.
+            <p className="text-xs text-muted-foreground text-center py-3">
+              Belum ada sosial media yang ditambahkan.
             </p>
           )}
         </div>
       </div>
 
       {/* ── Progress Pohon ── */}
-      <div className="mt-4 rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+          <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Sprout className="size-4 text-leaf" /> Pertumbuhan Pohon
           </h3>
-          <span className="rounded-full bg-leaf/10 px-2.5 py-1 text-xs font-bold text-leaf">
+          <span className="rounded-full bg-leaf/15 px-2.5 py-1 text-xs font-bold text-leaf">
             Lv {activeProfile.level}
           </span>
         </div>
-        <p className="mt-3 text-sm font-semibold text-foreground">{stage.label}</p>
+        <p className="mt-3 text-sm font-bold text-foreground">{stage.label}</p>
         <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary">
           <div
             className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700"
@@ -745,7 +826,7 @@ function AccountPage() {
                   {i + 1}
                 </div>
                 <span
-                  className={`text-[9px] leading-tight ${reached ? "text-foreground" : "text-muted-foreground"}`}
+                  className={`text-[9px] leading-tight ${reached ? "text-foreground font-bold" : "text-muted-foreground"}`}
                 >
                   {s.label}
                 </span>
@@ -755,54 +836,81 @@ function AccountPage() {
         </div>
       </div>
 
-      {/* ── Admin Panel (jika admin) ── */}
+      {/* ── Mode Admin (Bold Visual Styling) ── */}
       {authProfile?.role === "admin" && (
-        <div className="mt-4 rounded-3xl border border-primary/30 bg-primary/10 p-5">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
-            <ShieldCheck className="h-4 w-4" /> Mode Admin Aktif
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Kamu sedang masuk dengan akun Admin. Kamu dapat memoderasi video TreeGallery yang
-            diunggah pengguna.
+        <div className="mt-6 rounded-3xl border-2 border-primary/60 bg-primary/15 p-6 shadow-soft">
+          <div className="flex items-center gap-2 text-primary font-black tracking-wide uppercase text-sm">
+            <ShieldCheck className="size-5 shrink-0" />
+            <span>Mode Admin (Admin Access & Moderasi)</span>
+          </div>
+          <p className="mt-2 text-xs font-medium text-foreground/90 leading-relaxed">
+            Akun ini memiliki hak istimewa <strong>Administrator TreeNest</strong>. Anda dapat mengelola, meninjau, menyetujui, atau menolak video TreeGallery yang diunggah oleh seluruh pengguna.
           </p>
           <button
+            type="button"
             onClick={() => navigate({ to: "/admin" })}
-            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95"
           >
-            Buka Panel Moderasi Admin ↗
+            <ShieldCheck className="size-4" /> Buka Panel Moderasi Admin ↗
           </button>
         </div>
       )}
 
       {/* ── Sesi & Logout ── */}
-      <div className="mt-4 rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
         <p className="text-sm font-bold text-foreground">Sesi Pengguna</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Akun kamu tersambung dengan sistem autentikasi TreeNest.
         </p>
         <button
           onClick={handleLogout}
-          className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-destructive/10 px-5 py-2.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-95"
+          className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 active:scale-95"
         >
           <LogOut className="size-4" /> Logout dari Akun
         </button>
       </div>
 
-      {/* ── Zona Bahaya ── */}
-      <div className="mt-4 rounded-3xl border border-destructive/30 bg-destructive/5 p-5">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-destructive">
-          <AlertTriangle className="size-4" /> Zona Bahaya
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Menghapus akun akan menghapus <strong>semua data kamu secara permanen</strong> dan tidak dapat dipulihkan.
+      {/* ── Zona Bahaya (Bold Visual Styling) ── */}
+      <div className="mt-6 rounded-3xl border-2 border-destructive/40 bg-destructive/10 p-6 shadow-soft">
+        <div className="flex items-center gap-2 text-destructive font-black tracking-wide uppercase text-sm">
+          <AlertTriangle className="size-5 shrink-0" />
+          <span>Zona Bahaya (Danger Zone)</span>
+        </div>
+        <p className="mt-2 text-xs font-medium text-destructive/90 leading-relaxed">
+          Menghapus akun akan menghapus <strong>seluruh data kamu secara permanen</strong> dari server TreeNest dan tidak dapat dipulihkan kembali.
         </p>
         <button
+          type="button"
           onClick={() => setShowDeleteModal(true)}
-          className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-destructive/40 bg-card px-4 py-2.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/10 active:scale-95"
+          className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-destructive px-5 py-2.5 text-sm font-bold text-destructive-foreground shadow-soft transition-all hover:bg-destructive/90 active:scale-95"
         >
           <Trash2 className="size-4" /> Hapus Akun Saya
         </button>
       </div>
+
+      {/* Modal Cropper Foto Profil */}
+      {showCropper && rawImageSrc && (
+        <ImageCropperModal
+          imageSrc={rawImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            if (rawImageSrc && rawImageSrc.startsWith("blob:")) {
+              URL.revokeObjectURL(rawImageSrc);
+            }
+            setRawImageSrc(null);
+          }}
+        />
+      )}
+
+      {/* Modal Ubah Password */}
+      {showPasswordModal && (
+        <ChangePasswordModal
+          email={activeProfile.email}
+          onClose={() => setShowPasswordModal(false)}
+          onSendReset={handleSendPasswordReset}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (
@@ -821,7 +929,7 @@ function AccountPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       {children}
@@ -839,8 +947,8 @@ function InfoRow({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-secondary/30 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
         {icon}
         {label}
       </p>

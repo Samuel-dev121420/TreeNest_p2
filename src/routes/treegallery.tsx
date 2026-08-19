@@ -44,6 +44,7 @@ import {
   type GalleryVideo,
 } from "@/lib/social";
 import { awardActivityExp } from "@/lib/exp-service";
+import { saveVideoBlob, resolveVideoUrl, deleteVideoBlob } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/treegallery")({
   head: () => ({
@@ -187,27 +188,61 @@ function TreeGalleryPage() {
           return;
         }
 
-        let videoUrl: string;
+        let videoUrl = "";
+        const tempMediaId = `vid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        
+        // Simpan file blob ke IndexedDB agar tidak hilang saat refresh halaman
+        await saveVideoBlob(tempMediaId, file);
+
         if (isFirebaseConfigured && storage) {
-          const path = `gallery/${uid}/${Date.now()}_${file.name}`;
-          const sRef = storageRef(storage, path);
-          await new Promise<void>((resolve, reject) => {
-            const task = uploadBytesResumable(sRef, file);
-            task.on(
-              "state_changed",
-              (snap) =>
-                setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-              reject,
-              async () => {
-                videoUrl = await getDownloadURL(task.snapshot.ref);
-                resolve();
-              },
-            );
-          });
-          await addGalleryVideo(uid, { title: t, url: videoUrl!, sourceType: "upload" });
+          try {
+            const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            const path = `gallery/${uid}/${Date.now()}_${cleanName}`;
+            const sRef = storageRef(storage, path);
+            
+            // Upload dengan timeout & fallback otomatis jika Firebase Storage terblokir/hang
+            videoUrl = await new Promise<string>((resolve, reject) => {
+              const task = uploadBytesResumable(sRef, file);
+              const timeoutId = setTimeout(() => {
+                task.cancel();
+                reject(new Error("Storage upload timeout"));
+              }, 12000);
+
+              task.on(
+                "state_changed",
+                (snap) => {
+                  if (snap.totalBytes > 0) {
+                    const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+                    setUploadProgress(pct);
+                  }
+                },
+                (err) => {
+                  clearTimeout(timeoutId);
+                  reject(err);
+                },
+                async () => {
+                  clearTimeout(timeoutId);
+                  try {
+                    const dl = await getDownloadURL(task.snapshot.ref);
+                    resolve(dl);
+                  } catch (e) {
+                    reject(e);
+                  }
+                },
+              );
+            });
+          } catch (storageErr) {
+            console.warn("Firebase Storage upload fallback triggered:", storageErr);
+            videoUrl = `indexeddb:${tempMediaId}`;
+          }
         } else {
-          videoUrl = URL.createObjectURL(file);
-          await addGalleryVideo(uid, { title: t, url: videoUrl, sourceType: "upload" });
+          videoUrl = `indexeddb:${tempMediaId}`;
+        }
+
+        const createdVid = await addGalleryVideo(uid, { title: t, url: videoUrl, sourceType: "upload" });
+        if (createdVid && createdVid.id) {
+          // Hubungkan blob dengan id permanen
+          await saveVideoBlob(createdVid.id, file);
         }
       } else {
         const u = url.trim();
@@ -238,6 +273,7 @@ function TreeGalleryPage() {
   // ─── Delete ───────────────────────────────────────────────────────
   async function handleDelete(videoId: string) {
     await deleteGalleryVideo(videoId, uid);
+    await deleteVideoBlob(videoId);
     if (featuredId === videoId) {
       await setFeaturedVideo(uid, null);
       setFeaturedId(null);
@@ -725,7 +761,7 @@ function TreeGalleryPage() {
       {showConfirmUpload && (
         <div
           onClick={() => setShowConfirmUpload(false)}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -766,7 +802,7 @@ function TreeGalleryPage() {
       {rejectTarget && (
         <div
           onClick={() => setRejectTarget(null)}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -852,6 +888,17 @@ function SourceBadge({ source, small }: { source: string; small?: boolean }) {
 
 function PreviewModal({ video, onClose }: { video: GalleryVideo; onClose: () => void }) {
   const yt = youtubeId(video.url);
+  const [resolvedPlayUrl, setResolvedPlayUrl] = useState<string>(video.url);
+
+  useEffect(() => {
+    let active = true;
+    resolveVideoUrl(video.url, video.id).then((u) => {
+      if (active && u) setResolvedPlayUrl(u);
+    });
+    return () => {
+      active = false;
+    };
+  }, [video.url, video.id]);
 
   function renderPlayer() {
     if (yt) {
@@ -873,7 +920,7 @@ function PreviewModal({ video, onClose }: { video: GalleryVideo; onClose: () => 
         <div className="aspect-video w-full bg-black">
           <video
             className="size-full"
-            src={video.url}
+            src={resolvedPlayUrl || video.url}
             controls
             autoPlay
             controlsList="nodownload"
@@ -916,7 +963,7 @@ function PreviewModal({ video, onClose }: { video: GalleryVideo; onClose: () => 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}
