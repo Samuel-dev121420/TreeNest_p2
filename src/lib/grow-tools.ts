@@ -68,7 +68,25 @@ export function todayKey() {
 export function formatDateLabel(key: string) {
   const [y, m, d] = key.split("-").map(Number);
   const date = new Date(y!, m! - 1, d!);
-  return date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+  return date.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function hasUncheckedReminders(uid: string): boolean {
+  try {
+    const key = `treenest.dailytask.tasks.${uid}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const tasks: DailyTask[] = JSON.parse(raw);
+    const today = todayKey();
+    return tasks.some((t) => !t.done && t.date <= today);
+  } catch {
+    return false;
+  }
 }
 
 export function formatBytes(bytes?: number): string {

@@ -67,11 +67,13 @@ export type GalleryVideo = {
   thumbnail: string;
   status: "pending" | "approved" | "rejected";
   reason?: string | undefined;
+  approvalComment?: string | undefined;
   submittedAt: number;
 };
 
-export const MAX_VIDEOS = 3;
-export const MAX_DURATION_SEC = 30;
+export const MAX_VIDEOS = 999999;
+export const MAX_DURATION_SEC = 180; // 3 menit maksimal untuk file upload
+export const MAX_FILE_MB = 50; // 50 MB maksimal ukuran file
 
 export function seedVideos(): GalleryVideo[] {
   return [
@@ -169,6 +171,7 @@ export type Profile = {
   friendCount: number;
   avatarUrl?: string | undefined;
   totalLogins?: number | undefined;
+  loginDates?: string[] | undefined;
   socialLinks?: SocialLink[] | undefined;
   themePreference?: ("light" | "dark") | undefined;
 };

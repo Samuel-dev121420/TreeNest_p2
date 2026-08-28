@@ -5,6 +5,8 @@ import {
   getAllGalleryVideosAdmin,
   moderateVideo,
   deleteGalleryVideoAdmin,
+  getUserProfile,
+  type UserProfile,
 } from "@/lib/firestore-service";
 import { ShieldCheck, Check, X, Clock, Video, ArrowLeft, LogOut, Trash2, Play, Film, ExternalLink } from "lucide-react";
 import { youtubeId, timeAgo, type GalleryVideo } from "@/lib/social";
@@ -27,30 +29,54 @@ function AdminDashboardPage() {
   const navigate = useNavigate();
   const { profile, logout } = useAuth();
   const [videos, setVideos] = useState<GalleryVideo[]>([]);
+  const [uploaderProfiles, setUploaderProfiles] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [filter, setFilter] = useState<"pending" | "history">("pending");
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvalComment, setApprovalComment] = useState("");
   const [previewVideo, setPreviewVideo] = useState<GalleryVideo | null>(null);
 
   useEffect(() => {
     loadVideos(filter);
   }, []);
 
+  useEffect(() => {
+    if (profile?.themePreference === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (profile?.themePreference === "light") {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [profile?.themePreference]);
+
   async function loadVideos(currentFilter = filter) {
     setLoading(true);
     const data = await getAllGalleryVideosAdmin(currentFilter);
     setVideos(data);
     setLoading(false);
+
+    // Fetch user profiles for all video uploaders
+    const uniqueUids = Array.from(new Set(data.map((v) => v.uid).filter(Boolean)));
+    const profiles = await Promise.all(uniqueUids.map((u) => getUserProfile(u)));
+    const map: Record<string, UserProfile> = {};
+    profiles.forEach((p) => {
+      if (p?.uid) map[p.uid] = p;
+    });
+    setUploaderProfiles(map);
   }
 
-  function handleFilterChange(newFilter: "all" | "pending" | "approved" | "rejected") {
+  function handleFilterChange(newFilter: "pending" | "history") {
     setFilter(newFilter);
     loadVideos(newFilter);
   }
 
-  async function handleApprove(videoId: string) {
-    await moderateVideo(videoId, "approved");
+  async function handleApproveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!approvingId) return;
+    await moderateVideo(approvingId, "approved", approvalComment.trim());
+    setApprovingId(null);
+    setApprovalComment("");
     loadVideos();
   }
 
@@ -70,14 +96,14 @@ function AdminDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-20">
+    <main className="min-h-screen bg-background text-foreground dark:bg-[#0d1412] pb-20 select-none">
       {/* Header Admin */}
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-card/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-card/80 dark:bg-card/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate({ to: "/" })}
-              className="rounded-2xl border border-input bg-background p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-2xl border border-input bg-background p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
               title="Kembali ke Beranda"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -87,7 +113,7 @@ function AdminDashboardPage() {
                 <ShieldCheck className="size-5" />
               </div>
               <div>
-                <h1 className="text-base font-bold leading-none">Moderasi TreeGallery</h1>
+                <h1 className="text-base font-bold leading-none text-foreground">Moderasi TreeGallery</h1>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Admin: {profile?.username} ({profile?.accountId})
                 </p>
@@ -100,10 +126,10 @@ function AdminDashboardPage() {
               logout();
               navigate({ to: "/login" });
             }}
-            className="flex items-center gap-1.5 rounded-2xl border border-input bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="flex items-center gap-1.5 rounded-2xl border border-input bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
-            Keluar
+            Logout
           </button>
         </div>
       </header>
@@ -111,21 +137,21 @@ function AdminDashboardPage() {
       {/* Konten Utama */}
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {/* Filter Tab */}
-        <div className="mb-6 flex gap-2 overflow-x-auto rounded-3xl border border-border/60 bg-card p-1.5 shadow-soft">
-          {(["pending", "approved", "rejected", "all"] as const).map((t) => (
+        <div className="mb-6 flex gap-2 overflow-x-auto rounded-3xl border border-border/60 bg-card dark:bg-secondary/40 p-1.5 shadow-soft">
+          {[
+            { key: "pending", label: "Menunggu Moderasi" },
+            { key: "history", label: "Riwayat Video" },
+          ].map((t) => (
             <button
-              key={t}
-              onClick={() => handleFilterChange(t)}
-              className={`rounded-2xl px-4 py-2 text-xs font-bold capitalize transition-all ${
-                filter === t
+              key={t.key}
+              onClick={() => handleFilterChange(t.key as "pending" | "history")}
+              className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
+                filter === t.key
                   ? "bg-primary text-primary-foreground shadow-soft"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
-              {t === "pending" && "Menunggu Review"}
-              {t === "approved" && "Disetujui"}
-              {t === "rejected" && "Ditolak"}
-              {t === "all" && "Semua Video"}
+              {t.label}
             </button>
           ))}
         </div>
@@ -144,6 +170,7 @@ function AdminDashboardPage() {
             videos.map((video) => {
               const yId = youtubeId(video.url);
               const isUpload = video.sourceType === "upload" || video.url.startsWith("indexeddb:") || video.url.startsWith("blob:");
+              const uploader = uploaderProfiles[video.uid];
               return (
                 <div
                   key={video.id}
@@ -177,6 +204,11 @@ function AdminDashboardPage() {
                     {/* Informasi Detail Video */}
                     <div>
                       <h3 className="font-bold text-foreground text-base">{video.title}</h3>
+                      {uploader && (
+                        <p className="mt-0.5 text-xs font-semibold text-foreground">
+                          Pengunggah: <span className="text-primary">{uploader.username}</span> ({uploader.accountId})
+                        </p>
+                      )}
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         Pengunggah (UID): <code className="font-mono text-[10px]">{video.uid}</code>
                       </p>
@@ -204,35 +236,47 @@ function AdminDashboardPage() {
                         )}
                       </div>
 
+                      {/* Catatan jika disetujui */}
+                      {video.status === "approved" && video.approvalComment && (
+                        <p className="mt-2 rounded-xl bg-leaf/10 p-2 text-xs font-medium text-leaf">
+                          Catatan Persetujuan: {video.approvalComment}
+                        </p>
+                      )}
+
                       {/* Reason jika ditolak */}
                       {video.status === "rejected" && video.reason && (
-                        <p className="mt-2 rounded-xl bg-destructive/10 p-2 text-xs text-destructive">
+                        <p className="mt-2 rounded-xl bg-destructive/10 p-2 text-xs font-medium text-destructive">
                           Alasan Penolakan: {video.reason}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Tombol Aksi Moderasi */}
+                  {/* Tombol Aksi Moderasi - HANYA untuk status pending */}
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    {video.status !== "approved" && (
-                      <button
-                        onClick={() => handleApprove(video.id)}
-                        className="inline-flex items-center justify-center rounded-2xl bg-gradient-leaf px-4 py-2 text-xs font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-95"
-                      >
-                        <Check className="mr-1.5 h-3.5 w-3.5" />
-                        Approve
-                      </button>
-                    )}
-
-                    {video.status !== "rejected" && (
-                      <button
-                        onClick={() => setRejectingId(video.id)}
-                        className="inline-flex items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-95"
-                      >
-                        <X className="mr-1.5 h-3.5 w-3.5" />
-                        Reject
-                      </button>
+                    {video.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setApprovingId(video.id);
+                            setApprovalComment("");
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl bg-gradient-leaf px-4 py-2 text-xs font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-95"
+                        >
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                          Setujui
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRejectingId(video.id);
+                            setRejectReason("");
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-95"
+                        >
+                          <X className="mr-1.5 h-3.5 w-3.5" />
+                          Tolak
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => handleDelete(video.id)}
@@ -247,6 +291,45 @@ function AdminDashboardPage() {
             })
           )}
         </div>
+
+        {/* Modal Dialog Approve (Opsional Comment) */}
+        {approvingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-xl">
+              <h3 className="text-lg font-bold text-foreground">Komentar Persetujuan (Opsional)</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tuliskan catatan atau masukan positif untuk video yang disetujui (opsional).
+              </p>
+              <form onSubmit={handleApproveSubmit} className="mt-4 space-y-4">
+                <textarea
+                  rows={3}
+                  placeholder="Contoh: Keren banget videonya! Tetap semangat berkarya."
+                  value={approvalComment}
+                  onChange={(e) => setApprovalComment(e.target.value)}
+                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-3 text-xs focus:border-primary focus:outline-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApprovingId(null);
+                      setApprovalComment("");
+                    }}
+                    className="rounded-2xl border border-input px-4 py-2 text-xs font-bold text-foreground hover:bg-accent"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Konfirmasi Setujui
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Modal Dialog Reject */}
         {rejectingId && (
@@ -263,7 +346,7 @@ function AdminDashboardPage() {
                   placeholder="Contoh: Durasi video melebihi 30 detik atau konten tidak sesuai aturan."
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full rounded-2xl border border-input bg-background p-3 text-xs text-foreground focus:border-destructive focus:outline-none"
+                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-3 text-xs focus:border-destructive focus:outline-none"
                 />
                 <div className="flex justify-end gap-2">
                   <button
@@ -293,12 +376,14 @@ function AdminDashboardPage() {
           <AdminPreviewModal
             video={previewVideo}
             onClose={() => setPreviewVideo(null)}
-            onApprove={async () => {
-              await handleApprove(previewVideo.id);
+            onApprove={() => {
+              setApprovingId(previewVideo.id);
+              setApprovalComment("");
               setPreviewVideo(null);
             }}
             onReject={() => {
               setRejectingId(previewVideo.id);
+              setRejectReason("");
               setPreviewVideo(null);
             }}
           />

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LogOut,
   Sparkles,
@@ -30,7 +30,7 @@ import { useAuth } from "@/lib/auth-context";
 import { seedProfile } from "@/lib/social";
 import type { SocialLink, SocialPlatform, VisibilityLevel } from "@/lib/social";
 import { stageForLevel, expNeeded, TREEHOUSE_LEVEL, TREE_STAGES } from "@/lib/treenest";
-import { updateUserProfile } from "@/lib/firestore-service";
+import { updateUserProfile, getUserFriends } from "@/lib/firestore-service";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -281,7 +281,7 @@ function DeleteAccountModal({
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
               placeholder={CONFIRM_PHRASE}
-              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2.5 font-mono text-xs outline-none focus:ring-2 focus:ring-destructive/50"
+              className="mt-3 w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 font-mono text-xs outline-none focus:ring-2 focus:ring-destructive/50"
             />
             <div className="mt-4 flex gap-2">
               <button
@@ -315,7 +315,7 @@ function DeleteAccountModal({
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="Masukkan email akun"
-              className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-destructive/50"
+              className="mt-3 w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-destructive/50"
             />
             <div className="mt-4 flex gap-2">
               <button
@@ -352,6 +352,18 @@ function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [draftUsername, setDraftUsername] = useState(activeProfile.username);
   const [draftBio, setDraftBio] = useState(activeProfile.bio ?? "");
+
+  // Real Accepted Friends Count
+  const [realFriendCount, setRealFriendCount] = useState<number>(activeProfile.friendCount || 0);
+
+  useEffect(() => {
+    const activeUid = authProfile?.uid;
+    if (activeUid) {
+      getUserFriends(activeUid, activeProfile.accountId).then((list) => {
+        setRealFriendCount(list.length);
+      });
+    }
+  }, [authProfile?.uid, activeProfile?.accountId]);
 
   // Avatar & Cropper
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -583,7 +595,7 @@ function AccountPage() {
                 <input
                   value={draftUsername}
                   onChange={(e) => setDraftUsername(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </Field>
               <Field label="Bio">
@@ -591,7 +603,7 @@ function AccountPage() {
                   value={draftBio}
                   onChange={(e) => setDraftBio(e.target.value)}
                   rows={2}
-                  className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -623,15 +635,15 @@ function AccountPage() {
         {/* Email */}
         <InfoRow label="Email" value={activeProfile.email} />
 
-        {/* Total Login */}
+        {/* Total Login Harian */}
         <InfoRow
-          label="Total Login"
-          value={String(activeProfile.totalLogins ?? 0)}
+          label="Total Login Harian"
+          value={`${activeProfile.totalLogins ?? 1} Hari`}
           icon={<LogIn className="size-3.5 text-sky-deep" />}
         />
 
         {/* Jumlah Teman */}
-        <InfoRow label="Jumlah Teman" value={String(activeProfile.friendCount)} />
+        <InfoRow label="Jumlah Teman" value={`${realFriendCount} Teman`} />
 
         {/* Password Management */}
         <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
@@ -751,7 +763,7 @@ function AccountPage() {
                   value={link?.value ?? ""}
                   onChange={(e) => setLinkValue(platform, e.target.value)}
                   placeholder={meta.placeholder}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                 />
                 {/* Visibility selector */}
                 <div className="flex gap-1.5">

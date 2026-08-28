@@ -17,6 +17,7 @@ import {
   X,
   Eye,
   EyeOff,
+  ArrowLeft,
 } from "lucide-react";
 import skyBg from "@/assets/sky-bg.jpg";
 
@@ -35,8 +36,15 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, signup, sendVerificationEmail, completeVerification, sendPasswordReset } =
-    useAuth();
+  const {
+    login,
+    signup,
+    sendVerificationEmail,
+    completeVerification,
+    cancelUnverifiedRegistration,
+    sendPasswordReset,
+    logout,
+  } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
 
   const [username, setUsername] = useState("");
@@ -93,7 +101,7 @@ function LoginPage() {
       if (res.success) {
         if (res.requiresVerification && res.firebaseUser) {
           setPendingVerificationUser(res.firebaseUser);
-          setInfoMsg(`Email verifikasi telah dikirim ke ${email.trim()}.`);
+          setInfoMsg(res.infoMessage || `Email verifikasi telah dikirim ke ${email.trim()}.`);
         } else if (res.profile?.role === "admin") {
           navigate({ to: "/admin" });
         } else {
@@ -112,7 +120,9 @@ function LoginPage() {
           navigate({ to: "/" });
         }
       } else {
-        setError(res.error || "Gagal masuk. Periksa email & password.");
+        setError(
+          res.error || "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.",
+        );
       }
     }
   }
@@ -246,14 +256,19 @@ function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  setLoading(true);
+                  await cancelUnverifiedRegistration(pendingVerificationUser);
                   setPendingVerificationUser(null);
                   setError("");
                   setInfoMsg("");
+                  setIsRegister(true);
+                  setLoading(false);
                 }}
-                className="mt-2 text-xs font-medium text-muted-foreground hover:text-foreground underline"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/15 active:scale-[0.98]"
               >
-                Ganti Email / Batal
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Ganti Email / Batal Pendaftaran
               </button>
             </div>
           </div>
@@ -330,7 +345,7 @@ function LoginPage() {
                       placeholder="Contoh: Rafi"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full rounded-2xl border border-input bg-background/60 py-2.5 pl-10 pr-4 text-sm font-medium text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none"
+                      className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-sm font-medium transition-all focus:border-primary focus:outline-none"
                     />
                   </div>
                 </div>
@@ -346,7 +361,7 @@ function LoginPage() {
                     placeholder="nama@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-background/60 py-2.5 pl-10 pr-4 text-sm font-medium text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none"
+                    className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-sm font-medium transition-all focus:border-primary focus:outline-none"
                   />
                 </div>
               </div>
@@ -377,7 +392,7 @@ function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-background/60 py-2.5 pl-10 pr-11 text-sm font-medium text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none"
+                    className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-11 text-sm font-medium transition-all focus:border-primary focus:outline-none"
                   />
                   <button
                     type="button"
@@ -475,7 +490,7 @@ function LoginPage() {
                     placeholder="nama@email.com"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-background/80 py-2.5 pl-10 pr-4 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/50"
+                    className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "@tanstack/react-router";
 import {
   Sparkles,
   ChevronDown,
@@ -25,6 +26,7 @@ import {
 import { stageForLevel, expNeeded } from "@/lib/treenest";
 
 export function DailyQuestWidget() {
+  const location = useLocation();
   const { user, profile, refreshProfile } = useAuth();
   const uid = profile?.uid ?? user?.uid;
 
@@ -58,6 +60,7 @@ export function DailyQuestWidget() {
     return () => unsubscribeToast();
   }, []);
 
+  if (location.pathname === "/admin" || location.pathname === "/login") return null;
   if (!uid || !profile) return null;
 
   const currentLevel = profile.level || 1;
@@ -94,41 +97,39 @@ export function DailyQuestWidget() {
       </div>
 
       {/* ── DAILY QUEST WIDGET CONTAINER ── */}
-      <div className="fixed top-14 right-4 z-40 flex flex-col items-end">
+      <div className="fixed top-17 right-4 z-40 flex flex-col items-end">
         {/* Toggle Button */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className={`flex items-center gap-2 rounded-2xl border border-border/80 px-3 py-2 text-xs font-bold shadow-soft backdrop-blur-md transition-all ${
-            expanded
-              ? "bg-card text-foreground shadow-md"
-              : "bg-card/90 text-foreground hover:bg-card hover:scale-105"
+          className={`flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer ${
+            expanded ? "ring-2 ring-primary/40 border-white" : ""
           }`}
         >
           <div className="flex items-center gap-1.5">
-            <span className="flex size-5 items-center justify-center rounded-lg bg-leaf/15 text-leaf">
+            <span className="flex size-5 items-center justify-center rounded-lg bg-primary/20 text-primary">
               <TreePine className="size-3.5" />
             </span>
             <span>Lv.{currentLevel}</span>
             <span className="text-muted-foreground font-normal">({currentExp}/50 EXP)</span>
           </div>
-          {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          {expanded ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />}
         </button>
 
         {/* Expanded Quest Card */}
         {expanded && questState && (
-          <div className="mt-2 w-72 rounded-3xl border border-border/80 bg-card/95 p-4 shadow-float backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+          <div className="mt-2 w-72 rounded-3xl border border-primary/50 bg-gradient-soft p-4 shadow-float backdrop-blur-md animate-in fade-in slide-in-from-top-2">
             {/* Header: Stage & Level Progress */}
-            <div className="border-b border-border/60 pb-3">
+            <div className="border-b border-primary/30 pb-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-foreground flex items-center gap-1">
-                  <TreePine className="size-4 text-leaf" />
+                  <TreePine className="size-4 text-primary" />
                   {stage.label}
                 </span>
                 <span className="font-mono text-muted-foreground font-semibold">
                   {currentExp} / 50 EXP
                 </span>
               </div>
-              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
                 <div
                   className="h-full rounded-full bg-gradient-leaf transition-all duration-500"
                   style={{ width: `${expProgressPct}%` }}

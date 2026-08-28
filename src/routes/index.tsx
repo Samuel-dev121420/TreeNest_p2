@@ -6,6 +6,7 @@ import { DEMO_USER, expNeeded, stageForLevel, TREEHOUSE_LEVEL } from "@/lib/tree
 import { getUserFriends, getFeaturedFriends } from "@/lib/firestore-service";
 import type { Friend } from "@/lib/social";
 import { TreehouseModal } from "@/components/TreehouseModal";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { Sparkles, Home, ChevronRight, X, TreePine } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -28,35 +29,7 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-
-const BULAN = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function useNow() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
 function HomePage() {
-  const now = useNow();
   const { profile: authProfile } = useAuth();
   const user = authProfile || DEMO_USER;
   const level = user.level;
@@ -67,6 +40,7 @@ function HomePage() {
   const [showTreehouse, setShowTreehouse] = useState(false);
   const [showTreeTip, setShowTreeTip] = useState(false);
   const [showTreeBadge, setShowTreeBadge] = useState(true);
+  const [selectedFriendAccountId, setSelectedFriendAccountId] = useState<string | null>(null);
 
   // Load actual featured friends for the logged in user
   useEffect(() => {
@@ -100,14 +74,6 @@ function HomePage() {
     return () => clearTimeout(timer);
   }, [isTreehouseReady]);
 
-  // Format Hari-Tanggal-Bulan-Tahun
-  const tanggal = now
-    ? `${HARI[now.getDay()]}, ${now.getDate()} ${BULAN[now.getMonth()]} ${now.getFullYear()}`
-    : "";
-  const jam = now
-    ? `${String(now.getHours()).padStart(2, "0")}.${String(now.getMinutes()).padStart(2, "0")}`
-    : "";
-
   return (
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
       <h1 className="sr-only">TreeNest — Home</h1>
@@ -131,23 +97,15 @@ function HomePage() {
       <Bird className="top-[18%]" duration={38} delay={-6} />
       <Bird className="top-[30%] scale-75" duration={52} delay={-25} />
 
-      {/* Tanggal & jam (Elemen Hijau Natural Khas TreeNest) */}
-      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-2xl border border-leaf/40 bg-leaf/15 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-forest dark:text-emerald-200 shadow-soft backdrop-blur-md">
-        <span>{tanggal}</span>
-      </div>
-      <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-2xl border border-leaf/40 bg-leaf/15 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-forest dark:text-emerald-200 shadow-soft backdrop-blur-md">
-        <span>{jam} WIB</span>
-      </div>
-
-      {/* Kartu level & EXP - Diturunkan ke top-20 agar tidak bertabrakan dengan Jam */}
-      <div className="absolute left-1/2 top-20 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-card/60 bg-card/75 p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10">
+      {/* Kartu level & EXP (Warna bg-gradient-soft & border-primary/50 dengan Efek Mengembang) */}
+      <div className="absolute left-1/2 top-17 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer">
         <div className="flex items-baseline justify-between">
           <p className="text-sm font-bold text-foreground">
             Halo, {username} <span className="text-muted-foreground">· {stage.label}</span>
           </p>
           <p className="text-xs font-bold text-primary">Lv {level}</p>
         </div>
-        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
           <div
             className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700"
             style={{ width: `${pct}%` }}
@@ -158,14 +116,14 @@ function HomePage() {
         </p>
       </div>
 
-      {/* Tanah lurus */}
-      <div className="absolute inset-x-0 bottom-0 h-[22%] bg-gradient-ground">
+      {/* Tanah lurus — Permukaan rumput berada di bottom-[20%] di atas BottomNav */}
+      <div className="absolute inset-x-0 bottom-0 h-[25%] bg-gradient-ground">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-[color-mix(in_oklab,var(--grass)_75%,white)]" />
         <GrassLine />
       </div>
 
-      {/* Pohon utama — Diturunkan pas menancap di tanah */}
-      <div className="absolute inset-x-0 bottom-[14%] flex h-[62%] items-end justify-center z-10">
+      {/* Pohon utama — Berdiri menancap di rumput (bottom-[20%]) di atas BottomNav tanpa bentrok */}
+      <div className="absolute inset-x-0 bottom-[20%] flex h-[48%] items-end justify-center z-10">
         <div
           onClick={() => (isTreehouseReady ? setShowTreehouse(true) : setShowTreeTip(true))}
           title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${level}`}
@@ -174,7 +132,7 @@ function HomePage() {
           {/* Tombol Floating Masuk Rumah Pohon jika Level 20: Tampil di atas pucuk pohon dengan warna hijau emerald */}
           {isTreehouseReady && (
             <div
-              className={`absolute -top-10 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
+              className={`absolute -top-8 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
                 showTreeBadge
                   ? "opacity-100 scale-100 pointer-events-auto"
                   : "opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
@@ -186,11 +144,11 @@ function HomePage() {
                   e.stopPropagation();
                   setShowTreehouse(true);
                 }}
-                className="animate-bounce flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-gradient-leaf px-4 py-1.5 text-xs font-bold text-white shadow-float backdrop-blur-md transition-all hover:brightness-110 hover:scale-105 active:scale-95"
+                className="animate-bounce flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-gradient-leaf px-4 py-1.5 text-xs font-bold text-white shadow-float backdrop-blur-md transition-all hover:brightness-110 hover:scale-105 active:scale-95 dark:border-emerald-500/60 dark:bg-none dark:bg-emerald-950/95 dark:text-emerald-200 dark:shadow-emerald-950/80 dark:hover:bg-emerald-900/90"
               >
-                <Home className="size-3.5 text-emerald-100" />
+                <Home className="size-3.5 text-emerald-100 dark:text-emerald-300" />
                 <span>Masuk Rumah Pohon</span>
-                <Sparkles className="size-3 text-emerald-200" />
+                <Sparkles className="size-3 text-emerald-200 dark:text-emerald-300" />
               </button>
             </div>
           )}
@@ -206,15 +164,15 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Semak & rumput kecil */}
-      <Bush className="bottom-[14%] left-[6%] w-24" />
-      <Bush className="bottom-[13%] left-[24%] w-14 opacity-90" flip />
-      <Bush className="bottom-[14%] right-[8%] w-20" flip />
-      <Bush className="bottom-[13%] right-[26%] w-12 opacity-90" />
+      {/* Semak & rumput kecil — Berada pas di atas tanah rumput */}
+      <Bush className="bottom-[20%] left-[6%] w-24 z-10" />
+      <Bush className="bottom-[19%] left-[24%] w-14 opacity-90 z-10" flip />
+      <Bush className="bottom-[20%] right-[8%] w-20 z-10" flip />
+      <Bush className="bottom-[19%] right-[26%] w-12 opacity-90 z-10" />
 
-      {/* Bola profil: pengguna + teman tampil (Hanya teman nyata yang dipilih, no dummy) */}
-      <div className="absolute inset-x-0 bottom-[9%] h-16 pointer-events-none">
-        {/* User's own orb */}
+      {/* Bola profil: pengguna + teman tampil (Berjalan anggun di atas permukaan rumput) */}
+      <div className="absolute inset-x-0 bottom-[14%] h-16 z-10">
+        {/* User's own orb (not clickable) */}
         <Orb
           label="Kamu"
           initials={user?.initials || "ME"}
@@ -226,7 +184,7 @@ function HomePage() {
           to={34}
         />
 
-        {/* Real featured friends only */}
+        {/* Real featured friends only — clickable to open PublicProfileModal */}
         {featuredFriendsList.map((f, i) => (
           <Orb
             key={f.id || f.accountId}
@@ -238,6 +196,7 @@ function HomePage() {
             delay={-(i + 1) * 9}
             from={38 + i * 17}
             to={48 + i * 17}
+            onClick={() => setSelectedFriendAccountId(f.accountId)}
           />
         ))}
       </div>
@@ -252,6 +211,17 @@ function HomePage() {
         />
       )}
 
+      {/* PublicProfileModal saat bola profil teman diklik */}
+      {selectedFriendAccountId && (
+        <PublicProfileModal
+          accountId={selectedFriendAccountId}
+          viewerUid={authProfile?.uid ?? ""}
+          viewerFriends={featuredFriendsList}
+          isFriend={true}
+          onClose={() => setSelectedFriendAccountId(null)}
+        />
+      )}
+
       {/* Tooltip Popup Pertumbuhan Pohon jika belum Level 20 */}
       {showTreeTip && (
         <div
@@ -259,21 +229,21 @@ function HomePage() {
           onClick={() => setShowTreeTip(false)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150 dark:border-emerald-500/30 dark:bg-emerald-950/95 dark:shadow-emerald-950/60"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner">
+            <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner dark:bg-emerald-500/20 dark:text-emerald-300">
               <TreePine className="size-7" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-foreground">
+              <h3 className="text-base font-bold text-foreground dark:text-emerald-100">
                 Pohonmu Sedang Bertumbuh 🌱
               </h3>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed dark:text-emerald-300/80">
                 Pohonmu saat ini berada di <strong>Level {level} ({stage.label})</strong>.
               </p>
-              <div className="mt-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground text-left space-y-1.5">
-                <p className="font-bold text-foreground">🏡 Kunci Membuka Rumah Pohon:</p>
+              <div className="mt-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground text-left space-y-1.5 dark:bg-emerald-900/50 dark:text-emerald-200/80">
+                <p className="font-bold text-foreground dark:text-emerald-100">🏡 Kunci Membuka Rumah Pohon:</p>
                 <p>• Capai <strong>Level {TREEHOUSE_LEVEL} (House Tree)</strong>.</p>
                 <p>• Selesaikan Daily Quest dan aktivitas produktif untuk mengumpulkan EXP.</p>
                 <p>• Setelah terbuka, kamu bisa masuk dan memamerkan videomu di sini!</p>
@@ -282,7 +252,7 @@ function HomePage() {
             <button
               type="button"
               onClick={() => setShowTreeTip(false)}
-              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white"
             >
               Semangat Menanam! 🌿
             </button>
@@ -302,6 +272,7 @@ function Orb({
   delay,
   from,
   to,
+  onClick,
 }: {
   label: string;
   initials: string;
@@ -311,7 +282,9 @@ function Orb({
   delay: number;
   from: number;
   to: number;
+  onClick?: () => void;
 }) {
+  const isClickable = !!onClick;
   return (
     <div
       className="animate-stroll absolute bottom-0"
@@ -324,16 +297,20 @@ function Orb({
         } as React.CSSProperties
       }
     >
-      <div className="animate-float-y flex flex-col items-center">
+      <div
+        className={`animate-float-y flex flex-col items-center ${isClickable ? "cursor-pointer" : "pointer-events-none"}`}
+        onClick={onClick}
+        title={isClickable ? `Lihat profil ${label}` : undefined}
+      >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt={label}
-            className="size-11 rounded-full object-cover shadow-float ring-2 ring-card/70"
+            className={`size-11 rounded-full object-cover shadow-float ring-2 ring-card/70 transition-transform ${isClickable ? "hover:scale-110 hover:ring-primary/60" : ""}`}
           />
         ) : (
           <span
-            className="flex size-11 items-center justify-center rounded-full text-xs font-bold text-primary-foreground shadow-float ring-2 ring-card/70"
+            className={`flex size-11 items-center justify-center rounded-full text-xs font-bold text-primary-foreground shadow-float ring-2 ring-card/70 transition-transform ${isClickable ? "hover:scale-110 hover:ring-primary/60" : ""}`}
             style={{
               backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${hue}), oklch(0.66 0.13 ${hue + 25}))`,
             }}

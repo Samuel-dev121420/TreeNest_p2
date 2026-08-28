@@ -96,6 +96,14 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   }
 }
 
+export function getTodayDateString(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export async function createUserProfile(
   uid: string,
   username: string,
@@ -107,6 +115,7 @@ export async function createUserProfile(
   const accountId = generateAccountId();
   const initials = username.slice(0, 2).toUpperCase();
   const hue = Math.floor(Math.random() * 360);
+  const todayStr = getTodayDateString();
 
   const profile: UserProfile = {
     uid,
@@ -121,6 +130,7 @@ export async function createUserProfile(
     friendCount: 0,
     avatarUrl: "",
     totalLogins: 1,
+    loginDates: [todayStr],
     socialLinks: [],
     themePreference: "light",
     role: resolvedRole,
@@ -166,14 +176,26 @@ export async function updateUserExpAndLevel(
   }
 }
 
+/** Catat login harian unik. Hanya menambah totalLogins jika tanggal (YYYY-MM-DD) belum pernah tercatat. */
 export async function incrementTotalLogins(uid: string): Promise<void> {
   if (!uid || uid === "guest") return;
+  const todayStr = getTodayDateString();
+
   if (!isFirebaseConfigured || !db) {
     const local = localStorage.getItem(`treenest_user_${uid}`);
     if (local) {
-      const data = JSON.parse(local);
-      data.totalLogins = (data.totalLogins || 0) + 1;
-      localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+      try {
+        const data = JSON.parse(local);
+        const loginDates: string[] = Array.isArray(data.loginDates) ? data.loginDates : [];
+        if (!loginDates.includes(todayStr)) {
+          loginDates.push(todayStr);
+          data.loginDates = loginDates;
+          data.totalLogins = loginDates.length;
+          localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+        }
+      } catch {
+        // ignore
+      }
     }
     return;
   }
@@ -182,12 +204,46 @@ export async function incrementTotalLogins(uid: string): Promise<void> {
     const snap = await getDoc(userRef);
     if (snap.exists()) {
       const data = snap.data();
-      const current = (data?.["totalLogins"] as number) || 0;
-      await updateDoc(userRef, { totalLogins: current + 1 });
+      const loginDates: string[] = Array.isArray(data?.["loginDates"]) ? data["loginDates"] : [];
+      if (!loginDates.includes(todayStr)) {
+        loginDates.push(todayStr);
+        await updateDoc(userRef, {
+          loginDates,
+          totalLogins: loginDates.length,
+        });
+      }
     }
   } catch (err) {
-    console.error("Error incrementing total logins:", err);
+    console.error("Error incrementing daily total logins:", err);
   }
+}
+
+/** Sinkronkan jumlah teman resmi (accepted) ke dalam UserProfile */
+export async function syncUserFriendCount(uid: string): Promise<number> {
+  if (!uid || uid === "guest") return 0;
+  const friends = await getUserFriends(uid);
+  const count = friends.length;
+
+  const local = localStorage.getItem(`treenest_user_${uid}`);
+  if (local) {
+    try {
+      const data = JSON.parse(local);
+      data.friendCount = count;
+      localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+    } catch {
+      // ignore
+    }
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", uid);
+      await updateDoc(userRef, { friendCount: count });
+    } catch (err) {
+      console.warn("Error updating friendCount in Firestore:", err);
+    }
+  }
+  return count;
 }
 
 export async function updateUserProfile(
@@ -313,13 +369,20 @@ export async function deleteUserAccountFully(uid: string): Promise<void> {
 const FRIEND_REQUESTS_COLLECTION = "friend_requests";
 
 export async function searchUserByAccountId(accountId: string): Promise<UserProfile | null> {
+  if (!accountId) return null;
+  const cleanId = accountId.trim();
+
   if (!isFirebaseConfigured || !db) {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith("treenest_user_")) {
         try {
           const user: UserProfile = JSON.parse(localStorage.getItem(key) || "");
-          if (user.accountId?.toUpperCase() === accountId.trim().toUpperCase()) {
+          if (
+            user.accountId?.toUpperCase() === cleanId.toUpperCase() ||
+            user.uid === cleanId ||
+            user.username?.toUpperCase() === cleanId.toUpperCase()
+          ) {
             return user;
           }
         } catch {
@@ -331,19 +394,42 @@ export async function searchUserByAccountId(accountId: string): Promise<UserProf
   }
 
   try {
-    const q = query(
+    // 1. Cari berdasarkan accountId (uppercase)
+    let q = query(
       collection(db, "users"),
-      where("accountId", "==", accountId.trim().toUpperCase()),
+      where("accountId", "==", cleanId.toUpperCase()),
     );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      if (docSnap) return docSnap.data() as UserProfile;
+    let snap = await getDocs(q);
+    if (!snap.empty && snap.docs[0]) {
+      return snap.docs[0].data() as UserProfile;
     }
+
+    // 2. Cari berdasarkan accountId persis seperti input jika beda
+    if (cleanId.toUpperCase() !== cleanId) {
+      q = query(collection(db, "users"), where("accountId", "==", cleanId));
+      snap = await getDocs(q);
+      if (!snap.empty && snap.docs[0]) {
+        return snap.docs[0].data() as UserProfile;
+      }
+    }
+
+    // 3. Fallback: Cari langsung menggunakan UID (getUserProfile)
+    const profileByUid = await getUserProfile(cleanId);
+    if (profileByUid) {
+      return profileByUid;
+    }
+
+    // 4. Fallback: Cari berdasarkan username
+    q = query(collection(db, "users"), where("username", "==", cleanId));
+    snap = await getDocs(q);
+    if (!snap.empty && snap.docs[0]) {
+      return snap.docs[0].data() as UserProfile;
+    }
+
     return null;
   } catch (err) {
     console.error("Error searching user:", err);
-    return null;
+    return await getUserProfile(cleanId);
   }
 }
 
@@ -761,6 +847,12 @@ export async function acceptFriendRequest(
   } catch (err) {
     console.warn("Firestore accept friend request notice:", err);
   }
+
+  // Sync total pertemanan resmi
+  await syncUserFriendCount(toUid);
+  if (fromUid && !fromUid.startsWith("uid_")) {
+    await syncUserFriendCount(fromUid);
+  }
 }
 
 /** Tolak permintaan pertemanan */
@@ -1020,8 +1112,31 @@ export async function removeFriendship(
     } catch {
       // ignore
     }
+
+    try {
+      const userRef = doc(db, "users", currentUid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const uData = userSnap.data();
+        const feat: string[] = uData?.["featuredFriends"] || [];
+        const cleanedFeat = feat.filter(
+          (id) => id !== friendAccountId && id !== resolvedFriendUid && id !== docId,
+        );
+        if (cleanedFeat.length !== feat.length) {
+          await updateDoc(userRef, { featuredFriends: cleanedFeat });
+        }
+      }
+    } catch {
+      // ignore
+    }
   } catch (err) {
     console.warn("Error removing friendship from Firestore:", err);
+  }
+
+  // Sync total pertemanan resmi
+  await syncUserFriendCount(currentUid);
+  if (resolvedFriendUid && !resolvedFriendUid.startsWith("uid_")) {
+    await syncUserFriendCount(resolvedFriendUid);
   }
 }
 
@@ -1099,20 +1214,28 @@ export async function getAllPendingVideos(): Promise<GalleryVideo[]> {
   return getAllGalleryVideosAdmin("pending");
 }
 
-/** Ambil semua video untuk admin berdasarkan filter status ("pending" | "approved" | "rejected" | "all") */
+/** Ambil semua video approved (untuk galeri tayang publik) */
+export async function getAllApprovedVideos(): Promise<GalleryVideo[]> {
+  return getAllGalleryVideosAdmin("approved");
+}
+
+/** Ambil semua video untuk admin berdasarkan filter status ("pending" | "history" | "approved" | "rejected" | "all") */
 export async function getAllGalleryVideosAdmin(
-  statusFilter: "pending" | "approved" | "rejected" | "all" = "all",
+  statusFilter: "pending" | "history" | "approved" | "rejected" | "all" = "all",
 ): Promise<GalleryVideo[]> {
   if (!isFirebaseConfigured || !db) return [];
   try {
     let q;
-    if (statusFilter === "all") {
+    if (statusFilter === "all" || statusFilter === "history") {
       q = query(collection(db, GALLERY_COLLECTION));
     } else {
       q = query(collection(db, GALLERY_COLLECTION), where("status", "==", statusFilter));
     }
     const snap = await getDocs(q);
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
+    let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
+    if (statusFilter === "history") {
+      list = list.filter((v) => v.status === "approved" || v.status === "rejected");
+    }
     return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
   } catch (err) {
     console.error("Error fetching admin gallery videos:", err);
@@ -1172,13 +1295,16 @@ export async function addGalleryVideo(
 export async function moderateVideo(
   videoId: string,
   status: "approved" | "rejected",
-  reason?: string,
+  commentOrReason?: string,
 ): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   try {
     const updates: Record<string, unknown> = { status, moderatedAt: Date.now() };
-    if (reason) updates["reason"] = reason;
-    else if (status === "approved") updates["reason"] = "";
+    if (status === "rejected") {
+      if (commentOrReason) updates["reason"] = commentOrReason;
+    } else if (status === "approved") {
+      if (commentOrReason) updates["approvalComment"] = commentOrReason;
+    }
     await updateDoc(doc(db, GALLERY_COLLECTION, videoId), updates);
   } catch (err) {
     console.error("Error moderating video:", err);

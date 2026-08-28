@@ -16,6 +16,7 @@ import {
   isAdminEmail,
   incrementTotalLogins,
   deleteUserAccountFully,
+  getUserFriends,
   type UserProfile,
   type UserRole,
 } from "./firestore-service";
@@ -38,6 +39,7 @@ interface AuthContextType {
     requiresVerification?: boolean;
     firebaseUser?: User;
     profile?: UserProfile;
+    infoMessage?: string;
     error?: string;
   }>;
   sendVerificationEmail: (userToVerify?: User | null) => Promise<boolean>;
@@ -45,6 +47,7 @@ interface AuthContextType {
     userToVerify: User,
     username: string,
   ) => Promise<{ success: boolean; profile?: UserProfile; error?: string }>;
+  cancelUnverifiedRegistration: (userToCancel?: User | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -54,6 +57,63 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const LOCAL_STORAGE_SESSION_KEY = "treenest_session_user";
+
+/** Format error Firebase Auth menjadi pesan ramah pengguna standar */
+export function formatAuthError(err: unknown, defaultMsg = "Gagal memproses permintaan."): string {
+  if (!err) return defaultMsg;
+
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const code = (err as { code: string }).code;
+    switch (code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+      case "auth/user-not-found":
+        return "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.";
+      case "auth/invalid-email":
+        return "Format alamat email tidak valid. Pastikan penulisan email sudah benar.";
+      case "auth/email-already-in-use":
+        return "Alamat email ini sudah terdaftar di TreeNest. Silakan gunakan tab Masuk atau Lupa Password.";
+      case "auth/weak-password":
+        return "Kata sandi terlalu lemah. Gunakan minimal 6 karakter.";
+      case "auth/too-many-requests":
+        return "Terlalu banyak percobaan masuk yang gagal. Harap tunggu beberapa saat sebelum mencoba lagi.";
+      case "auth/user-disabled":
+        return "Akun ini telah dinonaktifkan. Silakan hubungi admin jika memerlukan bantuan.";
+      case "auth/network-request-failed":
+        return "Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.";
+      case "auth/requires-recent-login":
+        return "Sesi autentikasi telah kedaluwarsa. Silakan masuk kembali.";
+      default:
+        break;
+    }
+  }
+
+  if (err instanceof Error) {
+    const msg = err.message;
+    if (
+      msg.includes("auth/invalid-credential") ||
+      msg.includes("auth/wrong-password") ||
+      msg.includes("auth/user-not-found")
+    ) {
+      return "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.";
+    }
+    if (msg.includes("auth/invalid-email")) {
+      return "Format alamat email tidak valid. Pastikan penulisan email sudah benar.";
+    }
+    if (msg.includes("auth/too-many-requests")) {
+      return "Terlalu banyak percobaan masuk yang gagal. Harap tunggu beberapa saat sebelum mencoba lagi.";
+    }
+    if (msg.includes("auth/network-request-failed")) {
+      return "Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.";
+    }
+    if (msg.startsWith("Firebase:")) {
+      return defaultMsg;
+    }
+    return msg;
+  }
+
+  return defaultMsg;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -67,6 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const username = fallbackEmail?.split("@")[0] || "Pengguna TreeNest";
       p = await createUserProfile(uid, username, fallbackEmail || "user@treenest.com");
     }
+
+    // Sync friendCount dari pertemanan resmi yang sudah accepted
+    try {
+      const friends = await getUserFriends(uid);
+      p.friendCount = friends.length;
+    } catch {
+      // ignore
+    }
+
     if (p && (p.role === "admin" || (fallbackEmail && isAdminEmail(fallbackEmail)))) {
       p.role = "admin";
       p.level = 20;
@@ -85,11 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     awardActivityExp(uid, "daily_login").then(() => {
       getUserProfile(uid).then((updated) => {
         if (updated) {
-          if (updated.role === "admin") {
-            updated.level = 20;
-            updated.exp = 50;
-          }
-          setProfile(updated);
+          getUserFriends(uid).then((fr) => {
+            updated.friendCount = fr.length;
+            if (updated.role === "admin") {
+              updated.level = 20;
+              updated.exp = 50;
+            }
+            setProfile(updated);
+          });
         }
       });
     });
@@ -112,10 +184,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
       if (firebaseUser) {
-        await loadProfileForUser(firebaseUser.uid, firebaseUser.email || undefined, true);
+        setUser(firebaseUser);
+        if (!firebaseUser.emailVerified) {
+          // Jangan muat sesi profil aktif jika email belum terverifikasi
+          setProfile(null);
+        } else {
+          await loadProfileForUser(firebaseUser.uid, firebaseUser.email || undefined, true);
+        }
       } else {
+        setUser(null);
         setProfile(null);
       }
       setLoading(false);
@@ -125,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) {
+    if (user && user.emailVerified) {
       await loadProfileForUser(user.uid, user.email || undefined);
     } else if (profile?.uid) {
       await loadProfileForUser(profile.uid);
@@ -141,22 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     } catch (err: unknown) {
       console.error("Firebase sendPasswordResetEmail error:", err);
-      let errorMsg = "Gagal mengirim email reset password.";
-      if (err && typeof err === "object" && "code" in err) {
-        const code = (err as { code: string }).code;
-        if (code === "auth/user-not-found") {
-          errorMsg = "Alamat email ini belum terdaftar di sistem TreeNest.";
-        } else if (code === "auth/invalid-email") {
-          errorMsg = "Format alamat email tidak valid.";
-        } else if (code === "auth/too-many-requests") {
-          errorMsg = "Terlalu banyak percobaan. Harap tunggu beberapa saat.";
-        } else if (code === "auth/network-request-failed") {
-          errorMsg = "Koneksi internet bermasalah. Periksa jaringan Anda.";
-        }
-      } else if (err instanceof Error) {
-        errorMsg = err.message;
-      }
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: formatAuthError(err, "Gagal mengirim email reset password. Pastikan email terdaftar."),
+      };
     }
   }
 
@@ -174,8 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
       return { success: true };
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Gagal menghapus akun.";
-      return { success: false, error: errorMsg };
+      return { success: false, error: formatAuthError(err, "Gagal menghapus akun.") };
     }
   }
 
@@ -196,6 +261,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const res = await signInWithEmailAndPassword(auth, email, pass);
+
+      // Verifikasi status email sebelum mengizinkan masuk
+      if (!res.user.emailVerified) {
+        await signOut(auth);
+        setUser(null);
+        setProfile(null);
+        return {
+          success: false,
+          error:
+            "Email Anda belum terverifikasi. Silakan periksa inbox atau folder spam email Anda untuk mengklik tautan verifikasi sebelum masuk.",
+        };
+      }
+
       let p = await getUserProfile(res.user.uid);
       if (!p) {
         p = await createUserProfile(res.user.uid, email.split("@")[0] || "Pengguna", email);
@@ -203,8 +281,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(p);
       return { success: true, profile: p };
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Gagal masuk ke akun.";
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: formatAuthError(
+          err,
+          "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.",
+        ),
+      };
     }
   }
 
@@ -236,9 +319,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firebaseUser: res.user,
       };
     } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        (err as { code: string }).code === "auth/email-already-in-use"
+      ) {
+        try {
+          const loginRes = await signInWithEmailAndPassword(auth, email, pass);
+          if (!loginRes.user.emailVerified) {
+            try {
+              await sendEmailVerification(loginRes.user);
+            } catch (e) {
+              console.warn("Could not resend email verification:", e);
+            }
+            return {
+              success: true,
+              requiresVerification: true,
+              firebaseUser: loginRes.user,
+              infoMessage: `Email ini sudah pernah didaftarkan tetapi belum diverifikasi. Email verifikasi baru telah dikirimkan ke ${email.trim()}.`,
+            };
+          } else {
+            await signOut(auth);
+            return {
+              success: false,
+              error:
+                "Alamat email ini sudah terdaftar dan terverifikasi. Silakan masuk menggunakan tab Masuk.",
+            };
+          }
+        } catch {
+          return {
+            success: false,
+            error:
+              "Alamat email ini telah terdaftar di sistem. Silakan masuk menggunakan tab Masuk atau gunakan Lupa Password.",
+          };
+        }
+      }
       const errorMsg = err instanceof Error ? err.message : "Gagal mendaftar akun baru.";
       return { success: false, error: errorMsg };
     }
+  }
+
+  async function cancelUnverifiedRegistration(userToCancel?: User | null): Promise<void> {
+    const targetUser = userToCancel || user || auth?.currentUser;
+    if (targetUser && !targetUser.emailVerified) {
+      const uid = targetUser.uid;
+      try {
+        await deleteUserAccountFully(uid);
+      } catch {
+        // ignore
+      }
+      try {
+        await deleteUser(targetUser);
+      } catch (err) {
+        console.warn("Could not delete unverified user from Firebase Auth:", err);
+      }
+    }
+    if (isFirebaseConfigured && auth) {
+      await signOut(auth);
+    }
+    setUser(null);
+    setProfile(null);
+    localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
   }
 
   async function sendVerificationEmail(userToVerify?: User | null): Promise<boolean> {
@@ -306,6 +448,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         sendVerificationEmail,
         completeVerification,
+        cancelUnverifiedRegistration,
         logout,
         refreshProfile,
         sendPasswordReset,

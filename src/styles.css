@@ -54,6 +54,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 1.25rem;
 
   --sky: oklch(0.9 0.045 220);
@@ -102,6 +103,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.16 0.025 180);
   --foreground: oklch(0.96 0.01 150);
   --card: oklch(0.22 0.028 180);
@@ -134,6 +136,50 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+  }
+
+  input,
+  textarea,
+  select {
+    /* Light mode: dark text on light backgrounds */
+    color: oklch(0.20 0.04 150);
+    -webkit-text-fill-color: oklch(0.20 0.04 150);
+    caret-color: oklch(0.20 0.04 150);
+  }
+
+  /* Dark mode: force light text so it shows on dark card backgrounds */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: oklch(0.96 0.01 150) !important;
+    -webkit-text-fill-color: oklch(0.96 0.01 150) !important;
+    caret-color: oklch(0.96 0.01 150) !important;
+  }
+
+  ::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 0.75;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder,
+  .dark select::placeholder {
+    color: oklch(0.76 0.02 170) !important;
+    opacity: 0.75 !important;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-foreground);
+    -webkit-box-shadow: 0 0 0px 1000px var(--color-background) inset;
+    transition: background-color 5000s ease-in-out 0s;
   }
 
   h1,

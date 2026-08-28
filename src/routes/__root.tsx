@@ -129,6 +129,9 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { DailyQuestWidget } from "../components/DailyQuestWidget";
+import { DateTimeWidget } from "../components/DateTimeWidget";
+import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
+import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -136,8 +139,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <GlobalStudyTimerBar />
+        <NotificationCenterWidget />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <DateTimeWidget />
         <DailyQuestWidget />
         <BottomNav />
       </AuthProvider>

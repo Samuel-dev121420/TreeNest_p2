@@ -78,6 +78,7 @@ export function PiNotePage() {
   const [newFolderName, setNewFolderName] = useState("");
 
   const [editingNoteItem, setEditingNoteItem] = useState<PinoteItem | null>(null);
+  const [isNewNote, setIsNewNote] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
 
@@ -191,7 +192,7 @@ export function PiNotePage() {
   }
 
   function handleOpenCreateNote() {
-    const newNote: PinoteItem = {
+    const draftNote: PinoteItem = {
       id: generateId(),
       parentId: currentFolderId,
       name: "Catatan Baru",
@@ -200,24 +201,36 @@ export function PiNotePage() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setItems((prev) => [newNote, ...prev]);
-    setEditingNoteItem(newNote);
-    setNoteTitle(newNote.name);
+    setIsNewNote(true);
+    setEditingNoteItem(draftNote);
+    setNoteTitle(draftNote.name);
     setNoteContent("");
   }
 
   function handleSaveNote() {
     if (!editingNoteItem) return;
     const title = noteTitle.trim() || "Catatan Tanpa Judul";
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === editingNoteItem.id
-          ? { ...item, name: title, content: noteContent, updatedAt: Date.now() }
-          : item,
-      ),
-    );
+    if (isNewNote) {
+      const newNoteItem: PinoteItem = {
+        ...editingNoteItem,
+        name: title,
+        content: noteContent,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setItems((prev) => [newNoteItem, ...prev]);
+    } else {
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === editingNoteItem.id
+            ? { ...item, name: title, content: noteContent, updatedAt: Date.now() }
+            : item,
+        ),
+      );
+    }
     if (uid !== "guest") awardActivityExp(uid, "pinote_note");
     setEditingNoteItem(null);
+    setIsNewNote(false);
   }
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -326,7 +339,7 @@ export function PiNotePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari folder, catatan, atau file..."
-              className="w-full rounded-2xl border border-input bg-background py-2.5 pl-10 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             {searchQuery && (
               <button
@@ -342,19 +355,19 @@ export function PiNotePage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsCreatingFolder(true)}
-              className="flex items-center gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-300"
+              className="flex items-center gap-1.5 rounded-2xl bg-amber-600 dark:bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow-soft transition-all hover:bg-amber-700 dark:hover:bg-amber-600 active:scale-95"
             >
-              <Folder className="size-4 text-amber-500" /> + Folder
+              <Folder className="size-4" /> + Folder
             </button>
             <button
               onClick={handleOpenCreateNote}
-              className="flex items-center gap-1.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"
+              className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 dark:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-soft transition-all hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-95"
             >
-              <FileText className="size-4 text-emerald-500" /> + Catatan
+              <FileText className="size-4" /> + Catatan
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-2xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex items-center gap-1.5 rounded-2xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95"
             >
               <Upload className="size-4" /> Upload File
             </button>
@@ -422,7 +435,7 @@ export function PiNotePage() {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-col gap-2">
               {displayedItems.map((item) => {
                 const isFolder = item.type === "folder";
                 const isNote = item.type === "note";
@@ -435,7 +448,7 @@ export function PiNotePage() {
                 return (
                   <div
                     key={item.id}
-                    className="group relative flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background p-3.5 transition-all hover:border-primary/40 hover:shadow-sm"
+                    className="group flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-background dark:bg-secondary/40 dark:border-border/70 px-4 py-3 transition-all hover:border-primary/40 hover:shadow-sm"
                   >
                     {/* Main Clickable Item Info */}
                     <button
@@ -444,6 +457,7 @@ export function PiNotePage() {
                           setCurrentFolderId(item.id);
                           setSearchQuery("");
                         } else if (isNote) {
+                          setIsNewNote(false);
                           setEditingNoteItem(item);
                           setNoteTitle(item.name);
                           setNoteContent(item.content || "");
@@ -453,25 +467,30 @@ export function PiNotePage() {
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted/70">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/70 dark:bg-card/80 border border-border/40">
                         {getItemIcon(item)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
+                        <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors break-words [word-break:break-word] overflow-hidden">
                           {item.name}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      </div>
+                      {/* Info columns — visible on sm+ */}
+                      <div className="hidden sm:flex shrink-0 items-center gap-6 text-xs font-semibold text-muted-foreground">
+                        <span className="w-20 text-right">
                           {isFolder
                             ? `${childCount} item`
                             : isNote
-                              ? "Catatan Teks"
+                              ? "Catatan"
                               : formatBytes(item.fileSize)}
-                          {" • "}
+                        </span>
+                        <span className="w-24 text-right">
                           {new Date(item.updatedAt).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "short",
+                            year: "numeric",
                           })}
-                        </p>
+                        </span>
                       </div>
                     </button>
 
@@ -527,7 +546,7 @@ export function PiNotePage() {
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
               placeholder="Nama folder..."
-              className="mt-4 w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -561,7 +580,7 @@ export function PiNotePage() {
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
-              className="mt-4 w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -589,10 +608,13 @@ export function PiNotePage() {
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div className="flex items-center gap-2">
                 <FileText className="size-5 text-emerald-500" />
-                <span className="text-sm font-bold text-foreground">Editor Catatan</span>
+                <span className="text-sm font-bold text-foreground">Catatan</span>
               </div>
               <button
-                onClick={() => setEditingNoteItem(null)}
+                onClick={() => {
+                  setEditingNoteItem(null);
+                  setIsNewNote(false);
+                }}
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
               >
                 <X className="size-5" />
@@ -603,18 +625,21 @@ export function PiNotePage() {
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
                 placeholder="Judul Catatan"
-                className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
               />
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
                 placeholder="Tulis isi catatanmu di sini..."
-                className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-background p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
+                className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-3">
               <button
-                onClick={() => setEditingNoteItem(null)}
+                onClick={() => {
+                  setEditingNoteItem(null);
+                  setIsNewNote(false);
+                }}
                 className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
               >
                 Batal

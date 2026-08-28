@@ -46,11 +46,9 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
         if (!active) return;
         setFriendsCount(friends.length);
 
-        // Cari video yang sedang dijadikan featured & approved
+        // Cari video yang spesifik di-setting sebagai featured & approved
         const feat: GalleryVideo | null =
-          videos.find((v) => v.id === fid && v.status === "approved") ||
-          videos.find((v) => v.status === "approved") ||
-          null;
+          videos.find((v) => v.id === fid && v.status === "approved") || null;
         setFeaturedVideo(feat);
 
         if (feat) {

@@ -8,21 +8,23 @@ import {
   Lock,
   UserCheck,
   UserPlus,
+  Check,
   Instagram,
   Github,
   Twitter,
 } from "lucide-react";
 import { stageForLevel, expNeeded } from "@/lib/treenest";
 import { getUserProfile, type UserProfile } from "@/lib/firestore-service";
-import { type SocialLink, type Friend } from "@/lib/social";
+import { type SocialLink, type Friend, type Person } from "@/lib/social";
 
 type Props = {
   accountId: string;
   viewerUid?: string;
   viewerFriends?: Friend[];
   onClose: () => void;
-  onAddFriend?: () => void;
+  onAddFriend?: (person?: Person) => void;
   isFriend?: boolean;
+  isRequestSent?: boolean;
 };
 
 const PLATFORM_META: Record<
@@ -84,14 +86,22 @@ export function PublicProfileModal({
   onClose,
   onAddFriend,
   isFriend = false,
+  isRequestSent = false,
 }: Props) {
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requestSent, setRequestSent] = useState(isRequestSent);
 
   useEffect(() => {
-    // Find profile by accountId from Firestore
+    // Find profile by accountId or uid from Firestore
     import("@/lib/firestore-service")
-      .then(({ searchUserByAccountId }) => searchUserByAccountId(accountId))
+      .then(async ({ searchUserByAccountId, getUserProfile }) => {
+        let found = await searchUserByAccountId(accountId);
+        if (!found) {
+          found = await getUserProfile(accountId);
+        }
+        return found;
+      })
       .then((found) => {
         if (found) {
           setTargetProfile(found);
@@ -101,9 +111,25 @@ export function PublicProfileModal({
       .catch(() => setLoading(false));
   }, [accountId]);
 
+  const handleAddClick = () => {
+    if (!targetProfile || requestSent) return;
+    setRequestSent(true);
+    if (onAddFriend) {
+      onAddFriend({
+        uid: targetProfile.uid,
+        accountId: targetProfile.accountId,
+        name: targetProfile.username,
+        initials: targetProfile.initials || targetProfile.username.slice(0, 2).toUpperCase(),
+        hue: targetProfile.hue,
+        avatarUrl: targetProfile.avatarUrl,
+      });
+    }
+  };
+
+  const userLevel = Math.min(20, targetProfile?.level || 1);
   const isOwner = targetProfile?.uid === viewerUid;
-  const stage = targetProfile ? stageForLevel(targetProfile.level || 1) : null;
-  const need = targetProfile ? expNeeded(targetProfile.level || 1) : 50;
+  const stage = targetProfile ? stageForLevel(userLevel) : null;
+  const need = targetProfile ? expNeeded(userLevel) : 50;
   const expPct = targetProfile ? Math.min(100, Math.round(((targetProfile.exp || 0) / need) * 100)) : 0;
 
   // Filter social links based on viewer relationship
@@ -163,13 +189,18 @@ export function PublicProfileModal({
                 )}
 
                 <div className="flex gap-2 pb-1">
-                  {!isOwner && !isFriend && onAddFriend && (
+                  {!isOwner && !isFriend && onAddFriend && !requestSent && (
                     <button
-                      onClick={onAddFriend}
-                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+                      onClick={handleAddClick}
+                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft"
                     >
                       <UserPlus className="size-3.5" /> Tambah
                     </button>
+                  )}
+                  {!isOwner && !isFriend && requestSent && (
+                    <span className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground opacity-80 shadow-xs cursor-default">
+                      <Check className="size-3.5 text-primary" /> Terkirim
+                    </span>
                   )}
                   {isFriend && (
                     <span className="flex items-center gap-1.5 rounded-xl bg-leaf/10 px-3 py-2 text-xs font-bold text-leaf">
@@ -191,7 +222,7 @@ export function PublicProfileModal({
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <div className="flex flex-col items-center rounded-2xl bg-secondary/50 py-3 text-center">
                   <TreePine className="size-4 text-leaf" />
-                  <p className="mt-1 text-sm font-bold text-foreground">Lv {targetProfile.level || 1}</p>
+                  <p className="mt-1 text-sm font-bold text-foreground">Lv {userLevel}</p>
                   <p className="text-[10px] text-muted-foreground">{stage?.label?.split(" (")[0]}</p>
                 </div>
                 <div className="flex flex-col items-center rounded-2xl bg-secondary/50 py-3 text-center">

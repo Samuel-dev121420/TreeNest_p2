@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CheckSquare, ChevronLeft, ChevronRight, Plus, Trash2, Search, X } from "lucide-react";
+import {
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Search,
+  X,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  AlertCircle,
+  Bell,
+} from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -11,22 +23,25 @@ import { useAuth } from "@/lib/auth-context";
 export const Route = createFileRoute("/grow/dailytask")({
   head: () => ({
     meta: [
-      { title: "Daily Task — Tugas Harian TreeNest" },
-      { name: "description", content: "Atur checklist aktivitas harianmu di TreeNest." },
-      { property: "og:title", content: "Daily Task — Tugas Harian TreeNest" },
-      { property: "og:description", content: "Atur checklist aktivitas harianmu di TreeNest." },
+      { title: "Reminder — Pengingat Aktivitas TreeNest" },
+      { name: "description", content: "Atur pengingat dan checklist aktivitas harianmu di TreeNest." },
+      { property: "og:title", content: "Reminder — Pengingat Aktivitas TreeNest" },
+      { property: "og:description", content: "Atur pengingat dan checklist aktivitas harianmu di TreeNest." },
     ],
   }),
-  component: DailyTaskPage,
+  component: ReminderPage,
 });
 
-function DailyTaskPage() {
+function ReminderPage() {
   const { profile } = useAuth();
   const uid = profile?.uid ?? "guest";
   const [tasks, setTasks] = useLocalStorage<DailyTask[]>(`treenest.dailytask.tasks.${uid}`, []);
   const [dateKey, setDateKey] = useState(todayKey);
   const [newTask, setNewTask] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+
+  const todayStr = todayKey();
 
   const dayTasks = useMemo(
     () => tasks.filter((t) => t.date === dateKey).sort((a, b) => b.createdAt - a.createdAt),
@@ -38,11 +53,27 @@ function DailyTaskPage() {
     if (!q) return dayTasks;
     return dayTasks.filter((t) => t.text.toLowerCase().includes(q));
   }, [dayTasks, searchQuery]);
+
   const completedCount = useMemo(() => dayTasks.filter((t) => t.done).length, [dayTasks]);
   const progress = useMemo(
     () => (dayTasks.length ? (completedCount / dayTasks.length) * 100 : 0),
     [dayTasks, completedCount],
   );
+
+  // Group unchecked reminders for today and past days (date <= today)
+  const uncheckedSummary = useMemo(() => {
+    const map = new Map<string, number>();
+    tasks.forEach((t) => {
+      if (!t.done && t.date <= todayStr) {
+        map.set(t.date, (map.get(t.date) || 0) + 1);
+      }
+    });
+    const result: Array<{ date: string; count: number }> = [];
+    map.forEach((count, d) => {
+      result.push({ date: d, count });
+    });
+    return result.sort((a, b) => (b.date > a.date ? 1 : -1));
+  }, [tasks, todayStr]);
 
   function shiftDate(days: number) {
     const [y, m, d] = dateKey.split("-").map(Number);
@@ -78,19 +109,19 @@ function DailyTaskPage() {
   return (
     <PageShell title="" description="">
       <ToolHeader
-        title="Daily Task"
-        description="Checklist aktivitas harian, satu hari satu fokus."
+        title="Reminder"
+        description="Pengingat dan checklist aktivitas harian berdasarkan tanggal."
       />
 
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-2xl space-y-4">
         {/* Search Bar */}
-        <div className="relative mb-4">
+        <div className="relative">
           <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari tugas harian..."
-            className="w-full rounded-2xl border border-input bg-card py-2.5 pl-10 pr-9 text-sm outline-none shadow-soft focus:ring-2 focus:ring-ring"
+            placeholder="Cari pengingat..."
+            className="w-full rounded-2xl border border-input bg-card py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none shadow-soft focus:ring-2 focus:ring-ring"
           />
           {searchQuery && (
             <button
@@ -102,7 +133,7 @@ function DailyTaskPage() {
           )}
         </div>
 
-        {/* Date navigator */}
+        {/* Date navigator + Calendar Quick Picker Trigger */}
         <div className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-soft">
           <button
             onClick={() => shiftDate(-1)}
@@ -111,14 +142,25 @@ function DailyTaskPage() {
           >
             <ChevronLeft className="size-5" />
           </button>
-          <div className="text-center">
-            <p className="text-sm font-bold text-foreground">{formatDateLabel(dateKey)}</p>
-            {dateKey === todayKey() ? (
-              <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+          
+          <button
+            onClick={() => setShowDatePickerModal(true)}
+            className="group flex flex-col items-center rounded-2xl px-3 py-1.5 transition-all hover:bg-secondary/60 active:scale-95"
+            title="Pilih tanggal cepat"
+          >
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                {formatDateLabel(dateKey)}
+              </p>
+              <ChevronDown className="size-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-y-0.5" />
+            </div>
+            {dateKey === todayStr ? (
+              <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                 Hari ini
               </span>
             ) : null}
-          </div>
+          </button>
+
           <button
             onClick={() => shiftDate(1)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted"
@@ -129,9 +171,9 @@ function DailyTaskPage() {
         </div>
 
         {/* Progress */}
-        <div className="mt-4 rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold text-foreground">Progres hari ini</span>
+            <span className="font-semibold text-foreground">Progres Pengingat</span>
             <span className="text-muted-foreground">
               {completedCount}/{dayTasks.length}
             </span>
@@ -145,56 +187,62 @@ function DailyTaskPage() {
         </div>
 
         {/* Input */}
-        <div className="mt-4 flex gap-2">
+        <div className="flex gap-2 min-w-0">
           <input
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTask()}
-            placeholder="Tambah tugas baru..."
-            className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Tambah pengingat baru..."
+            className="min-w-0 flex-1 rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <button
             onClick={addTask}
             disabled={!newTask.trim()}
-            aria-label="Tambah tugas"
-            className="flex items-center justify-center rounded-xl bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            aria-label="Tambah pengingat"
+            className="shrink-0 flex items-center justify-center rounded-xl bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             <Plus className="size-5" />
           </button>
         </div>
 
         {/* List */}
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           {filteredDayTasks.length === 0 ? (
             <EmptyState
               icon={CheckSquare}
-              title={searchQuery ? "Tugas tidak ditemukan" : "Belum ada tugas"}
-              description={searchQuery ? "Coba kata kunci lain." : "Tambah tugas untuk hari ini."}
+              title={searchQuery ? "Pengingat tidak ditemukan" : "Belum ada pengingat"}
+              description={
+                searchQuery
+                  ? "Coba kata kunci lain."
+                  : `Tambah tugas untuk hari ${formatDateLabel(dateKey)}.`
+              }
             />
           ) : (
             filteredDayTasks.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 transition-colors hover:border-border"
+                className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3.5 transition-colors hover:border-border min-w-0 shadow-xs"
               >
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors ${
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors mt-0.5 ${
                     t.done
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-muted-foreground/30"
+                      : "border-muted-foreground/30 hover:border-primary/50"
                   }`}
                 >
                   {t.done ? <CheckSquare className="size-3.5" /> : null}
                 </button>
                 <span
-                  className={`flex-1 text-sm ${t.done ? "text-muted-foreground line-through" : "text-foreground"}`}
+                  className={`min-w-0 flex-1 text-sm font-medium break-words [word-break:break-word] overflow-hidden ${
+                    t.done ? "text-muted-foreground line-through" : "text-foreground"
+                  }`}
                 >
                   {t.text}
                 </span>
                 <button
                   onClick={() => deleteTask(t.id)}
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -202,7 +250,121 @@ function DailyTaskPage() {
             ))
           )}
         </div>
+
+        {/* Unchecked Reminders Summary Section (Centred Below Main List) */}
+        <div className="mt-8 pt-4 border-t border-border/60">
+          <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+            <div className="flex items-center justify-between gap-2 mb-3 border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Bell className="size-4 text-sun shrink-0" />
+                <h3 className="text-sm font-bold text-foreground">
+                  Pengingat Belum Dicentang
+                </h3>
+              </div>
+              {uncheckedSummary.length > 0 && (
+                <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-[11px] font-bold text-destructive">
+                  {uncheckedSummary.reduce((acc, curr) => acc + curr.count, 0)} tugas
+                </span>
+              )}
+            </div>
+
+            {uncheckedSummary.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-3">
+                Semua pengingat hari ini dan sebelumnya sudah selesai! 🎉
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {uncheckedSummary.map((item) => (
+                  <div
+                    key={item.date}
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border p-3.5 text-xs transition-all ${
+                      item.date === dateKey
+                        ? "border-primary/50 bg-primary/10"
+                        : "border-border/60 bg-secondary/30 hover:bg-secondary/60"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-bold text-foreground">
+                        {formatDateLabel(item.date)}
+                      </p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        Anda mempunyai <strong className="text-destructive">{item.count}</strong> pengingat yang belum dicentang pada tanggal ini.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setDateKey(item.date)}
+                      className="shrink-0 flex items-center justify-center gap-1 rounded-xl bg-primary/15 px-3 py-1.5 font-bold text-primary transition-all hover:bg-primary/25 active:scale-95"
+                    >
+                      Buka Tanggal Ini <ChevronRight className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* ── MODAL KALENDER / QUICK DATE PICKER ── */}
+      {showDatePickerModal && (
+        <div
+          onClick={() => setShowDatePickerModal(false)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="size-5 text-primary" />
+                <h3 className="text-base font-bold text-foreground">Pilih Tanggal</h3>
+              </div>
+              <button
+                onClick={() => setShowDatePickerModal(false)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                Pilih Tanggal, Bulan, dan Tahun:
+              </label>
+              <input
+                type="date"
+                value={dateKey}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setDateKey(e.target.value);
+                  }
+                }}
+                className="w-full rounded-2xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setDateKey(todayStr);
+                  setShowDatePickerModal(false);
+                }}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70"
+              >
+                Kembali ke Hari Ini
+              </button>
+              <button
+                onClick={() => setShowDatePickerModal(false)}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

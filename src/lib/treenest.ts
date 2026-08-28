@@ -13,11 +13,11 @@ export type TreeStage = {
 };
 
 export const TREE_STAGES: TreeStage[] = [
-  { key: "seedling", label: "Seedling (Benih)", image: tree1, height: 14 },
-  { key: "young_tree", label: "Young Tree (Pohon Muda)", image: tree2, height: 26 },
-  { key: "growing_tree", label: "Growing Tree (Pohon Tumbuh)", image: tree3, height: 62 },
-  { key: "mature_tree", label: "Mature Tree (Pohon Dewasa)", image: tree4, height: 80 },
-  { key: "house_tree", label: "House Tree (Rumah Pohon)", image: tree5, height: 96 },
+  { key: "seedling", label: "Seedling (Benih)", image: tree1, height: 22 },
+  { key: "young_tree", label: "Young Tree (Pohon Muda)", image: tree2, height: 38 },
+  { key: "growing_tree", label: "Growing Tree (Pohon Tumbuh)", image: tree3, height: 60 },
+  { key: "mature_tree", label: "Mature Tree (Pohon Dewasa)", image: tree4, height: 78 },
+  { key: "house_tree", label: "House Tree (Rumah Pohon)", image: tree5, height: 92 },
 ];
 
 /** Wujud pohon berdasarkan level (1-20+). */

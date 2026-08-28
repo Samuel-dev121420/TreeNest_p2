@@ -220,9 +220,17 @@ export async function awardActivityExp(
   let leveledUp = false;
 
   if (totalExp >= 50) {
-    newLevel = currentLevel + 1;
-    newExp = 0; // Reset to 0/50 EXP (excess not carried over)
-    leveledUp = true;
+    if (currentLevel >= 20) {
+      newLevel = 20;
+      newExp = 50;
+      leveledUp = false;
+    } else {
+      newLevel = Math.min(20, currentLevel + 1);
+      newExp = 0; // Reset to 0/50 EXP (excess not carried over)
+      leveledUp = true;
+    }
+  } else if (currentLevel >= 20) {
+    newLevel = 20;
   }
 
   // Save changes

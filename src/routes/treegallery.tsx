@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Images,
@@ -19,9 +19,12 @@ import {
   ExternalLink,
   Check,
   AlertTriangle,
+  MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { useAuth, useIsAdmin } from "@/lib/auth-context";
 import { storage, isFirebaseConfigured } from "@/lib/firebase";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -34,6 +37,8 @@ import {
   deleteGalleryVideoAdmin,
   setFeaturedVideo,
   getFeaturedVideoId,
+  getUserProfile,
+  type UserProfile,
 } from "@/lib/firestore-service";
 import {
   MAX_VIDEOS,
@@ -53,12 +58,12 @@ export const Route = createFileRoute("/treegallery")({
       {
         name: "description",
         content:
-          "Unggah maksimal tiga video berdurasi 30 detik, tunggu moderasi Admin, lalu pamerkan satu video di Rumah Pohon.",
+          "Unggah video berdurasi maksimal 3 menit & ukuran file maksimal 50 MB, atau tempelkan tautan (YouTube/TikTok) tanpa batasan durasi!",
       },
       { property: "og:title", content: "TreeGallery — Pamerkan Videomu" },
       {
         property: "og:description",
-        content: "Galeri video pribadi dengan moderasi Admin di TreeNest.",
+        content: "Galeri video dengan moderasi Admin di TreeNest.",
       },
     ],
   }),
@@ -75,13 +80,15 @@ const ACCEPT_TYPES = "video/mp4,video/webm,video/quicktime,video/ogg";
 const MAX_FILE_MB = 50;
 
 function TreeGalleryPage() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const isAdmin = useIsAdmin();
   const uid = profile?.uid ?? "guest";
 
   const [myVideos, setMyVideos] = useState<GalleryVideo[]>([]);
   const [adminVideos, setAdminVideos] = useState<GalleryVideo[]>([]);
-  const [adminTab, setAdminTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [uploaderProfiles, setUploaderProfiles] = useState<Record<string, UserProfile>>({});
+  const [adminTab, setAdminTab] = useState<"pending" | "history">("pending");
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const [loadingVideos, setLoadingVideos] = useState(true);
 
@@ -95,11 +102,33 @@ function TreeGalleryPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Modals
+  // Modals & Popups
   const [showConfirmUpload, setShowConfirmUpload] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<string | null>(null);
+  const [approvalComment, setApprovalComment] = useState("");
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [preview, setPreview] = useState<GalleryVideo | null>(null);
+  const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
+  const [selectedUploaderAccountId, setSelectedUploaderAccountId] = useState<string | null>(null);
+
+  const [readComments, setReadComments] = useState<Record<string, boolean>>(() => {
+    try {
+      const local = localStorage.getItem("treenest_read_comments");
+      return local ? JSON.parse(local) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const markCommentAsRead = useCallback((videoId: string) => {
+    setReadComments((prev) => {
+      if (prev[videoId]) return prev;
+      const updated = { ...prev, [videoId]: true };
+      localStorage.setItem("treenest_read_comments", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const [dragOver, setDragOver] = useState(false);
 
@@ -112,6 +141,14 @@ function TreeGalleryPage() {
     if (isAdmin) {
       const adminList = await getAllGalleryVideosAdmin(adminTab);
       setAdminVideos(adminList);
+
+      const uniqueUids = Array.from(new Set(adminList.map((v) => v.uid).filter(Boolean)));
+      const profiles = await Promise.all(uniqueUids.map((u) => getUserProfile(u)));
+      const map: Record<string, UserProfile> = {};
+      profiles.forEach((p) => {
+        if (p?.uid) map[p.uid] = p;
+      });
+      setUploaderProfiles(map);
     }
     setLoadingVideos(false);
   }, [uid, isAdmin, adminTab]);
@@ -122,20 +159,46 @@ function TreeGalleryPage() {
 
   // ─── Derived ──────────────────────────────────────────────────────
   const approved = useMemo(() => myVideos.filter((v) => v.status === "approved"), [myVideos]);
+  const displayedApproved = useMemo(() => approved.slice(0, 3), [approved]);
   const myNonApproved = useMemo(() => myVideos.filter((v) => v.status !== "approved"), [myVideos]);
-  const canUpload = myVideos.length < MAX_VIDEOS;
+  const canUpload = true;
 
   // ─── File handling ────────────────────────────────────────────────
+  function validateAndSetVideoFile(f: File) {
+    if (!f.type.startsWith("video/")) {
+      setUploadError("Hanya file video yang diterima (MP4, WebM, MOV).");
+      return;
+    }
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      setUploadError(`Ukuran file maksimal ${MAX_FILE_MB}MB.`);
+      return;
+    }
+
+    const tempVideo = document.createElement("video");
+    tempVideo.preload = "metadata";
+    tempVideo.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(tempVideo.src);
+      if (tempVideo.duration > MAX_DURATION_SEC) {
+        setUploadError(`Durasi video file maksimal ${MAX_DURATION_SEC / 60} menit (${MAX_DURATION_SEC} detik).`);
+      } else {
+        setFile(f);
+        setUploadError(null);
+      }
+    };
+    tempVideo.onerror = () => {
+      setFile(f);
+      setUploadError(null);
+    };
+    tempVideo.src = URL.createObjectURL(f);
+  }
+
   function handleFileDrop(e: React.DragEvent) {
     if (uploading) return;
     e.preventDefault();
     setDragOver(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.type.startsWith("video/")) {
-      setFile(dropped);
-      setUploadError(null);
-    } else {
-      setUploadError("Hanya file video yang diterima (MP4, WebM, MOV).");
+    if (dropped) {
+      validateAndSetVideoFile(dropped);
     }
   }
 
@@ -143,12 +206,7 @@ function TreeGalleryPage() {
     if (uploading) return;
     const selected = e.target.files?.[0] ?? null;
     if (selected) {
-      if (selected.size > MAX_FILE_MB * 1024 * 1024) {
-        setUploadError(`Ukuran file maksimal ${MAX_FILE_MB}MB.`);
-        return;
-      }
-      setFile(selected);
-      setUploadError(null);
+      validateAndSetVideoFile(selected);
     }
   }
 
@@ -296,14 +354,46 @@ function TreeGalleryPage() {
   }
 
   // ─── Moderate (admin) ─────────────────────────────────────────────
-  async function handleApprove(videoId: string) {
-    await moderateVideo(videoId, "approved");
+  async function handleApproveConfirm() {
+    if (!approveTarget) return;
+    const targetVideo =
+      myVideos.find((v) => v.id === approveTarget) ||
+      adminVideos.find((v) => v.id === approveTarget);
+    await moderateVideo(approveTarget, "approved", approvalComment.trim());
+    if (targetVideo) {
+      import("@/lib/notification-service").then(({ addNotification }) => {
+        addNotification({
+          type: "video_approved",
+          title: "Video Disetujui! 🎉",
+          message: `Video '${targetVideo.title}' milikmu telah disetujui Admin dan tayang di TreeGallery!`,
+          link: "/treegallery",
+          targetUid: targetVideo.uid,
+        });
+      });
+    }
+    setApproveTarget(null);
+    setApprovalComment("");
     await loadData();
   }
 
   async function handleRejectConfirm() {
     if (!rejectTarget) return;
-    await moderateVideo(rejectTarget, "rejected", rejectReason.trim() || "Tidak memenuhi aturan.");
+    const targetVideo =
+      myVideos.find((v) => v.id === rejectTarget) ||
+      adminVideos.find((v) => v.id === rejectTarget);
+    const reasonText = rejectReason.trim() || "Tidak memenuhi aturan.";
+    await moderateVideo(rejectTarget, "rejected", reasonText);
+    if (targetVideo) {
+      import("@/lib/notification-service").then(({ addNotification }) => {
+        addNotification({
+          type: "video_rejected",
+          title: "Video Ditolak Admin",
+          message: `Video '${targetVideo.title}' ditolak Admin. Alasan: ${reasonText}`,
+          link: "/treegallery",
+          targetUid: targetVideo.uid,
+        });
+      });
+    }
     setRejectTarget(null);
     setRejectReason("");
     await loadData();
@@ -345,11 +435,12 @@ function TreeGalleryPage() {
                 Judul Video
               </label>
               <input
+                type="text"
                 value={title}
                 disabled={uploading}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Contoh: Belajar Santai di Pohon"
-                className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -459,7 +550,7 @@ function TreeGalleryPage() {
                   disabled={uploading}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://youtube.com/... atau https://tiktok.com/..."
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-muted-foreground">
                   Mendukung: YouTube, TikTok, Instagram Reels, atau URL video langsung lainnya.
@@ -534,56 +625,85 @@ function TreeGalleryPage() {
             />
           </div>
         ) : (
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {approved.map((v) => {
-              const yt = youtubeId(v.url);
-              const isFeatured = featuredId === v.id;
-              return (
-                <div
-                  key={v.id}
-                  className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-soft"
-                >
-                  <button
-                    onClick={() => setPreview(v)}
-                    className="relative aspect-video w-full overflow-hidden bg-secondary"
+          <div className="mt-3 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedApproved.map((v) => {
+                const yt = youtubeId(v.url);
+                const isFeatured = featuredId === v.id;
+                return (
+                  <div
+                    key={v.id}
+                    className="group relative flex flex-col overflow-hidden rounded-3xl border-2 border-border/80 bg-card shadow-soft dark:border-border/70 hover:border-primary/50 transition-all"
                   >
-                    <VideoThumbnail video={v} yt={yt} />
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
-                      <Play className="size-10 text-white drop-shadow-lg opacity-0 transition-opacity group-hover:opacity-100" />
-                    </span>
-                    {isFeatured && (
-                      <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-leaf px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-soft">
-                        <Star className="size-3 fill-current" /> Rumah Pohon
+                    <button
+                      onClick={() => setPreview(v)}
+                      className="relative aspect-video w-full overflow-hidden bg-secondary cursor-pointer"
+                    >
+                      <VideoThumbnail video={v} yt={yt} />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                        <Play className="size-10 text-white drop-shadow-lg opacity-0 transition-opacity group-hover:opacity-100" />
                       </span>
-                    )}
-                    <SourceBadge source={v.sourceType} />
-                  </button>
-                  <div className="flex flex-1 flex-col p-3">
-                    <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
-                    <p className="text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        onClick={() => toggleFeatured(v.id)}
-                        className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
-                          isFeatured
-                            ? "bg-leaf/15 text-leaf"
-                            : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                        }`}
-                      >
-                        {isFeatured ? "Tampil di Rumah Pohon" : "Jadikan Tayangan"}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(v.id)}
-                        aria-label="Hapus video"
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {isFeatured && (
+                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-leaf px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-soft">
+                          <Star className="size-3 fill-current" /> Rumah Pohon
+                        </span>
+                      )}
+                      <SourceBadge source={v.sourceType} />
+                    </button>
+                    <div className="flex flex-1 flex-col p-3">
+                      <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
+                      <p className="text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFeatured(v.id)}
+                          className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
+                            isFeatured
+                              ? "bg-leaf/15 text-leaf font-bold"
+                              : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                          }`}
+                        >
+                          {isFeatured ? "Tampil di Rumah Pohon" : "Jadikan Tayangan"}
+                        </button>
+                        
+                        {/* Tombol Catatan Admin */}
+                        <button
+                          onClick={() => {
+                            setViewCommentVideo(v);
+                            markCommentAsRead(v.id);
+                          }}
+                          title="Lihat Catatan Admin"
+                          className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                        >
+                          <MessageSquare className="size-4" />
+                          {/* Red dot badge jika ada catatan admin yang belum dibaca */}
+                          {((v.status === "approved" && v.approvalComment) || (v.status === "rejected" && v.reason)) && !readComments[v.id] && (
+                            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(v.id)}
+                          aria-label="Hapus video"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Tombol Tampilkan Lainnya jika ada video tambahan atau untuk membuka semua video */}
+            {approved.length > 3 && (
+              <button
+                onClick={() => navigate({ to: "/treegallery-all" })}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 dark:bg-primary/20 py-3 text-xs font-bold text-primary shadow-soft transition-all hover:bg-primary/20 dark:hover:bg-primary/30 active:scale-[0.99] cursor-pointer"
+              >
+                Tampilkan Lainnya <ChevronDown className="size-4" />
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -614,6 +734,22 @@ function TreeGalleryPage() {
                     )}
                   </div>
                   <SourceBadge source={v.sourceType} small />
+
+                  {/* Tombol Catatan Admin untuk Video Belum Disetujui/Ditolak */}
+                  <button
+                    onClick={() => {
+                      setViewCommentVideo(v);
+                      markCommentAsRead(v.id);
+                    }}
+                    title="Lihat Catatan Admin"
+                    className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                  >
+                    <MessageSquare className="size-4" />
+                    {((v.status === "approved" && v.approvalComment) || (v.status === "rejected" && v.reason)) && !readComments[v.id] && (
+                      <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+                    )}
+                  </button>
+
                   <button
                     onClick={() => handleDelete(v.id)}
                     aria-label="Hapus video"
@@ -628,7 +764,7 @@ function TreeGalleryPage() {
         </section>
       )}
 
-      {/* ── PANEL ADMIN — SEMUA RIWAYAT & DUKUNGAN TAB ── */}
+      {/* ── PANEL ADMIN — PANEL MODERASI & RIWAYAT TAB ── */}
       {isAdmin && (
         <section className="mt-10 rounded-3xl border border-primary/20 bg-card p-5 shadow-soft">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
@@ -643,19 +779,26 @@ function TreeGalleryPage() {
                 </p>
               </div>
             </div>
+            {/* Tombol Pintasan ke Halaman Khusus Moderasi Admin (Styling solid persis halaman Account) */}
+            <button
+              onClick={() => navigate({ to: "/admin" })}
+              className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+            >
+              <ShieldCheck className="size-4" />
+              Buka Panel Moderasi Admin
+              <ExternalLink className="size-3.5" />
+            </button>
           </div>
 
-          {/* Tab Filter Admin */}
+          {/* Tab Filter Admin - hanya 2 tab */}
           <div className="mt-4 flex flex-wrap gap-2">
             {[
               { key: "pending", label: "Menunggu Moderasi" },
-              { key: "approved", label: "Disetujui" },
-              { key: "rejected", label: "Ditolak" },
-              { key: "all", label: "Semua Video" },
+              { key: "history", label: "Riwayat Video" },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setAdminTab(tab.key as "all" | "pending" | "approved" | "rejected")}
+                onClick={() => setAdminTab(tab.key as "pending" | "history")}
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                   adminTab === tab.key
                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -673,7 +816,7 @@ function TreeGalleryPage() {
               <EmptyState
                 icon={CheckCircle2}
                 title="Tidak ada video"
-                description={`Tidak ada video dalam kategori "${adminTab}".`}
+                description={`Tidak ada video dalam kategori "${adminTab === "pending" ? "Menunggu Moderasi" : "Riwayat Video"}".`}
               />
             </div>
           ) : (
@@ -682,10 +825,11 @@ function TreeGalleryPage() {
                 const yt = youtubeId(v.url);
                 const meta = STATUS_META[v.status];
                 const StatusIcon = meta.icon;
+                const uploader = uploaderProfiles[v.uid];
                 return (
                   <div
                     key={v.id}
-                    className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background p-3.5 sm:flex-row sm:items-center"
+                    className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background dark:bg-secondary/40 p-3.5 sm:flex-row sm:items-center"
                   >
                     {/* Thumbnail */}
                     <button
@@ -700,46 +844,80 @@ function TreeGalleryPage() {
                     </button>
 
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${meta.bg} ${meta.color}`}
                         >
                           <StatusIcon className="size-3" />
                           {meta.label}
                         </span>
-                        <p className="text-xs text-muted-foreground">
-                          UID: <code className="font-mono text-[10px]">{v.uid}</code>
-                        </p>
                       </div>
 
                       <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
+
+                      {/* Username & ID Akun Pengunggah (Bisa diklik untuk buka PublicProfileModal) */}
+                      {uploader ? (
+                        <p className="text-xs font-semibold text-foreground">
+                          Pengunggah:{" "}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUploaderAccountId(uploader.accountId || uploader.uid)}
+                            className="font-bold text-primary hover:underline"
+                          >
+                            {uploader.username} ({uploader.accountId})
+                          </button>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          UID Pengunggah:{" "}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUploaderAccountId(v.uid)}
+                            className="font-mono text-primary hover:underline"
+                          >
+                            {v.uid}
+                          </button>
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Diunggah: {timeAgo(v.submittedAt)}
                       </p>
-                      {v.reason && (
-                        <p className="text-xs text-destructive">Alasan Penolakan: {v.reason}</p>
+
+                      {/* Catatan persetujuan jika ada */}
+                      {v.status === "approved" && v.approvalComment && (
+                        <p className="mt-1 rounded-xl bg-leaf/10 px-2.5 py-1.5 text-xs font-medium text-leaf">
+                          Catatan Admin: {v.approvalComment}
+                        </p>
+                      )}
+                      {/* Alasan penolakan jika ada */}
+                      {v.status === "rejected" && v.reason && (
+                        <p className="mt-1 text-xs text-destructive">Alasan Penolakan: {v.reason}</p>
                       )}
                     </div>
 
+                    {/* Tombol Aksi — HANYA tampil jika video masih pending */}
                     <div className="flex shrink-0 items-center gap-1.5">
-                      {v.status !== "approved" && (
-                        <button
-                          onClick={() => handleApprove(v.id)}
-                          className="flex items-center gap-1 rounded-lg bg-leaf/10 px-2.5 py-1.5 text-xs font-semibold text-leaf transition-colors hover:bg-leaf/20"
-                        >
-                          <Check className="size-3.5" /> Setujui
-                        </button>
-                      )}
-                      {v.status !== "rejected" && (
-                        <button
-                          onClick={() => {
-                            setRejectTarget(v.id);
-                            setRejectReason("");
-                          }}
-                          className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/20"
-                        >
-                          <X className="size-3.5" /> Tolak
-                        </button>
+                      {v.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setApproveTarget(v.id);
+                              setApprovalComment("");
+                            }}
+                            className="flex items-center gap-1 rounded-lg bg-leaf/10 px-2.5 py-1.5 text-xs font-semibold text-leaf transition-colors hover:bg-leaf/20"
+                          >
+                            <Check className="size-3.5" /> Setujui
+                          </button>
+                          <button
+                            onClick={() => {
+                              setRejectTarget(v.id);
+                              setRejectReason("");
+                            }}
+                            className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/20"
+                          >
+                            <X className="size-3.5" /> Tolak
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => handleAdminDelete(v.id)}
@@ -796,9 +974,49 @@ function TreeGalleryPage() {
         </div>
       )}
 
-      {/* ── MODAL PREVIEW & REJECT ── */}
+      {/* ── MODAL PREVIEW ── */}
       {preview && <PreviewModal video={preview} onClose={() => setPreview(null)} />}
 
+      {/* ── MODAL KOMENTAR PERSETUJUAN (Opsional) ── */}
+      {approveTarget && (
+        <div
+          onClick={() => setApproveTarget(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float"
+          >
+            <p className="mb-1 text-base font-bold text-foreground">Komentar Persetujuan (Opsional)</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Tuliskan catatan positif untuk pemilik video (opsional). Kosongkan jika tidak diperlukan.
+            </p>
+            <textarea
+              value={approvalComment}
+              onChange={(e) => setApprovalComment(e.target.value)}
+              placeholder="Contoh: Keren banget videonya! Tetap semangat berkarya."
+              rows={3}
+              className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring"
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={handleApproveConfirm}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Konfirmasi Setujui
+              </button>
+              <button
+                onClick={() => setApproveTarget(null)}
+                className="flex-1 rounded-xl bg-secondary py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary/70"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL REJECT ── */}
       {rejectTarget && (
         <div
           onClick={() => setRejectTarget(null)}
@@ -814,7 +1032,7 @@ function TreeGalleryPage() {
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Contoh: Durasi video melebihi 30 detik atau konten tidak sesuai."
               rows={3}
-              className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="mt-4 flex gap-2">
               <button
@@ -832,6 +1050,83 @@ function TreeGalleryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── MODAL LIHAT CATATAN ADMIN UNTUK USER ── */}
+      {viewCommentVideo && (
+        <div
+          onClick={() => setViewCommentVideo(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float text-center space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+              <MessageSquare className="size-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Video: <strong>"{viewCommentVideo.title}"</strong>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-secondary/40 p-4 text-left">
+              {viewCommentVideo.status === "approved" ? (
+                viewCommentVideo.approvalComment ? (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-leaf">
+                      Pesan Persetujuan Admin:
+                    </p>
+                    <p className="mt-1.5 text-xs font-medium text-foreground italic">
+                      "{viewCommentVideo.approvalComment}"
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Admin tidak memberikan catatan khusus untuk persetujuan video ini.
+                  </p>
+                )
+              ) : viewCommentVideo.status === "rejected" ? (
+                viewCommentVideo.reason ? (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                      Alasan Penolakan Admin:
+                    </p>
+                    <p className="mt-1.5 text-xs font-medium text-foreground italic">
+                      "{viewCommentVideo.reason}"
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Admin tidak mencantumkan alasan penolakan spesifik.
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground text-center">
+                  Video Anda sedang dalam antrean moderasi Admin.
+                </p>
+              )}
+            </div>
+
+            <button
+              onClick={() => setViewCommentVideo(null)}
+              className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PUBLIC PROFILE MODAL (Saat Admin klik uploader) ── */}
+      {selectedUploaderAccountId && (
+        <PublicProfileModal
+          accountId={selectedUploaderAccountId}
+          viewerUid={uid}
+          onClose={() => setSelectedUploaderAccountId(null)}
+        />
       )}
     </PageShell>
   );

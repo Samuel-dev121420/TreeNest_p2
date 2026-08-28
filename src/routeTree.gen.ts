@@ -16,6 +16,7 @@ import { Route as FriendClubRouteImport } from './routes/friend-club'
 import { Route as GrowRouteImport } from './routes/grow'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as TreegalleryRouteImport } from './routes/treegallery'
+import { Route as TreegalleryAllRouteImport } from './routes/treegallery-all'
 import { Route as GrowIndexRouteImport } from './routes/grow.index'
 import { Route as GrowDailytaskRouteImport } from './routes/grow.dailytask'
 import { Route as GrowFlashcardRouteImport } from './routes/grow.flashcard'
@@ -57,6 +58,11 @@ const TreegalleryRoute = TreegalleryRouteImport.update({
   path: '/treegallery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TreegalleryAllRoute = TreegalleryAllRouteImport.update({
+  id: '/treegallery-all',
+  path: '/treegallery-all',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GrowIndexRoute = GrowIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/grow': typeof GrowRouteWithChildren
   '/login': typeof LoginRoute
   '/treegallery': typeof TreegalleryRoute
+  '/treegallery-all': typeof TreegalleryAllRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
   '/grow/pinote': typeof GrowPinoteRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/friend-club': typeof FriendClubRoute
   '/login': typeof LoginRoute
   '/treegallery': typeof TreegalleryRoute
+  '/treegallery-all': typeof TreegalleryAllRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
   '/grow/pinote': typeof GrowPinoteRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/grow': typeof GrowRouteWithChildren
   '/login': typeof LoginRoute
   '/treegallery': typeof TreegalleryRoute
+  '/treegallery-all': typeof TreegalleryAllRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
   '/grow/pinote': typeof GrowPinoteRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/grow'
     | '/login'
     | '/treegallery'
+    | '/treegallery-all'
     | '/grow/dailytask'
     | '/grow/flashcard'
     | '/grow/pinote'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/friend-club'
     | '/login'
     | '/treegallery'
+    | '/treegallery-all'
     | '/grow/dailytask'
     | '/grow/flashcard'
     | '/grow/pinote'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/grow'
     | '/login'
     | '/treegallery'
+    | '/treegallery-all'
     | '/grow/dailytask'
     | '/grow/flashcard'
     | '/grow/pinote'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   GrowRoute: typeof GrowRouteWithChildren
   LoginRoute: typeof LoginRoute
   TreegalleryRoute: typeof TreegalleryRoute
+  TreegalleryAllRoute: typeof TreegalleryAllRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/treegallery'
       fullPath: '/treegallery'
       preLoaderRoute: typeof TreegalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/treegallery-all': {
+      id: '/treegallery-all'
+      path: '/treegallery-all'
+      fullPath: '/treegallery-all'
+      preLoaderRoute: typeof TreegalleryAllRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grow/': {
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   GrowRoute: GrowRouteWithChildren,
   LoginRoute: LoginRoute,
   TreegalleryRoute: TreegalleryRoute,
+  TreegalleryAllRoute: TreegalleryAllRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

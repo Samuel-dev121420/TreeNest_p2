@@ -4,6 +4,7 @@ import { Users, Search, UserPlus, UserCheck, Clock, X, Trash2, Star, Check } fro
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   MAX_FEATURED,
   type Friend,
@@ -81,10 +82,17 @@ function FriendClubPage() {
         getSentFriendRequests(uid, profile?.accountId),
         getFeaturedFriends(uid),
       ]);
+      const validFeat = featList.filter((fid) =>
+        fList.some((f) => f.id === fid || f.accountId === fid),
+      );
+      if (validFeat.length !== featList.length) {
+        updateFeaturedFriends(uid, validFeat).catch(() => {});
+      }
+
       setFriends(fList);
       setRequests(inReqs);
       setSent(outReqs);
-      setFeatured(featList);
+      setFeatured(validFeat);
     } catch (err) {
       console.error("Error loading social data:", err);
     } finally {
@@ -204,10 +212,63 @@ function FriendClubPage() {
     await updateFeaturedFriends(uid, updated);
   }
 
-  const tabs: { key: Tab; label: string; badge?: number }[] = [
+  // Track viewed states for red dot notifications
+  const [viewedRequestsCount, setViewedRequestsCount] = useLocalStorage<number>(
+    `treenest.friend.viewed_requests.${uid}`,
+    0,
+  );
+  const [viewedFriendsCount, setViewedFriendsCount] = useLocalStorage<number>(
+    `treenest.friend.viewed_friends.${uid}`,
+    0,
+  );
+
+  const hasNewRequests = pendingIn.length > 0 && pendingIn.length > viewedRequestsCount;
+  const hasNewFriends = friends.length > 0 && friends.length > viewedFriendsCount;
+
+  // Trigger global notifications for incoming requests & new friends
+  useEffect(() => {
+    if (pendingIn.length > 0) {
+      pendingIn.forEach((req) => {
+        import("@/lib/notification-service").then(({ addNotification }) => {
+          addNotification({
+            type: "friend_request_received",
+            title: "Permintaan Pertemanan",
+            message: `${req.from.name || "Seseorang"} menyukai profilmu dan mengirim permintaan pertemanan.`,
+            link: "/friend-club?tab=requests",
+            targetUid: uid,
+          });
+        });
+      });
+    }
+  }, [pendingIn, uid]);
+
+  useEffect(() => {
+    if (hasNewFriends) {
+      import("@/lib/notification-service").then(({ addNotification }) => {
+        addNotification({
+          type: "friend_accepted",
+          title: "Teman Baru Terhubung! 🎉",
+          message: "Kamu memiliki teman baru yang sudah resmi berteman.",
+          link: "/friend-club?tab=list",
+          targetUid: uid,
+        });
+      });
+    }
+  }, [hasNewFriends, uid]);
+
+  function handleSelectTab(t: Tab) {
+    setTab(t);
+    if (t === "requests") {
+      setViewedRequestsCount(pendingIn.length);
+    } else if (t === "list") {
+      setViewedFriendsCount(friends.length);
+    }
+  }
+
+  const tabs: { key: Tab; label: string; badge?: number; showRedDot?: boolean }[] = [
     { key: "search", label: "Cari Teman" },
-    { key: "requests", label: "Permintaan", badge: pendingIn.length },
-    { key: "list", label: "Daftar Teman" },
+    { key: "requests", label: "Permintaan", badge: pendingIn.length, showRedDot: hasNewRequests },
+    { key: "list", label: "Daftar Teman", showRedDot: hasNewFriends },
   ];
 
   return (
@@ -220,7 +281,7 @@ function FriendClubPage() {
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => handleSelectTab(t.key)}
             className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
               tab === t.key
                 ? "bg-primary text-primary-foreground shadow-soft"
@@ -239,6 +300,9 @@ function FriendClubPage() {
                 {t.badge}
               </span>
             ) : null}
+            {t.showRedDot && (
+              <span className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+            )}
           </button>
         ))}
       </div>
@@ -372,16 +436,15 @@ function FriendClubPage() {
           accountId={viewingAccountId}
           viewerUid={uid}
           viewerFriends={friends}
-          isFriend={friends.some((f) => f.accountId === viewingAccountId)}
+          isFriend={friends.some((f) => f.accountId === viewingAccountId || f.id === viewingAccountId)}
+          isRequestSent={sent.some(
+            (s) => s.status === "pending" && (s.to.accountId === viewingAccountId || s.to.uid === viewingAccountId)
+          )}
           onClose={() => setViewingAccountId(null)}
-          onAddFriend={() => {
-            handleSendRequest({
-              accountId: viewingAccountId,
-              name: viewingAccountId,
-              initials: viewingAccountId.slice(0, 2),
-              hue: 150,
-            });
-            setViewingAccountId(null);
+          onAddFriend={(person) => {
+            if (person) {
+              handleSendRequest(person);
+            }
           }}
         />
       )}
@@ -404,6 +467,7 @@ function SearchPanel({
   goList: () => void;
   onViewProfile: (accountId: string) => void;
 }) {
+  const { profile } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -418,7 +482,7 @@ function SearchPanel({
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const list = await searchUsers(term);
+        const list = await searchUsers(term, profile?.uid);
         setResults(list);
       } catch (err) {
         console.error("Error searching users:", err);
@@ -429,7 +493,7 @@ function SearchPanel({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, profile?.uid]);
 
   return (
     <div className="space-y-4">
@@ -439,8 +503,8 @@ function SearchPanel({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari berdasarkan nama atau ID Akun (mis. TN-4821)..."
-          className="w-full rounded-2xl border border-input bg-card py-3 pl-10 pr-4 text-sm font-medium text-foreground shadow-soft placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          placeholder="Cari berdasarkan nama atau ID Akun"
+          className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-3 pl-10 pr-4 text-sm font-medium shadow-soft focus:border-primary focus:outline-none"
         />
       </div>
 
@@ -647,14 +711,19 @@ function ListPanel({
   onRemove: (friend: Friend) => void;
   onViewProfile: (accountId: string) => void;
 }) {
+  // Hanya hitung dan tampilkan teman yang benar-benar aktif berteman
+  const validFeatured = useMemo(() => {
+    return featured.filter((fid) => friends.some((f) => f.id === fid || f.accountId === fid));
+  }, [featured, friends]);
+
   // tampilkan featured terlebih dahulu
   const sorted = useMemo(() => {
     return [...friends].sort((a, b) => {
-      const af = featured.includes(a.id) || featured.includes(a.accountId) ? 0 : 1;
-      const bf = featured.includes(b.id) || featured.includes(b.accountId) ? 0 : 1;
+      const af = validFeatured.includes(a.id) || validFeatured.includes(a.accountId) ? 0 : 1;
+      const bf = validFeatured.includes(b.id) || validFeatured.includes(b.accountId) ? 0 : 1;
       return af - bf || b.since - a.since;
     });
-  }, [friends, featured]);
+  }, [friends, validFeatured]);
 
   return (
     <div>
@@ -663,7 +732,7 @@ function ListPanel({
         <p className="text-xs text-muted-foreground">
           Pilih hingga <span className="font-bold text-foreground">{maxFeatured} teman</span> untuk
           tampil berjalan-jalan di Home. Terpilih:{" "}
-          <span className="font-bold text-leaf">{featured.length}</span>/{maxFeatured}
+          <span className="font-bold text-leaf">{validFeatured.length}</span>/{maxFeatured}
         </p>
       </div>
 
@@ -676,8 +745,8 @@ function ListPanel({
       ) : (
         <div className="space-y-2">
           {sorted.map((f) => {
-            const isFeatured = featured.includes(f.id) || featured.includes(f.accountId);
-            const canFeature = isFeatured || featured.length < maxFeatured;
+            const isFeatured = validFeatured.includes(f.id) || validFeatured.includes(f.accountId);
+            const canFeature = isFeatured || validFeatured.length < maxFeatured;
             return (
               <div
                 key={f.id || f.accountId}

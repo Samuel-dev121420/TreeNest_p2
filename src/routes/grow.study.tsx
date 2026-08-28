@@ -1,13 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock, Play, Pause, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { generateId, type StudySession } from "@/lib/grow-tools";
+import { type StudySession } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
-import { awardActivityExp } from "@/lib/exp-service";
+import {
+  getStudyTimerSnapshot,
+  startStudyTimer,
+  pauseStudyTimer,
+  resumeStudyTimer,
+  resetStudyTimer,
+  markStudySessionSaved,
+  subscribeStudyTimer,
+} from "@/lib/study-timer-service";
 
 export const Route = createFileRoute("/grow/study")({
   head: () => ({
@@ -27,78 +35,75 @@ export const Route = createFileRoute("/grow/study")({
 const PRESETS = [15, 25, 45, 60];
 
 function StudyPage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile } = useAuth();
   const uid = profile?.uid ?? "guest";
   const [sessions, setSessions] = useLocalStorage<StudySession[]>(
     `treenest.study.sessions.${uid}`,
     [],
   );
-  const [duration, setDuration] = useState(25);
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const [finished, setFinished] = useState(false);
-  const intervalRef = useRef<number | null>(null);
 
-  const totalSeconds = duration * 60;
-  const progress = useMemo(
-    () => ((totalSeconds - secondsLeft) / totalSeconds) * 100,
-    [secondsLeft, totalSeconds],
-  );
+  const [timerSnap, setTimerSnap] = useState(getStudyTimerSnapshot());
+  const [selectedMinutes, setSelectedMinutes] = useState(timerSnap.durationMinutes || 25);
 
   useEffect(() => {
-    if (!running) return;
-
-    intervalRef.current = window.setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          setRunning(false);
-          setFinished(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    const update = () => {
+      const snap = getStudyTimerSnapshot();
+      setTimerSnap(snap);
+      if (snap.status === "completed") {
+        markStudySessionSaved(uid);
+      }
     };
-  }, [running]);
+    update();
+    const unsub = subscribeStudyTimer(update);
+    const interval = setInterval(update, 1000);
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, [uid]);
 
-  useEffect(() => {
-    if (!finished) return;
+  const totalSeconds = (selectedMinutes || 25) * 60;
+  const secondsLeft = timerSnap.secondsLeft;
+  const finished = timerSnap.status === "completed";
+  const running = timerSnap.status === "running";
 
-    setSessions((prev) => [
-      { id: generateId(), duration, completedAt: Date.now() },
-      ...prev.slice(0, 49),
-    ]);
+  const progress = useMemo(() => {
+    if (finished) return 100;
+    const elapsed = totalSeconds - secondsLeft;
+    return Math.min(100, Math.max(0, (elapsed / totalSeconds) * 100));
+  }, [finished, totalSeconds, secondsLeft]);
 
-    if (uid !== "guest") awardActivityExp(uid, "study");
-  }, [finished]);
-
-  function formatTime(totalSeconds: number) {
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
+  function formatTime(totalSec: number) {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
 
-  function reset() {
-    setRunning(false);
-    setFinished(false);
-    setSecondsLeft(duration * 60);
+  function handleStartPause() {
+    if (running) {
+      pauseStudyTimer();
+    } else if (timerSnap.status === "paused") {
+      resumeStudyTimer();
+    } else {
+      startStudyTimer(selectedMinutes);
+    }
+  }
+
+  function handleReset() {
+    resetStudyTimer(selectedMinutes);
   }
 
   function changeDuration(minutes: number) {
-    setDuration(minutes);
-    setSecondsLeft(minutes * 60);
-    setRunning(false);
-    setFinished(false);
+    const valid = Math.max(1, Math.min(180, minutes));
+    setSelectedMinutes(valid);
+    resetStudyTimer(valid);
   }
 
   return (
     <PageShell title="" description="">
       <ToolHeader
         title="Study Session"
-        description="Atur durasi fokus, lalu mulai sesi belajarmu."
+        description="Atur durasi fokus, lalu mulai sesi belajarmu. Timer tetap berjalan walau kamu keluar dari halaman ini."
       />
 
       <div className="mx-auto flex max-w-2xl flex-col items-center">
@@ -122,16 +127,16 @@ function StudyPage() {
           <div className="z-10 text-center">
             {finished ? (
               <>
-                <Sparkles className="mx-auto size-10 text-primary" />
+                <Sparkles className="mx-auto size-10 text-primary animate-bounce" />
                 <p className="mt-2 text-xl font-bold text-foreground">Sesi selesai!</p>
-                <p className="text-sm text-muted-foreground">+{duration} menit fokus</p>
+                <p className="text-sm text-muted-foreground">+{selectedMinutes} menit fokus</p>
               </>
             ) : (
               <>
                 <p className="text-6xl font-bold tracking-tight text-foreground">
                   {formatTime(secondsLeft)}
                 </p>
-                <p className="mt-2 text-sm text-muted-foreground">dari {duration} menit</p>
+                <p className="mt-2 text-sm text-muted-foreground">dari {selectedMinutes} menit</p>
               </>
             )}
           </div>
@@ -144,7 +149,7 @@ function StudyPage() {
               key={m}
               onClick={() => changeDuration(m)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
-                duration === m && !finished
+                selectedMinutes === m && !finished
                   ? "bg-primary text-primary-foreground"
                   : "border border-border/70 bg-card text-foreground hover:bg-muted"
               }`}
@@ -158,10 +163,8 @@ function StudyPage() {
               type="number"
               min={1}
               max={180}
-              value={duration}
-              onChange={(e) =>
-                changeDuration(Math.max(1, Math.min(180, Number(e.target.value) || 1)))
-              }
+              value={selectedMinutes}
+              onChange={(e) => changeDuration(Number(e.target.value) || 1)}
               className="w-16 bg-transparent text-sm font-semibold text-foreground outline-none"
             />
             <span className="text-xs text-muted-foreground">menit</span>
@@ -171,15 +174,14 @@ function StudyPage() {
         {/* Controls */}
         <div className="mt-6 flex gap-3">
           <button
-            onClick={() => setRunning((r) => !r)}
-            disabled={finished}
-            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            onClick={handleStartPause}
+            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft"
           >
             {running ? <Pause className="size-5" /> : <Play className="size-5" />}
-            {running ? "Jeda" : "Mulai"}
+            {running ? "Jeda" : timerSnap.status === "paused" ? "Lanjutkan" : "Mulai"}
           </button>
           <button
-            onClick={reset}
+            onClick={handleReset}
             className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-6 py-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
           >
             <RotateCcw className="size-5" /> Reset
@@ -219,10 +221,10 @@ function StudyPage() {
               {sessions.slice(0, 10).map((s) => (
                 <li
                   key={s.id}
-                  className="flex items-center justify-between rounded-xl bg-background px-4 py-2.5 text-sm"
+                  className="flex items-center justify-between rounded-xl border border-border/80 bg-background/80 dark:bg-secondary/50 dark:border-border/60 px-4 py-3 text-sm shadow-xs transition-all hover:border-primary/40"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground">{s.duration} menit fokus</span>
+                    <span className="font-semibold text-foreground">{s.duration} menit</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">

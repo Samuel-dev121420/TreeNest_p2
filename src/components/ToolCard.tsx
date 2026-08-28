@@ -7,12 +7,14 @@ export function ToolCard({
   description,
   icon: Icon,
   color,
+  showBadge = false,
 }: {
   to: string;
   title: string;
   description: string;
   icon: LucideIcon;
   color: "leaf" | "sky" | "sun" | "wood";
+  showBadge?: boolean;
 }) {
   const gradients = {
     leaf: "from-leaf/20 to-leaf-soft/30",
@@ -33,6 +35,9 @@ export function ToolCard({
       to={to}
       className={`group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-gradient-to-br ${gradients[color]} p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float`}
     >
+      {showBadge && (
+        <span className="absolute right-4 top-4 size-3 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+      )}
       <div>
         <div
           className={`mb-3 flex size-11 items-center justify-center rounded-2xl bg-card/80 ${iconColors[color]}`}
