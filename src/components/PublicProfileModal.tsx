@@ -91,6 +91,7 @@ export function PublicProfileModal({
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestSent, setRequestSent] = useState(isRequestSent);
+  const [showFullAvatar, setShowFullAvatar] = useState(false);
 
   useEffect(() => {
     // Find profile by accountId or uid from Firestore
@@ -171,24 +172,31 @@ export function PublicProfileModal({
             <>
               {/* Avatar + basic info */}
               <div className="-mt-10 flex items-end justify-between">
-                {targetProfile.avatarUrl ? (
-                  <img
-                    src={targetProfile.avatarUrl}
-                    alt={targetProfile.username}
-                    className="size-20 rounded-full object-cover shadow-float ring-4 ring-card"
-                  />
-                ) : (
-                  <span
-                    className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card"
-                    style={{
-                      backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
-                    }}
-                  >
-                    {targetProfile.initials}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowFullAvatar(true)}
+                  title="Klik untuk melihat foto profil ukuran besar"
+                  className="group relative cursor-pointer outline-none transition-transform hover:scale-105 active:scale-95 text-left"
+                >
+                  {targetProfile.avatarUrl ? (
+                    <img
+                      src={targetProfile.avatarUrl}
+                      alt={targetProfile.username}
+                      className="size-20 rounded-full object-cover shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all"
+                    />
+                  ) : (
+                    <span
+                      className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all"
+                      style={{
+                        backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
+                      }}
+                    >
+                      {targetProfile.initials}
+                    </span>
+                  )}
+                </button>
 
-                <div className="flex gap-2 pb-1">
+                <div className="flex gap-2 pt-10 pb-1">
                   {!isOwner && !isFriend && onAddFriend && !requestSent && (
                     <button
                       onClick={handleAddClick}
@@ -202,7 +210,7 @@ export function PublicProfileModal({
                       <Check className="size-3.5 text-primary" /> Terkirim
                     </span>
                   )}
-                  {isFriend && (
+                  {!isOwner && isFriend && (
                     <span className="flex items-center gap-1.5 rounded-xl bg-leaf/10 px-3 py-2 text-xs font-bold text-leaf">
                       <UserCheck className="size-3.5" /> Teman
                     </span>
@@ -274,6 +282,59 @@ export function PublicProfileModal({
           )}
         </div>
       </div>
+
+      {/* ── MODAL FOTO PROFIL UKURAN BESAR (FULL-SIZE AVATAR LIGHTBOX) ── */}
+      {showFullAvatar && targetProfile && (
+        <div
+          onClick={() => setShowFullAvatar(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-sm sm:max-w-md w-full flex flex-col items-center gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-float text-center animate-in zoom-in-95 duration-150"
+          >
+            <button
+              onClick={() => setShowFullAvatar(false)}
+              className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 cursor-pointer transition-colors"
+            >
+              <X className="size-5" />
+            </button>
+
+            <div>
+              <h3 className="text-base font-bold text-foreground">Foto Profil - {targetProfile.username}</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                (ID: {targetProfile.accountId})
+              </p>
+            </div>
+
+            <div className="relative flex items-center justify-center p-4">
+              {targetProfile.avatarUrl ? (
+                <img
+                  src={targetProfile.avatarUrl}
+                  alt={targetProfile.username}
+                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                />
+              ) : (
+                <span
+                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  style={{
+                    backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
+                  }}
+                >
+                  {targetProfile.initials}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowFullAvatar(false)}
+              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft"
+            >
+              Kembali
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

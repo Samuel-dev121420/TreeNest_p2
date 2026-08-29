@@ -62,28 +62,28 @@ function GrowPage() {
       title: "FlashCard",
       description: "Belajar dengan kartu depan-belakang.",
       icon: Layers,
-      color: "sky" as const,
+      color: "leaf" as const,
     },
     {
       to: "/grow/study",
       title: "Study Session",
       description: "Fokus belajar dalam durasi yang kamu tentukan.",
       icon: Clock,
-      color: "sun" as const,
+      color: "leaf" as const,
       showBadge: hasStudyBadge,
     },
     {
       to: "/grow/dailytask",
       title: "Reminder",
-      description: "Checklist pengingat aktivitas berdasarkan tanggal.",
+      description: "Checklist pengingat aktivitas.",
       icon: CheckSquare,
-      color: "wood" as const,
+      color: "leaf" as const,
       showBadge: hasReminderBadge,
     },
   ];
 
   return (
-    <PageShell title="Grow" description="Pilih tools yang ingin kamu pakai hari ini.">
+    <PageShell title="Grow Tools" description="Pilih tools yang ingin kamu gunakan.">
       <div className="grid gap-4 sm:grid-cols-2">
         {tools.map((t) => (
           <ToolCard key={t.to} {...t} />

@@ -326,7 +326,7 @@ export function PiNotePage() {
     <PageShell title="" description="">
       <ToolHeader
         title="PiNote Explorer"
-        description="Pengelola folder bersarang, catatan, dan file dokumen ala ZArchiver."
+        description="Pengelola folder bersarang, catatan, dan file dokumen."
       />
 
       <div className="mx-auto max-w-5xl space-y-4">

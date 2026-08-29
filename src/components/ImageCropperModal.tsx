@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, ZoomIn, ZoomOut, RotateCw, Check, Move, Sparkles } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCw, RotateCcw, Check, Move, Sparkles } from "lucide-react";
 
 interface ImageCropperModalProps {
   imageSrc: string;
@@ -80,6 +80,12 @@ export function ImageCropperModal({
 
   const handleRotate = () => {
     setRotation((prev) => (prev + 90) % 360);
+  };
+
+  const handleResetCrop = () => {
+    setZoom(1);
+    setRotation(0);
+    setOffset({ x: 0, y: 0 });
   };
 
   // Crop & Export via Canvas (100% presisi selaras dengan tampilan DOM)
@@ -247,6 +253,16 @@ export function ImageCropperModal({
                 title="Putar 90°"
               >
                 <RotateCw className="size-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetCrop}
+                className="flex items-center gap-1 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Reset posisi foto dan zoom ke semula (tengah)"
+              >
+                <RotateCcw className="size-3.5" />
+                <span className="hidden sm:inline">Reset</span>
               </button>
             </div>
           </div>

@@ -111,6 +111,7 @@ function TreeGalleryPage() {
   const [preview, setPreview] = useState<GalleryVideo | null>(null);
   const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
   const [selectedUploaderAccountId, setSelectedUploaderAccountId] = useState<string | null>(null);
+  const [deleteTargetVideo, setDeleteTargetVideo] = useState<GalleryVideo | null>(null);
 
   const [readComments, setReadComments] = useState<Record<string, boolean>>(() => {
     try {
@@ -238,6 +239,8 @@ function TreeGalleryPage() {
     setUploading(true);
     setUploadError(null);
 
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
+
     try {
       if (uploadTab === "file") {
         if (!file) {
@@ -245,6 +248,20 @@ function TreeGalleryPage() {
           setUploading(false);
           return;
         }
+
+        // Langsung berikan progress awal (5%) agar tidak pernah stuck di 0%
+        setUploadProgress(5);
+
+        // Smooth ticker incrementing progress from 5% to 92%
+        progressTimer = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev === null) return 5;
+            if (prev < 92) {
+              return prev + Math.floor(Math.random() * 3 + 2);
+            }
+            return prev;
+          });
+        }, 180);
 
         let videoUrl = "";
         const tempMediaId = `vid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -270,8 +287,8 @@ function TreeGalleryPage() {
                 "state_changed",
                 (snap) => {
                   if (snap.totalBytes > 0) {
-                    const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-                    setUploadProgress(pct);
+                    const snapPct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+                    setUploadProgress((prev) => Math.max(prev ?? 5, snapPct));
                   }
                 },
                 (err) => {
@@ -302,6 +319,10 @@ function TreeGalleryPage() {
           // Hubungkan blob dengan id permanen
           await saveVideoBlob(createdVid.id, file);
         }
+
+        if (progressTimer) clearInterval(progressTimer);
+        setUploadProgress(100);
+        await new Promise((r) => setTimeout(r, 350));
       } else {
         const u = url.trim();
         if (!u) {
@@ -324,7 +345,9 @@ function TreeGalleryPage() {
       setUploadError("Gagal mengunggah video. Coba lagi.");
       console.error(err);
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -403,16 +426,15 @@ function TreeGalleryPage() {
   return (
     <PageShell
       title="TreeGallery"
-      description={`Maksimal ${MAX_VIDEOS} video, masing-masing ≤${MAX_DURATION_SEC} detik. Video tayang setelah disetujui Admin.`}
+      description="Silakan pilih video. Video akan tayang setelah disetujui Admin."
     >
       {/* Info banner */}
       <div className="mb-6 flex items-start gap-3 rounded-3xl border border-border/70 bg-gradient-to-br from-sky/15 to-cloud/40 p-4 shadow-soft">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-sky-deep" />
         <div className="text-sm text-muted-foreground">
-          <p className="font-semibold text-foreground">Aturan singkat</p>
+          <p className="font-semibold text-foreground">Aturan & Penjelasan singkat</p>
           <p className="mt-0.5">
-            Maks. {MAX_VIDEOS} video · durasi ≤ {MAX_DURATION_SEC} detik · tayang setelah moderasi
-            Admin · pilih 1 video untuk Rumah Pohon.
+            · Silahkan pilih video (≤ 180 detik untuk tipe File Upload).<br></br> · Video tayang setelah moderasi Admin. <br></br>· Pilih 1 video untuk Rumah Pohon setiap harinya dan buat streak Anda!
           </p>
         </div>
       </div>
@@ -439,7 +461,7 @@ function TreeGalleryPage() {
                 value={title}
                 disabled={uploading}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Contoh: Belajar Santai di Pohon"
+                placeholder="Ketik Judul Video Anda disini..."
                 className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -520,7 +542,7 @@ function TreeGalleryPage() {
                         }}
                         className="mt-1 text-xs text-muted-foreground underline hover:text-destructive"
                       >
-                        Ganti file
+                        Ganti file / Batalkan
                       </button>
                     )}
                   </>
@@ -643,26 +665,33 @@ function TreeGalleryPage() {
                       <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
                         <Play className="size-10 text-white drop-shadow-lg opacity-0 transition-opacity group-hover:opacity-100" />
                       </span>
-                      {isFeatured && (
-                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-leaf px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-soft">
-                          <Star className="size-3 fill-current" /> Rumah Pohon
-                        </span>
-                      )}
                       <SourceBadge source={v.sourceType} />
                     </button>
                     <div className="flex flex-1 flex-col p-3">
                       <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
                       <p className="text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
-                      <div className="mt-3 flex items-center gap-2">
+
+                      {/* Status Informasi Rumah Pohon */}
+                      {isFeatured ? (
+                        <div className="mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-leaf text-center">
+                          
+                          <span>Tampil di Rumah Pohon</span>
+                          
+                        </div>
+                      ) : (
+                        <div className="mt-2 h-4" />
+                      )}
+
+                      <div className="mt-2 flex items-center gap-2 pt-2 border-t border-border/40">
                         <button
                           onClick={() => toggleFeatured(v.id)}
-                          className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors ${
+                          className={`flex-1 rounded-xl px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                             isFeatured
-                              ? "bg-leaf/15 text-leaf font-bold"
+                              ? "border border-border/80 bg-secondary/80 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                               : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
                           }`}
                         >
-                          {isFeatured ? "Tampil di Rumah Pohon" : "Jadikan Tayangan"}
+                          {isFeatured ? "Hentikan Tayangan" : "Jadikan Tayangan"}
                         </button>
                         
                         {/* Tombol Catatan Admin */}
@@ -682,9 +711,9 @@ function TreeGalleryPage() {
                         </button>
 
                         <button
-                          onClick={() => handleDelete(v.id)}
+                          onClick={() => setDeleteTargetVideo(v)}
                           aria-label="Hapus video"
-                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -751,9 +780,9 @@ function TreeGalleryPage() {
                   </button>
 
                   <button
-                    onClick={() => handleDelete(v.id)}
+                    onClick={() => setDeleteTargetVideo(v)}
                     aria-label="Hapus video"
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -766,8 +795,8 @@ function TreeGalleryPage() {
 
       {/* ── PANEL ADMIN — PANEL MODERASI & RIWAYAT TAB ── */}
       {isAdmin && (
-        <section className="mt-10 rounded-3xl border border-primary/20 bg-card p-5 shadow-soft">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
+        <section className="mt-10 rounded-3xl border-2 border-primary/40 dark:border-primary/20 bg-card p-5 shadow-soft">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 dark:border-border/60 pb-4">
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-sky-deep" />
               <div>
@@ -829,7 +858,7 @@ function TreeGalleryPage() {
                 return (
                   <div
                     key={v.id}
-                    className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background dark:bg-secondary/40 p-3.5 sm:flex-row sm:items-center"
+                    className="flex flex-col gap-3 rounded-2xl border-2 border-border/80 bg-background dark:border-border/60 dark:bg-secondary/40 p-3.5 sm:flex-row sm:items-center"
                   >
                     {/* Thumbnail */}
                     <button
@@ -1072,39 +1101,39 @@ function TreeGalleryPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/60 bg-secondary/40 p-4 text-left">
+            <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4 text-left space-y-2">
               {viewCommentVideo.status === "approved" ? (
                 viewCommentVideo.approvalComment ? (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-leaf">
-                      Pesan Persetujuan Admin:
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-leaf">
+                      Catatan Persetujuan Admin:
                     </p>
-                    <p className="mt-1.5 text-xs font-medium text-foreground italic">
+                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
                       "{viewCommentVideo.approvalComment}"
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center">
+                  <p className="text-xs font-medium text-muted-foreground text-center">
                     Admin tidak memberikan catatan khusus untuk persetujuan video ini.
                   </p>
                 )
               ) : viewCommentVideo.status === "rejected" ? (
                 viewCommentVideo.reason ? (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-destructive">
                       Alasan Penolakan Admin:
                     </p>
-                    <p className="mt-1.5 text-xs font-medium text-foreground italic">
+                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
                       "{viewCommentVideo.reason}"
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center">
+                  <p className="text-xs font-medium text-muted-foreground text-center">
                     Admin tidak mencantumkan alasan penolakan spesifik.
                   </p>
                 )
               ) : (
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs font-medium text-muted-foreground text-center">
                   Video Anda sedang dalam antrean moderasi Admin.
                 </p>
               )}
@@ -1120,13 +1149,46 @@ function TreeGalleryPage() {
         </div>
       )}
 
-      {/* ── PUBLIC PROFILE MODAL (Saat Admin klik uploader) ── */}
-      {selectedUploaderAccountId && (
-        <PublicProfileModal
-          accountId={selectedUploaderAccountId}
-          viewerUid={uid}
-          onClose={() => setSelectedUploaderAccountId(null)}
-        />
+      {/* ── MODAL KONFIRMASI HAPUS VIDEO CUSTOM (Light & Dark Mode) ── */}
+      {deleteTargetVideo && (
+        <div
+          onClick={() => setDeleteTargetVideo(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+              <Trash2 className="size-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Hapus Video Ini?</h3>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                Apakah Anda yakin ingin menghapus video <strong>"{deleteTargetVideo.title}"</strong> dari galeri?
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={async () => {
+                  const target = deleteTargetVideo;
+                  setDeleteTargetVideo(null);
+                  await handleDelete(target.id);
+                }}
+                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
+              >
+                Ya, Hapus Video
+              </button>
+              <button
+                onClick={() => setDeleteTargetVideo(null)}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary/80 text-secondary-foreground dark:bg-secondary dark:text-foreground py-2.5 text-xs font-bold transition-colors hover:bg-secondary/60 cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </PageShell>
   );
@@ -1135,6 +1197,25 @@ function TreeGalleryPage() {
 // ── Helper Components ──────────────────────────────────────────────
 
 function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null }) {
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (
+      !yt &&
+      (video.sourceType === "upload" ||
+        video.url.startsWith("indexeddb:") ||
+        video.url.startsWith("blob:"))
+    ) {
+      resolveVideoUrl(video.url, video.id).then((u) => {
+        if (active && u) setLocalUrl(u);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [video.url, video.id, video.sourceType, yt]);
+
   if (yt) {
     return (
       <img
@@ -1145,6 +1226,18 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       />
     );
   }
+
+  if (localUrl) {
+    return (
+      <video
+        src={localUrl}
+        className="size-full object-cover transition-transform group-hover:scale-105"
+        muted
+        preload="metadata"
+      />
+    );
+  }
+
   const colors: Record<string, string> = {
     tiktok: "from-pink-500/20 to-cyan-500/20",
     upload: "from-leaf/15 to-sky/15",

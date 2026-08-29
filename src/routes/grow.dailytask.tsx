@@ -133,6 +133,68 @@ function ReminderPage() {
           )}
         </div>
 
+        {/* Search Results Indicator Banner */}
+        {searchQuery && (
+          <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2.5 text-xs text-muted-foreground">
+            <span>
+              Hasil pencarian untuk "<strong>{searchQuery}</strong>" ({filteredDayTasks.length} item
+              ditemukan)
+            </span>
+          </div>
+        )}
+
+        {/* Unchecked Reminders Summary Section (Di atas agar langsung terlihat) */}
+        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+          <div className="flex items-center justify-between gap-2 mb-3 border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2">
+              <Bell className="size-4 text-sun shrink-0" />
+              <h3 className="text-sm font-bold text-foreground">
+                Pengingat Belum Dicentang
+              </h3>
+            </div>
+            {uncheckedSummary.length > 0 && (
+              <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-[11px] font-bold text-destructive">
+                {uncheckedSummary.reduce((acc, curr) => acc + curr.count, 0)} tugas
+              </span>
+            )}
+          </div>
+
+          {uncheckedSummary.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Semua pengingat hari ini dan sebelumnya sudah selesai! 🎉
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {uncheckedSummary.map((item) => (
+                <div
+                  key={item.date}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border p-3.5 text-xs transition-all ${
+                    item.date === dateKey
+                      ? "border-primary/50 bg-primary/10"
+                      : "border-border/60 bg-secondary/30 hover:bg-secondary/60"
+                  }`}
+                >
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {formatDateLabel(item.date)}
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Anda mempunyai <strong className="text-destructive">{item.count}</strong> pengingat yang belum dicentang pada tanggal ini.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setDateKey(item.date)}
+                    className="shrink-0 flex items-center justify-center gap-1 rounded-xl bg-primary/15 px-3 py-1.5 font-bold text-primary transition-all hover:bg-primary/25 active:scale-95 cursor-pointer"
+                  >
+                    Buka Tanggal Ini <ChevronRight className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Date navigator + Calendar Quick Picker Trigger */}
         <div className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-soft">
           <button
@@ -249,60 +311,6 @@ function ReminderPage() {
               </div>
             ))
           )}
-        </div>
-
-        {/* Unchecked Reminders Summary Section (Centred Below Main List) */}
-        <div className="mt-8 pt-4 border-t border-border/60">
-          <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
-            <div className="flex items-center justify-between gap-2 mb-3 border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <Bell className="size-4 text-sun shrink-0" />
-                <h3 className="text-sm font-bold text-foreground">
-                  Pengingat Belum Dicentang
-                </h3>
-              </div>
-              {uncheckedSummary.length > 0 && (
-                <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-[11px] font-bold text-destructive">
-                  {uncheckedSummary.reduce((acc, curr) => acc + curr.count, 0)} tugas
-                </span>
-              )}
-            </div>
-
-            {uncheckedSummary.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-3">
-                Semua pengingat hari ini dan sebelumnya sudah selesai! 🎉
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {uncheckedSummary.map((item) => (
-                  <div
-                    key={item.date}
-                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border p-3.5 text-xs transition-all ${
-                      item.date === dateKey
-                        ? "border-primary/50 bg-primary/10"
-                        : "border-border/60 bg-secondary/30 hover:bg-secondary/60"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-foreground">
-                        {formatDateLabel(item.date)}
-                      </p>
-                      <p className="mt-0.5 text-muted-foreground">
-                        Anda mempunyai <strong className="text-destructive">{item.count}</strong> pengingat yang belum dicentang pada tanggal ini.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => setDateKey(item.date)}
-                      className="shrink-0 flex items-center justify-center gap-1 rounded-xl bg-primary/15 px-3 py-1.5 font-bold text-primary transition-all hover:bg-primary/25 active:scale-95"
-                    >
-                      Buka Tanggal Ini <ChevronRight className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

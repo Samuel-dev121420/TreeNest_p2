@@ -23,6 +23,7 @@ import {
   type GalleryVideoSource,
 } from "./social";
 import { generateId } from "./grow-tools";
+import { deleteVideoBlob } from "./video-storage";
 
 /** Cek apakah email adalah admin yang dikonfigurasi via VITE_ADMIN_EMAIL */
 export function isAdminEmail(email?: string | null): boolean {
@@ -1195,14 +1196,17 @@ export async function getUserVideos(uid: string): Promise<GalleryVideo[]> {
   if (!isFirebaseConfigured || !db) {
     // Fallback: filter localStorage by uid prefix
     const local = localStorage.getItem(`treenest_gallery_videos_${uid}`);
-    if (local) return JSON.parse(local);
+    if (local) {
+      const list: GalleryVideo[] = JSON.parse(local);
+      return list.filter((v) => !v.userDeleted).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    }
     return [];
   }
   try {
     const q = query(collection(db, GALLERY_COLLECTION), where("uid", "==", uid));
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
-    return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    return list.filter((v) => !v.userDeleted).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
   } catch (err) {
     console.error("Error fetching user videos:", err);
     return [];
@@ -1219,11 +1223,41 @@ export async function getAllApprovedVideos(): Promise<GalleryVideo[]> {
   return getAllGalleryVideosAdmin("approved");
 }
 
-/** Ambil semua video untuk admin berdasarkan filter status ("pending" | "history" | "approved" | "rejected" | "all") */
+/** Ambil semua video untuk admin / publik berdasarkan filter status ("pending" | "history" | "approved" | "rejected" | "all") */
 export async function getAllGalleryVideosAdmin(
   statusFilter: "pending" | "history" | "approved" | "rejected" | "all" = "all",
 ): Promise<GalleryVideo[]> {
-  if (!isFirebaseConfigured || !db) return [];
+  if (!isFirebaseConfigured || !db) {
+    // Mode Fallback / Mock Local Storage
+    const allVideos: GalleryVideo[] = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("treenest_gallery_videos_")) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const list: GalleryVideo[] = JSON.parse(raw);
+            allVideos.push(...list);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error reading fallback local videos:", err);
+    }
+    const map = new Map<string, GalleryVideo>();
+    allVideos.forEach((v) => map.set(v.id, v));
+    let list = Array.from(map.values());
+    if (statusFilter === "history") {
+      list = list.filter((v) => v.status === "approved" || v.status === "rejected");
+    } else if (statusFilter === "approved") {
+      list = list.filter((v) => v.status === "approved" && !v.userDeleted);
+    } else if (statusFilter === "pending") {
+      list = list.filter((v) => v.status === "pending" && !v.userDeleted);
+    } else if (statusFilter !== "all") {
+      list = list.filter((v) => v.status === statusFilter && !v.userDeleted);
+    }
+    return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+  }
   try {
     let q;
     if (statusFilter === "all" || statusFilter === "history") {
@@ -1235,6 +1269,10 @@ export async function getAllGalleryVideosAdmin(
     let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
     if (statusFilter === "history") {
       list = list.filter((v) => v.status === "approved" || v.status === "rejected");
+    } else if (statusFilter === "approved") {
+      list = list.filter((v) => v.status === "approved" && !v.userDeleted);
+    } else if (statusFilter === "pending") {
+      list = list.filter((v) => v.status === "pending" && !v.userDeleted);
     }
     return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
   } catch (err) {
@@ -1243,13 +1281,38 @@ export async function getAllGalleryVideosAdmin(
   }
 }
 
-/** Hapus video oleh Admin dari database */
+/** Hapus video permanen oleh Admin (hard delete dari database dan storage) */
 export async function deleteGalleryVideoAdmin(videoId: string): Promise<void> {
-  if (!isFirebaseConfigured || !db) return;
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, GALLERY_COLLECTION, videoId));
+    } catch (err) {
+      console.error("Error hard deleting gallery video from Firestore by admin:", err);
+    }
+  }
+
   try {
-    await deleteDoc(doc(db, GALLERY_COLLECTION, videoId));
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("treenest_gallery_videos_")) {
+        const local = localStorage.getItem(key);
+        if (local) {
+          const list: GalleryVideo[] = JSON.parse(local);
+          const filtered = list.filter((v) => v.id !== videoId);
+          if (filtered.length !== list.length) {
+            localStorage.setItem(key, JSON.stringify(filtered));
+          }
+        }
+      }
+    }
   } catch (err) {
-    console.error("Error deleting video by admin:", err);
+    console.error("Error clearing video from localStorage:", err);
+  }
+
+  try {
+    await deleteVideoBlob(videoId);
+  } catch (err) {
+    console.error("Error deleting video blob:", err);
   }
 }
 
@@ -1311,23 +1374,64 @@ export async function moderateVideo(
   }
 }
 
-/** Hapus video */
-export async function deleteGalleryVideo(videoId: string, uid: string): Promise<void> {
-  if (!isFirebaseConfigured || !db) {
-    const local = localStorage.getItem(`treenest_gallery_videos_${uid}`);
-    if (local) {
-      const list: GalleryVideo[] = JSON.parse(local);
-      localStorage.setItem(
-        `treenest_gallery_videos_${uid}`,
-        JSON.stringify(list.filter((v) => v.id !== videoId)),
-      );
+/** Hapus video oleh user (soft delete agar riwayat moderasi Admin tetap tersimpan) */
+export async function deleteGalleryVideo(videoId: string, uid?: string): Promise<void> {
+  // 1. Soft delete di Firestore jika dikonfigurasi
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, GALLERY_COLLECTION, videoId), {
+        userDeleted: true,
+        userDeletedAt: Date.now(),
+      });
+    } catch (err) {
+      console.error("Error soft deleting gallery video in Firestore:", err);
     }
-    return;
   }
+
+  // 2. Soft delete di SELURUH key localStorage `treenest_gallery_videos_*`
   try {
-    await deleteDoc(doc(db, GALLERY_COLLECTION, videoId));
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("treenest_gallery_videos_")) {
+        const local = localStorage.getItem(key);
+        if (local) {
+          const list: GalleryVideo[] = JSON.parse(local);
+          let modified = false;
+          const updated = list.map((v) => {
+            if (v.id === videoId) {
+              modified = true;
+              return { ...v, userDeleted: true, userDeletedAt: Date.now() };
+            }
+            return v;
+          });
+          if (modified) {
+            localStorage.setItem(key, JSON.stringify(updated));
+          }
+        }
+      }
+    }
   } catch (err) {
-    console.error("Error deleting gallery video:", err);
+    console.error("Error updating video soft delete in localStorage:", err);
+  }
+
+  // 3. Hapus video Blob dari IndexedDB
+  try {
+    await deleteVideoBlob(videoId);
+  } catch (err) {
+    console.error("Error deleting video blob:", err);
+  }
+
+  // 4. Hapus status featured jika video ini yang dijadikan tayangan
+  if (uid) {
+    try {
+      const featuredKey = `treenest_gallery_featured_${uid}`;
+      const featured = localStorage.getItem(featuredKey);
+      if (featured && featured.includes(videoId)) {
+        localStorage.removeItem(featuredKey);
+      }
+    } catch (err) {
+      console.error("Error clearing featured video from localStorage:", err);
+    }
   }
 }
 

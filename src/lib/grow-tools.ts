@@ -37,6 +37,7 @@ export type FlashDeck = {
 export type FlashCard = {
   id: string;
   deckId: string;
+  title?: string;
   front: string;
   back: string;
   createdAt: number;

@@ -6,7 +6,7 @@ export function ToolHeader({ title, description }: { title: string; description?
     <div className="mb-6 flex items-start gap-3">
       <Link
         to="/grow"
-        className="mt-0.5 flex shrink-0 items-center justify-center rounded-full bg-card p-2 text-muted-foreground shadow-soft transition-colors hover:text-foreground"
+        className="mt-0.5 flex shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card p-2.5 text-muted-foreground shadow-soft transition-all hover:scale-105 hover:border-primary/50 hover:bg-primary/10 hover:text-primary active:scale-95 cursor-pointer dark:border-border/60 dark:bg-card dark:hover:border-primary/50 dark:hover:bg-primary/20 dark:hover:text-primary"
         aria-label="Kembali ke Grow"
       >
         <ArrowLeft className="size-5" />

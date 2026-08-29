@@ -15,7 +15,7 @@ export function EmptyState({
         <Icon className="size-7 text-muted-foreground" />
       </div>
       <p className="mt-4 font-semibold text-foreground">{title}</p>
-      <p className="mt-1 max-w-[16rem] text-sm text-muted-foreground">{description}</p>
+      <p className="mt-1 max-w-xl text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }

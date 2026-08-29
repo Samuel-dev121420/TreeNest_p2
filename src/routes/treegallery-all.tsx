@@ -50,6 +50,7 @@ function AllVideosPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [preview, setPreview] = useState<GalleryVideo | null>(null);
   const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
+  const [deleteTargetVideo, setDeleteTargetVideo] = useState<GalleryVideo | null>(null);
 
   const [readComments, setReadComments] = useState<Record<string, boolean>>(() => {
     try {
@@ -191,11 +192,6 @@ function AllVideosPage() {
                     <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/25">
                       <Play className="size-10 text-white drop-shadow-lg opacity-0 transition-opacity group-hover:opacity-100" />
                     </span>
-                    {isFeatured && (
-                      <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-leaf px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-soft">
-                        <Star className="size-3 fill-current" /> Rumah Pohon
-                      </span>
-                    )}
                     <SourceBadge source={v.sourceType} />
                   </button>
 
@@ -204,42 +200,55 @@ function AllVideosPage() {
                     <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
 
-                    <div className="mt-3 flex items-center gap-2 pt-2 border-t border-border/40">
+                    {/* Status Informasi Rumah Pohon */}
+                    {isOwner ? (
+                      isFeatured ? (
+                        <div className="mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-leaf text-center">
+                          
+                          <span>Tampil di Rumah Pohon</span>
+                          
+                        </div>
+                      ) : (
+                        <div className="mt-2 h-4" />
+                      )
+                    ) : (
+                      <div className="mt-2 h-4" />
+                    )}
+
+                    <div className="mt-2 flex items-center gap-2 pt-2 border-t border-border/40">
                       {isOwner && (
                         <button
                           onClick={() => toggleFeatured(v.id)}
-                          className={`flex-1 rounded-xl px-2 py-1.5 text-xs font-semibold transition-colors ${
+                          className={`flex-1 rounded-xl px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                             isFeatured
-                              ? "bg-leaf/15 text-leaf font-bold"
+                              ? "border border-border/80 bg-secondary/80 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                               : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
                           }`}
                         >
-                          {isFeatured ? "Tampil di Rumah Pohon" : "Jadikan Tayangan"}
+                          {isFeatured ? "Hentikan Tayangan" : "Jadikan Tayangan"}
                         </button>
                       )}
 
-                      {/* Catatan Admin jika ada */}
-                      {v.approvalComment && isOwner && (
-                        <button
-                          onClick={() => {
-                            setViewCommentVideo(v);
-                            markCommentAsRead(v.id);
-                          }}
-                          title="Lihat Catatan Admin"
-                          className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                        >
-                          <MessageSquare className="size-4" />
-                          {!readComments[v.id] && (
-                            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
-                          )}
-                        </button>
-                      )}
+                      {/* Tombol Catatan Admin (Selalu tampil untuk semua video di TreeGalleryAll persis seperti di TreeGallery) */}
+                      <button
+                        onClick={() => {
+                          setViewCommentVideo(v);
+                          markCommentAsRead(v.id);
+                        }}
+                        title="Lihat Catatan Admin"
+                        className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+                      >
+                        <MessageSquare className="size-4" />
+                        {((v.status === "approved" && v.approvalComment) || (v.status === "rejected" && v.reason)) && !readComments[v.id] && (
+                          <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+                        )}
+                      </button>
 
                       {isOwner && (
                         <button
-                          onClick={() => handleDelete(v.id)}
+                          onClick={() => setDeleteTargetVideo(v)}
                           aria-label="Hapus video"
-                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -265,16 +274,16 @@ function AllVideosPage() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4 animate-in zoom-in-95 duration-150"
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4 animate-in zoom-in-95 duration-150"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="size-5 text-primary" />
-                  <h3 className="text-base font-bold text-foreground">Catatan Admin</h3>
+                  <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
                 </div>
                 <button
                   onClick={() => setViewCommentVideo(null)}
-                  className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+                  className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
                 >
                   <X className="size-4" />
                 </button>
@@ -285,16 +294,97 @@ function AllVideosPage() {
                 <p className="text-sm font-semibold text-foreground">{viewCommentVideo.title}</p>
               </div>
 
-              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs font-medium text-foreground leading-relaxed">
-                {viewCommentVideo.approvalComment || "Tidak ada catatan tertulis dari Admin."}
+              <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4 text-left space-y-2">
+                {viewCommentVideo.status === "approved" ? (
+                  viewCommentVideo.approvalComment ? (
+                    <div>
+                      <p className="text-[11px] font-extrabold uppercase tracking-wider text-leaf">
+                        Catatan Persetujuan Admin:
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                        "{viewCommentVideo.approvalComment}"
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-muted-foreground text-center">
+                      Admin tidak memberikan catatan khusus untuk persetujuan video ini.
+                    </p>
+                  )
+                ) : viewCommentVideo.status === "rejected" ? (
+                  viewCommentVideo.reason ? (
+                    <div>
+                      <p className="text-[11px] font-extrabold uppercase tracking-wider text-destructive">
+                        Alasan Penolakan Admin:
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                        "{viewCommentVideo.reason}"
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-muted-foreground text-center">
+                      Admin tidak mencantumkan alasan penolakan spesifik.
+                    </p>
+                  )
+                ) : (
+                  <div>
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary">
+                      Catatan Admin:
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                      "{viewCommentVideo.approvalComment || viewCommentVideo.reason}"
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end">
                 <button
                   onClick={() => setViewCommentVideo(null)}
-                  className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+                  className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL KONFIRMASI HAPUS VIDEO CUSTOM (Light & Dark Mode) ── */}
+        {deleteTargetVideo && (
+          <div
+            onClick={() => setDeleteTargetVideo(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            >
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                <Trash2 className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Hapus Video Ini?</h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Apakah Anda yakin ingin menghapus video <strong>"{deleteTargetVideo.title}"</strong> dari galeri?
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={async () => {
+                    const target = deleteTargetVideo;
+                    setDeleteTargetVideo(null);
+                    await handleDelete(target.id);
+                  }}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
+                >
+                  Ya, Hapus Video
+                </button>
+                <button
+                  onClick={() => setDeleteTargetVideo(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary/80 text-secondary-foreground dark:bg-secondary dark:text-foreground py-2.5 text-xs font-bold transition-colors hover:bg-secondary/60 cursor-pointer"
+                >
+                  Batal
                 </button>
               </div>
             </div>

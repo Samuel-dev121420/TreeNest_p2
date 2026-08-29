@@ -64,13 +64,13 @@ function HomePage() {
   const pct = Math.min(100, Math.round((exp / need) * 100));
   const isTreehouseReady = level >= TREEHOUSE_LEVEL || stage.key === "house_tree";
 
-  // Durasi pop-up teks masuk rumah pohon: muncul 6 detik saat halaman dibuka, lalu fade out
+  // Durasi pop-up teks masuk rumah pohon: muncul 3 detik saat halaman dibuka, lalu fade out
   useEffect(() => {
     if (!isTreehouseReady) return;
     setShowTreeBadge(true);
     const timer = setTimeout(() => {
       setShowTreeBadge(false);
-    }, 6000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [isTreehouseReady]);
 
@@ -129,10 +129,10 @@ function HomePage() {
           title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${level}`}
           className="group relative flex h-full items-end justify-center cursor-pointer select-none transition-transform duration-300 hover:scale-[1.02] active:scale-95"
         >
-          {/* Tombol Floating Masuk Rumah Pohon jika Level 20: Tampil di atas pucuk pohon dengan warna hijau emerald */}
+          {/* Tombol Floating Masuk Rumah Pohon: 100% seragam dengan Notifikasi & EXP card */}
           {isTreehouseReady && (
             <div
-              className={`absolute -top-8 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
+              className={`absolute -top-4 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
                 showTreeBadge
                   ? "opacity-100 scale-100 pointer-events-auto"
                   : "opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
@@ -144,11 +144,10 @@ function HomePage() {
                   e.stopPropagation();
                   setShowTreehouse(true);
                 }}
-                className="animate-bounce flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-gradient-leaf px-4 py-1.5 text-xs font-bold text-white shadow-float backdrop-blur-md transition-all hover:brightness-110 hover:scale-105 active:scale-95 dark:border-emerald-500/60 dark:bg-none dark:bg-emerald-950/95 dark:text-emerald-200 dark:shadow-emerald-950/80 dark:hover:bg-emerald-900/90"
+                className="animate-bounce inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-primary/50 bg-gradient-soft px-4 py-2 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-all hover:scale-105 hover:border-white cursor-pointer select-none dark:border-primary/50 dark:bg-card dark:text-foreground dark:hover:border-primary"
               >
-                <Home className="size-3.5 text-emerald-100 dark:text-emerald-300" />
-                <span>Masuk Rumah Pohon</span>
-                <Sparkles className="size-3 text-emerald-200 dark:text-emerald-300" />
+                <Home className="size-4 text-primary shrink-0" />
+                <span className="whitespace-nowrap font-bold text-foreground">Masuk Rumah Pohon</span>
               </button>
             </div>
           )}
@@ -172,7 +171,7 @@ function HomePage() {
 
       {/* Bola profil: pengguna + teman tampil (Berjalan anggun di atas permukaan rumput) */}
       <div className="absolute inset-x-0 bottom-[14%] h-16 z-10">
-        {/* User's own orb (not clickable) */}
+        {/* User's own orb (clickable to open brief profile modal) */}
         <Orb
           label="Kamu"
           initials={user?.initials || "ME"}
@@ -182,6 +181,7 @@ function HomePage() {
           delay={0}
           from={6}
           to={34}
+          onClick={() => setSelectedFriendAccountId(user.accountId || user.uid)}
         />
 
         {/* Real featured friends only — clickable to open PublicProfileModal */}

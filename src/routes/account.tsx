@@ -23,6 +23,7 @@ import {
   Twitter,
   Mail,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ImageCropperModal } from "@/components/ImageCropperModal";
@@ -96,9 +97,9 @@ const PLATFORMS: Record<SocialPlatform, PlatformMeta> = {
 };
 
 const VISIBILITY_OPTS: { value: VisibilityLevel; label: string; icon: typeof Globe }[] = [
-  { value: "public", label: "Publik", icon: Globe },
-  { value: "friends_only", label: "Teman", icon: UserCheck },
   { value: "private", label: "Privat", icon: Lock },
+  { value: "friends_only", label: "Teman", icon: UserCheck },
+  { value: "public", label: "Publik", icon: Globe },
 ];
 
 // ─── CHANGE PASSWORD MODAL ───────────────────────────────────────────────────
@@ -372,6 +373,7 @@ function AccountPage() {
 
   // Password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSelfFullAvatar, setShowSelfFullAvatar] = useState(false);
 
   // Social links
   const [editingSocial, setEditingSocial] = useState(false);
@@ -446,6 +448,13 @@ function AccountPage() {
     await refreshProfile();
   }
 
+  // Reset profile picture to default (remove custom image)
+  async function handleResetAvatarToDefault() {
+    if (!authProfile?.uid) return;
+    await updateUserProfile(authProfile.uid, { avatarUrl: "", accountId: authProfile.accountId });
+    await refreshProfile();
+  }
+
   async function handleSendPasswordReset(): Promise<{ success: boolean; error?: string }> {
     if (!activeProfile.email || activeProfile.email === "—") {
       return { success: false, error: "Alamat email tidak valid." };
@@ -479,7 +488,7 @@ function AccountPage() {
       if (existing) {
         return prev.map((l) => (l.platform === platform ? { ...l, value } : l));
       }
-      return [...prev, { platform, value, visibility: "public" }];
+      return [...prev, { platform, value, visibility: "private" }];
     });
   }
 
@@ -519,41 +528,79 @@ function AccountPage() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <PageShell title="Account" description="Informasi dan pengaturan profil TreeNest kamu.">
+    <PageShell title="Account" description="Informasi dan Pengaturan Profil TreeNest Kamu.">
       {/* ── Kartu Profil Utama ── */}
       <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-soft">
         <div className="h-20 bg-gradient-leaf" />
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between">
-            {/* Avatar with click-to-change */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="relative group rounded-full overflow-hidden focus:outline-none focus:ring-4 focus:ring-primary/30"
-              title="Klik untuk ganti & sesuaikan foto profil"
-            >
-              {activeProfile.avatarUrl ? (
-                <img
-                  src={activeProfile.avatarUrl}
-                  alt={activeProfile.username}
-                  className="size-20 rounded-full object-cover shadow-float ring-4 ring-card"
-                />
-              ) : (
-                <span
-                  className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card"
-                  style={{
-                    backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${activeProfile.hue}), oklch(0.66 0.13 ${activeProfile.hue + 25}))`,
+            {/* Avatar container */}
+            <div className="relative inline-flex items-center gap-3">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editing) {
+                      fileInputRef.current?.click();
+                    } else {
+                      setShowSelfFullAvatar(true);
+                    }
                   }}
+                  className="relative group rounded-full overflow-hidden focus:outline-none focus:ring-4 focus:ring-primary/30 transition-transform hover:scale-105 active:scale-95"
+                  title={editing ? "Klik untuk ganti & sesuaikan foto profil" : "Klik untuk melihat foto profil"}
                 >
-                  {activeProfile.initials}
-                </span>
+                  {activeProfile.avatarUrl ? (
+                    <img
+                      src={activeProfile.avatarUrl}
+                      alt={activeProfile.username}
+                      className="size-20 rounded-full object-cover shadow-float ring-4 ring-card"
+                    />
+                  ) : (
+                    <span
+                      className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card"
+                      style={{
+                        backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${activeProfile.hue}), oklch(0.66 0.13 ${activeProfile.hue + 25}))`,
+                      }}
+                    >
+                      {activeProfile.initials}
+                    </span>
+                  )}
+                  {/* Hover camera badge overlay */}
+                  <span className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs">
+                    <Camera className="size-5 text-white" />
+                    <span className="text-[9px] font-bold text-white mt-0.5">
+                      {editing ? "Ubah" : "Lihat"}
+                    </span>
+                  </span>
+                </button>
+
+                {/* Pencil badge overlay when in Edit Profile status */}
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Ganti foto profil"
+                    className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-card hover:scale-110 active:scale-95 transition-transform"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Reset to Default Avatar Button when editing */}
+              {editing && activeProfile.avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleResetAvatarToDefault}
+                  title="Reset foto profil ke default (inisial)"
+                  className="self-end mb-1 flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all shadow-xs"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Reset Foto</span>
+                </button>
               )}
-              {/* Hover camera badge overlay */}
-              <span className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs">
-                <Camera className="size-5 text-white" />
-                <span className="text-[9px] font-bold text-white mt-0.5">Ubah</span>
-              </span>
-            </button>
+            </div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -591,19 +638,23 @@ function AccountPage() {
 
           {editing ? (
             <div className="mt-4 space-y-3">
-              <Field label="Username">
+              <Field label={`Username (${draftUsername.length}/30)`}>
                 <input
                   value={draftUsername}
-                  onChange={(e) => setDraftUsername(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  maxLength={30}
+                  onChange={(e) => setDraftUsername(e.target.value.slice(0, 30))}
+                  placeholder="Ketik Username..."
+                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
                 />
               </Field>
-              <Field label="Bio">
+              <Field label={`Bio (${draftBio.length}/150)`}>
                 <textarea
                   value={draftBio}
-                  onChange={(e) => setDraftBio(e.target.value)}
+                  maxLength={150}
+                  onChange={(e) => setDraftBio(e.target.value.slice(0, 150))}
                   rows={2}
-                  className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Ketik Bio singkat..."
+                  className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
                 />
               </Field>
             </div>
@@ -769,7 +820,7 @@ function AccountPage() {
                 <div className="flex gap-1.5">
                   {VISIBILITY_OPTS.map((opt) => {
                     const VIcon = opt.icon;
-                    const active = (link?.visibility ?? "public") === opt.value;
+                    const active = (link?.visibility ?? "private") === opt.value;
                     return (
                       <button
                         type="button"
@@ -931,6 +982,59 @@ function AccountPage() {
           onClose={() => setShowDeleteModal(false)}
           onConfirm={handleDeleteAccount}
         />
+      )}
+
+      {/* ── MODAL FOTO PROFIL UKURAN BESAR (FULL-SIZE AVATAR LIGHTBOX) ── */}
+      {showSelfFullAvatar && (
+        <div
+          onClick={() => setShowSelfFullAvatar(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-sm sm:max-w-md w-full flex flex-col items-center gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-float text-center animate-in zoom-in-95 duration-150"
+          >
+            <button
+              onClick={() => setShowSelfFullAvatar(false)}
+              className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 cursor-pointer transition-colors"
+            >
+              <X className="size-5" />
+            </button>
+
+            <div>
+              <h3 className="text-base font-bold text-foreground">Foto Profil - {activeProfile.username}</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                (ID: {activeProfile.accountId})
+              </p>
+            </div>
+
+            <div className="relative flex items-center justify-center p-4">
+              {activeProfile.avatarUrl ? (
+                <img
+                  src={activeProfile.avatarUrl}
+                  alt={activeProfile.username}
+                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                />
+              ) : (
+                <span
+                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  style={{
+                    backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${activeProfile.hue}), oklch(0.66 0.13 ${activeProfile.hue + 25}))`,
+                  }}
+                >
+                  {activeProfile.initials}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowSelfFullAvatar(false)}
+              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft"
+            >
+              Kembali
+            </button>
+          </div>
+        </div>
       )}
     </PageShell>
   );

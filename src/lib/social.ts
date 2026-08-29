@@ -69,6 +69,8 @@ export type GalleryVideo = {
   reason?: string | undefined;
   approvalComment?: string | undefined;
   submittedAt: number;
+  userDeleted?: boolean | undefined;
+  userDeletedAt?: number | undefined;
 };
 
 export const MAX_VIDEOS = 999999;

@@ -274,7 +274,7 @@ function FriendClubPage() {
   return (
     <PageShell
       title="Friend Club"
-      description="Cari teman, kelola permintaan, dan pilih Teman Tampil di Home."
+      description="Cari Teman, Kelola Permintaan, dan Atur Teman."
     >
       {/* Tab Selector */}
       <div className="mb-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft">
@@ -503,7 +503,7 @@ function SearchPanel({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari berdasarkan nama atau ID Akun"
+          placeholder="Cari berdasarkan Nama atau ID Akun..."
           className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-3 pl-10 pr-4 text-sm font-medium shadow-soft focus:border-primary focus:outline-none"
         />
       </div>
@@ -519,7 +519,7 @@ function SearchPanel({
           </div>
         ) : isSearching ? (
           <div className="sm:col-span-2 text-center py-8 text-xs text-muted-foreground font-semibold">
-            Mencari teman... 🔍
+            Mencari teman...
           </div>
         ) : results.length === 0 ? (
           <div className="sm:col-span-2">

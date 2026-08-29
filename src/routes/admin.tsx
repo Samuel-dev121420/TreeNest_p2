@@ -96,17 +96,18 @@ function AdminDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground dark:bg-[#0d1412] pb-20 select-none">
+    <main className="min-h-screen bg-gradient-soft text-foreground dark:bg-[#0d1412] pb-20 select-none">
       {/* Header Admin */}
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-card/80 dark:bg-card/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 dark:border-border/60 dark:bg-card/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate({ to: "/" })}
-              className="rounded-2xl border border-input bg-background p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+              className="flex items-center gap-1.5 rounded-2xl border border-border/80 bg-card px-3.5 py-2 text-xs font-bold text-foreground shadow-soft transition-all hover:bg-secondary hover:border-primary/50 hover:text-primary active:scale-95 cursor-pointer dark:border-border/70 dark:bg-secondary/40 dark:text-foreground dark:hover:bg-secondary/90 dark:hover:border-primary/50 dark:hover:text-primary"
               title="Kembali ke Beranda"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="size-4" />
+              <span>Keluar</span>
             </button>
             <div className="flex items-center gap-2">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -126,10 +127,10 @@ function AdminDashboardPage() {
               logout();
               navigate({ to: "/login" });
             }}
-            className="flex items-center gap-1.5 rounded-2xl border border-input bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+            className="flex items-center gap-1.5 rounded-2xl border border-destructive/30 bg-destructive/10 px-3.5 py-2 text-xs font-bold text-destructive shadow-soft transition-all hover:bg-destructive hover:text-white hover:border-destructive active:scale-95 cursor-pointer dark:border-destructive/40 dark:bg-destructive/20 dark:text-red-300 dark:hover:bg-destructive dark:hover:text-white dark:hover:border-destructive"
           >
-            <LogOut className="h-3.5 w-3.5" />
-            Logout
+            <LogOut className="size-3.5" />
+            <span>Logout</span>
           </button>
         </div>
       </header>
@@ -137,7 +138,7 @@ function AdminDashboardPage() {
       {/* Konten Utama */}
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {/* Filter Tab */}
-        <div className="mb-6 flex gap-2 overflow-x-auto rounded-3xl border border-border/60 bg-card dark:bg-secondary/40 p-1.5 shadow-soft">
+        <div className="mb-6 flex gap-2 overflow-x-auto rounded-3xl border-2 border-border/80 bg-card dark:border-border/60 dark:bg-secondary/40 p-1.5 shadow-soft">
           {[
             { key: "pending", label: "Menunggu Moderasi" },
             { key: "history", label: "Riwayat Video" },
@@ -159,11 +160,11 @@ function AdminDashboardPage() {
         {/* Daftar Video */}
         <div className="space-y-4">
           {loading ? (
-            <div className="rounded-3xl border border-card bg-card/60 p-8 text-center text-sm font-medium text-muted-foreground">
+            <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
               Memuat daftar video moderasi...
             </div>
           ) : videos.length === 0 ? (
-            <div className="rounded-3xl border border-card bg-card/60 p-8 text-center text-sm font-medium text-muted-foreground">
+            <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
               Tidak ada video dalam kategori ini.
             </div>
           ) : (
@@ -174,7 +175,7 @@ function AdminDashboardPage() {
               return (
                 <div
                   key={video.id}
-                  className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-3xl border-2 border-border/80 bg-card p-5 shadow-soft dark:border-border/60 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-start gap-4">
                     {/* Thumbnail yang bisa diklik untuk preview langsung */}
@@ -183,17 +184,7 @@ function AdminDashboardPage() {
                       className="group relative h-24 w-36 flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-secondary shadow-inner"
                       title="Klik untuk memutar video"
                     >
-                      {yId ? (
-                        <img
-                          src={`https://img.youtube.com/vi/${yId}/hqdefault.jpg`}
-                          alt={video.title}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-leaf/15 to-primary/10 text-muted-foreground">
-                          <Film className="h-8 w-8" />
-                        </div>
-                      )}
+                      <VideoThumbnail video={video} yt={yId} />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="flex size-9 items-center justify-center rounded-full bg-white/90 text-neutral-950 shadow-md">
                           <Play className="size-4 fill-current ml-0.5" />
@@ -498,6 +489,55 @@ function AdminPreviewModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null }) {
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (
+      !yt &&
+      (video.sourceType === "upload" ||
+        video.url.startsWith("indexeddb:") ||
+        video.url.startsWith("blob:"))
+    ) {
+      resolveVideoUrl(video.url, video.id).then((u) => {
+        if (active && u) setLocalUrl(u);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [video.url, video.id, video.sourceType, yt]);
+
+  if (yt) {
+    return (
+      <img
+        src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`}
+        alt={video.title}
+        loading="lazy"
+        className="size-full object-cover transition-transform group-hover:scale-105"
+      />
+    );
+  }
+
+  if (localUrl) {
+    return (
+      <video
+        src={localUrl}
+        className="size-full object-cover transition-transform group-hover:scale-105"
+        muted
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    <div className="flex size-full items-center justify-center bg-gradient-to-br from-leaf/15 to-primary/10 text-muted-foreground">
+      <Film className="size-8" />
     </div>
   );
 }
