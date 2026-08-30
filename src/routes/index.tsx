@@ -181,7 +181,7 @@ function HomePage() {
           delay={0}
           from={6}
           to={34}
-          onClick={() => setSelectedFriendAccountId(user.accountId || user.uid)}
+          onClick={() => setSelectedFriendAccountId(user.accountId)}
         />
 
         {/* Real featured friends only — clickable to open PublicProfileModal */}

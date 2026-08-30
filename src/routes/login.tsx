@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth-context";
 import { type User } from "firebase/auth";
 import {
@@ -64,6 +65,7 @@ function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState("");
   useEffect(() => {
     // Selalu pastikan halaman login menggunakan tampilan light mode (latar putih bersih)
     document.documentElement.classList.remove("dark");
@@ -280,10 +282,10 @@ function LoginPage() {
               <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-foreground">
                 TreeNest Sanctuary
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground transition-all duration-300">
                 {isRegister
                   ? "Buat akun baru untuk mulai tumbuh"
-                  : "Selamat datang kembali di ruang tenangmu"}
+                  : "Selamat datang di TreeNest Sanctuary"}
               </p>
             </div>
 
@@ -295,9 +297,9 @@ function LoginPage() {
                   setIsRegister(false);
                   setError("");
                 }}
-                className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all ${
+                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all duration-300 cursor-pointer ${
                   !isRegister
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm scale-[1.01]"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -310,9 +312,9 @@ function LoginPage() {
                   setIsRegister(true);
                   setError("");
                 }}
-                className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all ${
+                className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all duration-300 cursor-pointer ${
                   isRegister
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm scale-[1.01]"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -329,25 +331,34 @@ function LoginPage() {
             )}
 
             {/* Form Inputs */}
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              {isRegister && (
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Contoh: Rafi"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-sm font-medium transition-all focus:border-primary focus:outline-none"
-                    />
+            <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+              {/* Smooth expandable Username field */}
+              <div
+                className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+                  isRegister
+                    ? "grid-rows-[1fr] opacity-100"
+                    : "grid-rows-[0fr] opacity-0 pointer-events-none"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="pb-0.5">
+                    <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                      Username
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        required={isRegister}
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-sm font-medium transition-all focus:border-primary focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="mb-1 block text-xs font-bold text-muted-foreground">Email</label>
@@ -356,7 +367,7 @@ function LoginPage() {
                   <input
                     type="email"
                     required
-                    placeholder="nama@email.com"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-sm font-medium transition-all focus:border-primary focus:outline-none"
@@ -365,18 +376,21 @@ function LoginPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-muted-foreground">Password</label>
+                <div className="flex items-center justify-between mb-1 select-none">
+                  <span className="text-xs font-bold text-muted-foreground">Password</span>
                   {!isRegister && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setForgotEmail(email);
+                      formNoValidate
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setForgotEmail(email || "");
                         setForgotSent(false);
                         setForgotError("");
                         setShowForgotModal(true);
                       }}
-                      className="text-xs font-bold text-primary hover:underline underline-offset-2"
+                      className="cursor-pointer text-xs font-bold text-primary hover:underline underline-offset-2 focus:outline-none"
                     >
                       Lupa Password?
                     </button>
@@ -387,7 +401,7 @@ function LoginPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    placeholder="••••••••"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-11 text-sm font-medium transition-all focus:border-primary focus:outline-none"
@@ -395,7 +409,7 @@ function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
                     title={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                     aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                   >
@@ -407,7 +421,7 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 flex w-full items-center justify-center rounded-2xl bg-gradient-leaf py-3 text-sm font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                className="mt-2 flex w-full items-center justify-center rounded-2xl bg-gradient-leaf py-3 text-sm font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
               >
                 {loading ? "Memproses..." : isRegister ? "Daftar Akun Baru" : "Masuk ke TreeNest"}
               </button>
@@ -424,95 +438,97 @@ function LoginPage() {
       </div>
 
       {/* Modal Lupa Password */}
-      {showForgotModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowForgotModal(false);
-          }}
-        >
-          <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <KeyRound className="size-4" />
-                </span>
-                <h2 className="text-sm font-bold text-foreground">Pemulihan Kata Sandi</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {forgotSent ? (
-              <div className="mt-4 text-center space-y-3">
-                <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-leaf bg-leaf/10 p-3 rounded-2xl">
-                  <CheckCircle2 className="size-4 shrink-0" />
-                  <span>Tautan reset password berhasil dikirim!</span>
-                </div>
-                <p className="text-xs font-bold text-foreground break-all">{forgotEmail}</p>
-                <div className="rounded-xl bg-secondary/50 p-2.5 text-left text-[11px] text-muted-foreground space-y-1">
-                  <p className="font-bold text-foreground">📌 Tips Pemeriksaan:</p>
-                  <p>• Periksa folder <strong>Kotak Masuk (Inbox)</strong>.</p>
-                  <p>• Jika belum muncul, periksa folder <strong>Spam / Promosi / Sampah</strong>.</p>
+      {showForgotModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowForgotModal(false);
+            }}
+          >
+            <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <KeyRound className="size-4" />
+                  </span>
+                  <h2 className="text-sm font-bold text-foreground">Pemulihan Kata Sandi</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(false)}
-                  className="mt-2 w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+                  className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
                 >
-                  Tutup
+                  <X className="size-4" />
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleSendForgotReset} className="mt-4 space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Masukkan alamat email yang terdaftar di TreeNest untuk menerima tautan reset password:
-                </p>
 
-                {forgotError && (
-                  <div className="rounded-xl bg-destructive/15 p-2.5 text-xs font-semibold text-destructive">
-                    {forgotError}
+              {forgotSent ? (
+                <div className="mt-4 text-center space-y-3">
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-leaf bg-leaf/10 p-3 rounded-2xl">
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    <span>Tautan reset password berhasil dikirim!</span>
                   </div>
-                )}
-
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="nama@email.com"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
+                  <p className="text-xs font-bold text-foreground break-all">{forgotEmail}</p>
+                  <div className="rounded-xl bg-secondary/50 p-2.5 text-left text-[11px] text-muted-foreground space-y-1">
+                    <p className="font-bold text-foreground">📌 Tips Pemeriksaan:</p>
+                    <p>• Periksa folder <strong>Kotak Masuk (Inbox)</strong>.</p>
+                    <p>• Jika belum muncul, periksa folder <strong>Spam / Promosi / Sampah</strong>.</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(false)}
-                    className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70"
+                    className="mt-2 w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={forgotLoading}
-                    className="flex-1 rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {forgotLoading ? "Mengirim..." : "Kirim Tautan"}
+                    Tutup
                   </button>
                 </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+              ) : (
+                <form onSubmit={handleSendForgotReset} className="mt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Masukkan alamat email yang terdaftar di TreeNest untuk menerima tautan reset password:
+                  </p>
+
+                  {forgotError && (
+                    <div className="rounded-xl bg-destructive/15 p-2.5 text-xs font-semibold text-destructive">
+                      {forgotError}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="nama@email.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(false)}
+                      className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="flex-1 rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                    >
+                      {forgotLoading ? "Mengirim..." : "Kirim Tautan"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </main>
   );
 }
