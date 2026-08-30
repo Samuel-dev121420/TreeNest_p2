@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import skyBg from "@/assets/sky-bg.jpg";
 import { useAuth } from "@/lib/auth-context";
+import tree1Img from "@/assets/tree-1.png";
+import tree2Img from "@/assets/tree-2.png";
+import tree3Img from "@/assets/tree-3.png";
+import tree4Img from "@/assets/tree-4.png";
+import pohonCemaraImg from "@/assets/Pohon Cemara.png";
 import { DEMO_USER, expNeeded, stageForLevel, TREEHOUSE_LEVEL } from "@/lib/treenest";
 import { getUserFriends, getFeaturedFriends, getUserProfile, searchUserByAccountId } from "@/lib/firestore-service";
 import type { Friend } from "@/lib/social";
@@ -136,24 +140,21 @@ function HomePage() {
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
       <h1 className="sr-only">TreeNest — Home</h1>
 
-      {/* Latar langit & pegunungan */}
-      <img
-        src={skyBg}
-        alt="Pemandangan hutan dan pegunungan yang tenang"
-        width={1920}
-        height={1080}
-        className="pointer-events-none absolute inset-x-0 bottom-[22%] top-0 h-full w-full object-cover opacity-90"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[color-mix(in_oklab,var(--grass)_55%,transparent)]" />
+      {/* Scene latar: langit gradien, bukit, treeline, awan, burung */}
+      <SceneBackground />
 
-      {/* Awan */}
-      <Cloud className="top-[12%] size-24 opacity-90" duration={70} delay={0} />
-      <Cloud className="top-[24%] size-16 opacity-70" duration={95} delay={-30} />
-      <Cloud className="top-[6%] size-20 opacity-60" duration={120} delay={-60} />
+      {/* Awan — 7 Awan melayang di berbagai ketinggian & kecepatan */}
+      <Cloud className="top-[4%] w-32 opacity-90" duration={65} delay={0} />
+      <Cloud className="top-[10%] w-24 opacity-75" duration={88} delay={-24} />
+      <Cloud className="top-[16%] w-28 opacity-85" duration={78} delay={-52} />
+      <Cloud className="top-[22%] w-20 opacity-65" duration={105} delay={-15} />
+      <Cloud className="top-[28%] w-36 opacity-80" duration={95} delay={-42} />
+      <Cloud className="top-[34%] w-22 opacity-60" duration={115} delay={-70} />
+      <Cloud className="top-[8%] w-18 opacity-50" duration={130} delay={-85} />
 
       {/* Burung */}
-      <Bird className="top-[18%]" duration={38} delay={-6} />
-      <Bird className="top-[30%] scale-75" duration={52} delay={-25} />
+      <Bird className="top-[17%]" duration={40} delay={-7} />
+      <Bird className="top-[28%] scale-75" duration={56} delay={-27} />
 
       {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
       {!isVisiting && (
@@ -220,7 +221,7 @@ function HomePage() {
       </div>
 
       {/* Pohon utama — Berdiri menancap di rumput (bottom-[20%]) di atas BottomNav tanpa bentrok */}
-      <div className="absolute inset-x-0 bottom-[20%] flex h-[48%] items-end justify-center z-10">
+      <div className="absolute inset-x-0 bottom-[17%] flex h-[48%] items-end justify-center z-10">
         <div
           onClick={() => {
             if (isVisiting && isTreehouseReady) {
@@ -439,6 +440,145 @@ function Orb({
   );
 }
 
+/* ─────────────────────────────────────────────────────────
+   SceneBackground — seluruh layer latar belakang Home Page
+   Menggunakan Gambar Pohon Cemara (src/assets/Pohon Cemara.png)
+───────────────────────────────────────────────────────── */
+function SceneBackground() {
+  // Pohon Latar Belakang Cemara — terdistribusi rapat di sepanjang horizon tanah (bottom-[20%]), termasuk di belakang Pohon Utama dan nembus tepi layar kiri/kanan
+  const horizonTrees = [
+    // Tepi Kiri Nembus Layar
+    { img: pohonCemaraImg, pos: "-left-[5%]", height: "h-48", delay: "0s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[2%]", height: "h-36", delay: "0.8s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[6%]", height: "h-42", delay: "0.4s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[11%]", height: "h-44", delay: "1.1s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[16%]", height: "h-36", delay: "0.2s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[21%]", height: "h-40", delay: "0.7s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[27%]", height: "h-34", delay: "1.4s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[31%]", height: "h-42", delay: "0.9s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[36%]", height: "h-44", delay: "0.3s", anim: "animate-breeze" },
+
+    // Pohon Cemara di Belakang Pohon Utama (Area Tengah)
+    { img: pohonCemaraImg, pos: "left-[41%]", height: "h-38", delay: "1.0s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[45%]", height: "h-44", delay: "0.5s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[55%] -translate-x-1/2", height: "h-48", delay: "1.2s", anim: "animate-sway" },
+    
+    { img: pohonCemaraImg, pos: "left-[59%]", height: "h-38", delay: "1.6s", anim: "animate-sway" },
+
+    // Area Kanan
+    { img: pohonCemaraImg, pos: "right-[36%]", height: "h-40", delay: "1.8s", anim: "animate-sway" },
+    
+    { img: pohonCemaraImg, pos: "right-[26%]", height: "h-42", delay: "1.2s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[21%]", height: "h-44", delay: "0.6s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "right-[16%]", height: "h-36", delay: "1.5s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[11%]", height: "h-40", delay: "0.1s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "right-[4%]", height: "h-44", delay: "1.3s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[1%]", height: "h-36", delay: "0.7s", anim: "animate-breeze" },
+    // Tepi Kanan Nembus Layar
+    { img: pohonCemaraImg, pos: "-right-[5%]", height: "h-48", delay: "1.6s", anim: "animate-sway" },
+  ];
+
+  return (
+    <>
+      {/* ── Langit gradien cerah statis (TIDAK BERUBAH di Mode Gelap) ── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, oklch(0.76 0.08 226) 0%, oklch(0.86 0.055 220) 35%, oklch(0.90 0.045 190) 65%, oklch(0.88 0.07 155) 100%)",
+        }}
+      />
+
+      {/* ── Matahari Ambient (Statis) ── */}
+      <div
+        aria-hidden="true"
+        className="animate-sun-glow pointer-events-none absolute right-[10%] top-[6%] size-64 rounded-full bg-amber-200/30 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[16%] top-[10%] size-16 rounded-full bg-amber-100/90 shadow-[0_0_50px_rgba(253,224,71,0.5)]"
+      />
+
+      {/* ── 5 Gunung Simetris Rapi & Ukuran Besar (Puncak Gunung A & E Tepat di Tepi Layar Kiri & Kanan x=0 & x=1440) ── */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[20%] h-64 select-none overflow-hidden z-0">
+        <svg
+          viewBox="0 0 1440 240"
+          preserveAspectRatio="none"
+          className="size-full"
+        >
+          <defs>
+            <linearGradient id="mntGradC" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="oklch(0.74 0.06 230)" />
+              <stop offset="100%" stopColor="oklch(0.84 0.05 180)" />
+            </linearGradient>
+            <linearGradient id="mntGradBD" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="oklch(0.76 0.07 210)" />
+              <stop offset="100%" stopColor="oklch(0.82 0.08 165)" />
+            </linearGradient>
+            <linearGradient id="mntGradAE" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="oklch(0.78 0.06 195)" />
+              <stop offset="100%" stopColor="oklch(0.80 0.10 155)" />
+            </linearGradient>
+          </defs>
+
+          {/* Gunung C — Tengah (Puncak O = 220px tinggi, peak x=720 tepat di tengah layar) */}
+          <path
+            d="M 440 240 L 720 20 L 1000 240 Z"
+            fill="url(#mntGradC)"
+            opacity="0.95"
+          />
+
+          {/* Gunung B — Kiri Tengah (Puncak y = 185px tinggi, peak x=360) */}
+          <path
+            d="M 120 240 L 360 55 L 600 240 Z"
+            fill="url(#mntGradBD)"
+            opacity="0.9"
+          />
+
+          {/* Gunung D — Kanan Tengah (Puncak y = 185px tinggi, peak x=1080) */}
+          <path
+            d="M 840 240 L 1080 55 L 1320 240 Z"
+            fill="url(#mntGradBD)"
+            opacity="0.9"
+          />
+
+          {/* Gunung A — Paling Kiri (Midpoint garis kiri tepat di tepi layar kiri x=0, Puncak di x=120) */}
+          <path
+            d="M -120 240 L 120 100 L 360 240 Z"
+            fill="url(#mntGradAE)"
+            opacity="0.95"
+          />
+
+          {/* Gunung E — Paling Kanan (Midpoint garis kanan tepat di tepi layar kanan x=1440, Puncak di x=1320) */}
+          <path
+            d="M 1080 240 L 1320 100 L 1560 240 Z"
+            fill="url(#mntGradAE)"
+            opacity="0.95"
+          />
+        </svg>
+      </div>
+
+      {/* ── Pohon Latar Belakang Cemara (Termasuk di Belakang Pohon Utama & Menembus Tepi Layar Kiri & Kanan) ── */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[20%] h-48 select-none z-[1]">
+        {horizonTrees.map((t, idx) => (
+          <div
+            key={idx}
+            className={`${t.anim} absolute ${t.pos} bottom-0 flex items-end opacity-90`}
+            style={{ animationDelay: t.delay }}
+          >
+            <img
+              src={t.img}
+              alt=""
+              className={`${t.height} w-auto object-contain drop-shadow-sm`}
+            />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function Cloud({
   className,
   duration,
@@ -453,7 +593,7 @@ function Cloud({
       className={`animate-drift pointer-events-none absolute ${className}`}
       style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
     >
-      <svg viewBox="0 0 100 48" className="size-full" aria-hidden="true">
+      <svg viewBox="0 0 100 48" className="size-full drop-shadow-xs" aria-hidden="true">
         <g fill="var(--cloud)">
           <ellipse cx="32" cy="30" rx="26" ry="16" />
           <ellipse cx="58" cy="24" rx="22" ry="18" />
@@ -478,15 +618,17 @@ function Bird({
       className={`animate-fly-by pointer-events-none absolute left-0 ${className}`}
       style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
     >
-      <svg viewBox="0 0 44 22" className="w-9 overflow-visible" aria-hidden="true">
-        <path
-          d="M2 14 C 8 6, 14 6, 22 13 C 30 6, 36 6, 42 14"
-          fill="none"
-          stroke="oklch(0.35 0.05 150 / 0.75)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-      </svg>
+      <div className="animate-flap">
+        <svg viewBox="0 0 44 22" className="w-9 overflow-visible" aria-hidden="true">
+          <path
+            d="M2 14 C 8 6, 14 6, 22 13 C 30 6, 36 6, 42 14"
+            fill="none"
+            stroke="oklch(0.35 0.05 150 / 0.85)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -516,7 +658,7 @@ function Bush({
 }) {
   return (
     <div
-      className={`pointer-events-none absolute ${className ?? ""}`}
+      className={`animate-breeze pointer-events-none absolute ${className ?? ""}`}
       style={{ transform: flip ? "scaleX(-1)" : undefined }}
     >
       <svg viewBox="0 0 80 40" className="w-full" aria-hidden="true">

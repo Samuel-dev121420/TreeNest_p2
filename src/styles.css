@@ -360,6 +360,73 @@
     transform: scaleY(0.45);
   }
 }
+@keyframes breeze {
+  0%,
+  100% {
+    transform: rotate(0deg) skewX(0deg);
+  }
+  50% {
+    transform: rotate(2.5deg) skewX(1deg);
+  }
+}
+@keyframes breeze-r {
+  0%,
+  100% {
+    transform: rotate(0deg) skewX(0deg);
+  }
+  50% {
+    transform: rotate(-2deg) skewX(-0.8deg);
+  }
+}
+@keyframes sun-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+}
+@keyframes cloud-puff {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+  50% {
+    transform: scaleY(1.04) scaleX(0.97);
+  }
+}
+@keyframes wing-arc {
+  0%,
+  100% {
+    d: path("M2 11 C 8 4, 14 4, 22 10 C 30 4, 36 4, 42 11");
+  }
+  50% {
+    d: path("M2 11 C 8 18, 14 18, 22 12 C 30 18, 36 18, 42 11");
+  }
+}
+@keyframes moon-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px oklch(0.95 0.02 240 / 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px oklch(0.95 0.02 240 / 0.8));
+  }
+}
 
 @utility animate-drift {
   animation: drift linear infinite;
@@ -389,9 +456,33 @@
   animation: sway 5s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
+@utility animate-breeze {
+  animation: breeze 4.2s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@utility animate-sun-glow {
+  animation: sun-glow 6s ease-in-out infinite;
+}
 @utility animate-flap {
   animation: flap 0.5s ease-in-out infinite;
   transform-origin: 50% 100%;
+}
+@utility animate-breeze-r {
+  animation: breeze-r 5.1s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@utility animate-twinkle {
+  animation: twinkle ease-in-out infinite;
+}
+@utility animate-cloud-puff {
+  animation: cloud-puff 8s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+@utility animate-wing-arc {
+  animation: wing-arc 0.45s ease-in-out infinite;
+}
+@utility animate-moon-glow {
+  animation: moon-glow 4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
