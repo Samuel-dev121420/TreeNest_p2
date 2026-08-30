@@ -431,10 +431,10 @@ function TreeGalleryPage() {
       description="Silakan pilih video. Video akan tayang setelah disetujui Admin."
     >
       {/* Info banner */}
-      <div className="mb-6 flex items-start gap-3 rounded-3xl border border-border/70 bg-gradient-to-br from-sky/15 to-cloud/40 p-4 shadow-soft">
+      <div className="mb-6 flex items-start gap-3 rounded-3xl border-2 border-white bg-gradient-to-br from-sky/15 to-cloud/40 p-4 shadow-soft">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-sky-deep" />
         <div className="text-sm text-muted-foreground">
-          <p className="font-semibold text-foreground">Aturan & Penjelasan singkat</p>
+          <p className="font-semibold text-foreground">Aturan &amp; Penjelasan singkat</p>
           <p className="mt-0.5">
             · Silahkan pilih video (≤ 180 detik untuk tipe File Upload).<br></br> · Video tayang setelah moderasi Admin. <br></br>· Pilih 1 video untuk Rumah Pohon setiap harinya dan buat streak Anda!
           </p>

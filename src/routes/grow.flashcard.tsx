@@ -329,7 +329,7 @@ function FlashcardPage() {
             className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-2xl bg-primary text-primary-foreground border border-primary/20 px-4 py-2 text-xs font-bold shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
           >
             {showAddDeckForm ? <X className="size-4" /> : <FolderPlus className="size-4" />}
-            {showAddDeckForm ? "Tutup Form" : "+ Buat Deck Baru"}
+            {showAddDeckForm ? "Tutup Form" : "Buat Deck Baru"}
           </button>
         </div>
 

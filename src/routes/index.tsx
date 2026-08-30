@@ -3,13 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import skyBg from "@/assets/sky-bg.jpg";
 import { useAuth } from "@/lib/auth-context";
 import { DEMO_USER, expNeeded, stageForLevel, TREEHOUSE_LEVEL } from "@/lib/treenest";
-import { getUserFriends, getFeaturedFriends } from "@/lib/firestore-service";
+import { getUserFriends, getFeaturedFriends, getUserProfile, searchUserByAccountId } from "@/lib/firestore-service";
 import type { Friend } from "@/lib/social";
+import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-service";
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { Sparkles, Home, ChevronRight, X, TreePine } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { visit?: string | undefined } => ({
+    visit: typeof search["visit"] === "string" ? search["visit"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "TreeNest — Tumbuhkan Pohonmu Setiap Hari" },
@@ -31,18 +35,35 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { profile: authProfile } = useAuth();
-  const user = authProfile || DEMO_USER;
+  const { visit: visitAccountId } = Route.useSearch();
+  const isVisiting = Boolean(visitAccountId);
+
+  const user = authProfile || {
+    username: "Pengguna",
+    accountId: "TN-0000",
+    initials: "TN",
+    hue: 150,
+    avatarUrl: "",
+    level: 1,
+    exp: 0,
+  };
   const level = user.level;
   const exp = user.exp;
   const username = user.username;
 
+  // State for own featured friends
   const [featuredFriendsList, setFeaturedFriendsList] = useState<Friend[]>([]);
   const [showTreehouse, setShowTreehouse] = useState(false);
   const [showTreeTip, setShowTreeTip] = useState(false);
   const [showTreeBadge, setShowTreeBadge] = useState(true);
   const [selectedFriendAccountId, setSelectedFriendAccountId] = useState<string | null>(null);
 
-  // Load actual featured friends for the logged in user
+  // State for visited profile (visiting mode)
+  const [visitedProfile, setVisitedProfile] = useState<FirestoreUserProfile | null>(null);
+  const [visitedFriends, setVisitedFriends] = useState<Friend[]>([]);
+  const [isVisitedFriend, setIsVisitedFriend] = useState(false);
+
+  // Load logged-in user's own featured friends
   useEffect(() => {
     if (!authProfile?.uid) {
       setFeaturedFriendsList([]);
@@ -59,20 +80,57 @@ function HomePage() {
     });
   }, [authProfile?.uid]);
 
-  const stage = useMemo(() => stageForLevel(level), [level]);
+  // Load visited user's profile when ?visit= param is present
+  useEffect(() => {
+    if (!visitAccountId) {
+      setVisitedProfile(null);
+      setVisitedFriends([]);
+      return;
+    }
+    (async () => {
+      let found: FirestoreUserProfile | null = await searchUserByAccountId(visitAccountId);
+      if (!found) found = await getUserProfile(visitAccountId);
+      setVisitedProfile(found);
+
+      if (found) {
+        const [allFriends, featuredIds] = await Promise.all([
+          getUserFriends(found.uid),
+          getFeaturedFriends(found.uid),
+        ]);
+        const featured = allFriends.filter(
+          (f) => featuredIds.includes(f.id) || featuredIds.includes(f.accountId),
+        );
+        setVisitedFriends(featured.slice(0, 4));
+
+        // Check jika viewer adalah teman dari yang dikunjungi
+        if (authProfile?.uid) {
+          const viewerFriends = await getUserFriends(authProfile.uid);
+          const isFr = viewerFriends.some((f) => f.accountId === found!.accountId || f.uid === found!.uid);
+          setIsVisitedFriend(isFr);
+        }
+      }
+    })();
+  }, [visitAccountId, authProfile?.uid]);
+
+  // Data yang akan ditampilkan: milik yang dikunjungi jika visiting mode, atau milik sendiri
+  const displayProfile = isVisiting && visitedProfile ? visitedProfile : user;
+  const displayLevel = Math.min(20, displayProfile.level);
+  const displayFriends = isVisiting ? visitedFriends : featuredFriendsList;
+
+  const stage = useMemo(() => stageForLevel(displayLevel), [displayLevel]);
   const need = expNeeded(level);
   const pct = Math.min(100, Math.round((exp / need) * 100));
-  const isTreehouseReady = level >= TREEHOUSE_LEVEL || stage.key === "house_tree";
+  const isTreehouseReady = displayLevel >= TREEHOUSE_LEVEL || stage.key === "house_tree";
 
   // Durasi pop-up teks masuk rumah pohon: muncul 3 detik saat halaman dibuka, lalu fade out
   useEffect(() => {
-    if (!isTreehouseReady) return;
+    if (!isTreehouseReady || isVisiting) return;
     setShowTreeBadge(true);
     const timer = setTimeout(() => {
       setShowTreeBadge(false);
     }, 3000);
     return () => clearTimeout(timer);
-  }, [isTreehouseReady]);
+  }, [isTreehouseReady, isVisiting]);
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
@@ -97,24 +155,63 @@ function HomePage() {
       <Bird className="top-[18%]" duration={38} delay={-6} />
       <Bird className="top-[30%] scale-75" duration={52} delay={-25} />
 
-      {/* Kartu level & EXP (Warna bg-gradient-soft & border-primary/50 dengan Efek Mengembang) */}
-      <div className="absolute left-1/2 top-17 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer">
-        <div className="flex items-baseline justify-between">
-          <p className="text-sm font-bold text-foreground">
-            Halo, {username} <span className="text-muted-foreground">· {stage.label}</span>
+      {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
+      {!isVisiting && (
+        <div className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-bold text-foreground">
+              Halo, {username} <span className="text-muted-foreground">· {stage.label}</span>
+            </p>
+            <p className="text-xs font-bold text-primary">Lv {level}</p>
+          </div>
+          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 border border-white/90 shadow-xs dark:bg-secondary/80 dark:border-transparent">
+            <div
+              className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700 shadow-xs"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground text-center font-bold">
+            {exp} / {need} EXP · Rumah Pohon terbuka di Level {TREEHOUSE_LEVEL}
           </p>
-          <p className="text-xs font-bold text-primary">Lv {level}</p>
         </div>
-        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
-          <div
-            className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700"
-            style={{ width: `${pct}%` }}
-          />
+      )}
+
+      {/* Banner Visiting Mode — tampil saat mengunjungi Home Page user lain */}
+      {isVisiting && visitedProfile && (
+        <div
+          onClick={() => setSelectedFriendAccountId(visitedProfile.accountId)}
+          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-card dark:bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 animate-in fade-in duration-300 transition-all hover:scale-[1.02] cursor-pointer"
+          title={`Klik untuk melihat profil ${visitedProfile.username}`}
+        >
+          <div className="flex items-center gap-3">
+            {visitedProfile.avatarUrl ? (
+              <img
+                src={visitedProfile.avatarUrl}
+                alt={visitedProfile.username}
+                className="size-10 rounded-full object-cover ring-2 ring-black dark:ring-white shrink-0"
+              />
+            ) : (
+              <span
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-primary-foreground ring-2 ring-black dark:ring-white"
+                style={{
+                  backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${visitedProfile.hue}), oklch(0.66 0.13 ${visitedProfile.hue + 25}))`,
+                }}
+              >
+                {visitedProfile.initials}
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">{visitedProfile.username}</p>
+              <p className="text-xs text-muted-foreground">
+                Lv {displayLevel} · {stage.label}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] text-muted-foreground/80 text-center font-bold">
+            Kamu sedang mengunjungi Home Page milik "{visitedProfile.username}"
+          </p>
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
-          {exp} / {need} EXP · Rumah Pohon terbuka di Level {TREEHOUSE_LEVEL}
-        </p>
-      </div>
+      )}
 
       {/* Tanah lurus — Permukaan rumput berada di bottom-[20%] di atas BottomNav */}
       <div className="absolute inset-x-0 bottom-0 h-[25%] bg-gradient-ground">
@@ -125,15 +222,21 @@ function HomePage() {
       {/* Pohon utama — Berdiri menancap di rumput (bottom-[20%]) di atas BottomNav tanpa bentrok */}
       <div className="absolute inset-x-0 bottom-[20%] flex h-[48%] items-end justify-center z-10">
         <div
-          onClick={() => (isTreehouseReady ? setShowTreehouse(true) : setShowTreeTip(true))}
-          title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${level}`}
+          onClick={() => {
+            if (isVisiting && isTreehouseReady) {
+              setShowTreehouse(true);
+            } else if (!isVisiting) {
+              isTreehouseReady ? setShowTreehouse(true) : setShowTreeTip(true);
+            }
+          }}
+          title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${displayLevel}`}
           className="group relative flex h-full items-end justify-center cursor-pointer select-none transition-transform duration-300 hover:scale-[1.02] active:scale-95"
         >
           {/* Tombol Floating Masuk Rumah Pohon: 100% seragam dengan Notifikasi & EXP card */}
           {isTreehouseReady && (
             <div
               className={`absolute -top-4 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
-                showTreeBadge
+                showTreeBadge && !isVisiting
                   ? "opacity-100 scale-100 pointer-events-auto"
                   : "opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
               }`}
@@ -147,7 +250,9 @@ function HomePage() {
                 className="animate-bounce inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-primary/50 bg-gradient-soft px-4 py-2 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-all hover:scale-105 hover:border-white cursor-pointer select-none dark:border-primary/50 dark:bg-card dark:text-foreground dark:hover:border-primary"
               >
                 <Home className="size-4 text-primary shrink-0" />
-                <span className="whitespace-nowrap font-bold text-foreground">Masuk Rumah Pohon</span>
+                <span className="whitespace-nowrap font-bold text-foreground">
+                  {isVisiting ? `Rumah Pohon ${visitedProfile?.username || ""}` : "Masuk Rumah Pohon"}
+                </span>
               </button>
             </div>
           )}
@@ -156,7 +261,7 @@ function HomePage() {
           <img
             key={stage.key}
             src={stage.image}
-            alt={`Pohonmu saat ini: ${stage.label}`}
+            alt={`Pohon${isVisiting ? ` milik ${visitedProfile?.username || "user lain"}` : "mu saat ini"}: ${stage.label}`}
             className="animate-grow-in relative origin-bottom object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.15)] group-hover:brightness-105 transition-all"
             style={{ height: `${stage.height}%` }}
           />
@@ -171,21 +276,23 @@ function HomePage() {
 
       {/* Bola profil: pengguna + teman tampil (Berjalan anggun di atas permukaan rumput) */}
       <div className="absolute inset-x-0 bottom-[14%] h-16 z-10">
-        {/* User's own orb (clickable to open brief profile modal) */}
-        <Orb
-          label="Kamu"
-          initials={user?.initials || "ME"}
-          hue={user?.hue ?? 150}
-          avatarUrl={user?.avatarUrl || undefined}
-          duration={26}
-          delay={0}
-          from={6}
-          to={34}
-          onClick={() => setSelectedFriendAccountId(user.accountId)}
-        />
+        {/* Jika bukan visiting mode: tampilkan orb milik sendiri */}
+        {!isVisiting && (
+          <Orb
+            label="Kamu"
+            initials={user?.initials || "ME"}
+            hue={user?.hue ?? 150}
+            avatarUrl={user?.avatarUrl || undefined}
+            duration={26}
+            delay={0}
+            from={6}
+            to={34}
+            onClick={() => setSelectedFriendAccountId(user.accountId)}
+          />
+        )}
 
-        {/* Real featured friends only — clickable to open PublicProfileModal */}
-        {featuredFriendsList.map((f, i) => (
+        {/* Orbs teman yang tampil (milik sendiri atau milik yang dikunjungi) */}
+        {displayFriends.map((f, i) => (
           <Orb
             key={f.id || f.accountId}
             label={f.name}
@@ -194,20 +301,25 @@ function HomePage() {
             avatarUrl={f.avatarUrl || undefined}
             duration={30 + i * 7}
             delay={-(i + 1) * 9}
-            from={38 + i * 17}
-            to={48 + i * 17}
+            from={isVisiting ? 15 + i * 17 : 38 + i * 17}
+            to={isVisiting ? 28 + i * 17 : 48 + i * 17}
             onClick={() => setSelectedFriendAccountId(f.accountId)}
           />
         ))}
       </div>
 
-      {/* Modal Rumah Pohon saat Pohon Level 20 diklik */}
+      {/* Modal Rumah Pohon */}
       {showTreehouse && (
         <TreehouseModal
-          uid={authProfile?.uid || "guest"}
-          username={username}
-          level={level}
+          uid={isVisiting && visitedProfile ? visitedProfile.uid : (authProfile?.uid || "guest")}
+          username={isVisiting && visitedProfile ? visitedProfile.username : username}
+          level={displayLevel}
           onClose={() => setShowTreehouse(false)}
+          viewerUid={authProfile?.uid}
+          isFriend={isVisitedFriend}
+          treehouseVideoPrivacy={
+            isVisiting && visitedProfile ? visitedProfile.treehouseVideoPrivacy : undefined
+          }
         />
       )}
 
@@ -218,12 +330,13 @@ function HomePage() {
           viewerUid={authProfile?.uid ?? ""}
           viewerFriends={featuredFriendsList}
           isFriend={true}
+          disableVisit={isVisiting}
           onClose={() => setSelectedFriendAccountId(null)}
         />
       )}
 
       {/* Tooltip Popup Pertumbuhan Pohon jika belum Level 20 */}
-      {showTreeTip && (
+      {!isVisiting && showTreeTip && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
           onClick={() => setShowTreeTip(false)}
@@ -282,7 +395,7 @@ function Orb({
   delay: number;
   from: number;
   to: number;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
 }) {
   const isClickable = !!onClick;
   return (

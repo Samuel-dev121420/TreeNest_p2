@@ -106,7 +106,7 @@ function AdminDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-soft text-foreground dark:bg-[#0d1412] pb-20 select-none">
+    <main className="min-h-screen bg-gradient-soft text-foreground pb-20 select-none">
       {/* Header Admin */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/90 dark:border-border/60 dark:bg-card/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   X,
   TreePine,
@@ -12,6 +13,7 @@ import {
   Instagram,
   Github,
   Twitter,
+  Home,
 } from "lucide-react";
 import { stageForLevel, expNeeded } from "@/lib/treenest";
 import { getUserProfile, type UserProfile } from "@/lib/firestore-service";
@@ -19,12 +21,13 @@ import { type SocialLink, type Friend, type Person } from "@/lib/social";
 
 type Props = {
   accountId: string;
-  viewerUid?: string;
-  viewerFriends?: Friend[];
+  viewerUid?: string | undefined;
+  viewerFriends?: Friend[] | undefined;
   onClose: () => void;
-  onAddFriend?: (person?: Person) => void;
-  isFriend?: boolean;
-  isRequestSent?: boolean;
+  onAddFriend?: ((person?: Person) => void) | undefined;
+  isFriend?: boolean | undefined;
+  isRequestSent?: boolean | undefined;
+  disableVisit?: boolean | undefined;
 };
 
 const PLATFORM_META: Record<
@@ -87,7 +90,9 @@ export function PublicProfileModal({
   onAddFriend,
   isFriend = false,
   isRequestSent = false,
+  disableVisit = false,
 }: Props) {
+  const navigate = useNavigate();
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestSent, setRequestSent] = useState(isRequestSent);
@@ -218,6 +223,27 @@ export function PublicProfileModal({
                 </div>
               </div>
 
+              {/* Tombol Mengunjungi Home Page User Lain */}
+              {!isOwner && (
+                <button
+                  type="button"
+                  disabled={disableVisit}
+                  onClick={() => {
+                    if (disableVisit) return;
+                    onClose();
+                    navigate({ to: "/", search: { visit: targetProfile.accountId } });
+                  }}
+                  className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/15 px-4 py-2.5 text-xs font-bold text-primary transition-all shadow-xs ${
+                    disableVisit
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-primary/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
+                  }`}
+                  title={disableVisit ? "Kamu sedang berada di mode berkunjung" : undefined}
+                >
+                  <Home className="size-4 shrink-0" /> Kunjungi Home Page
+                </button>
+              )}
+
               <div className="mt-3">
                 <h2 className="text-xl font-bold text-foreground">{targetProfile.username}</h2>
                 <p className="text-xs text-muted-foreground">ID {targetProfile.accountId}</p>
@@ -312,11 +338,11 @@ export function PublicProfileModal({
                 <img
                   src={targetProfile.avatarUrl}
                   alt={targetProfile.username}
-                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  className="size-64 sm:size-72 rounded-full object-cover ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
                 />
               ) : (
                 <span
-                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
                   style={{
                     backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
                   }}

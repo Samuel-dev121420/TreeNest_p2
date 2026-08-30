@@ -4,6 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,7 +14,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { BottomNav } from "../components/BottomNav";
-import { AuthProvider } from "../lib/auth-context";
+import { AuthProvider, useAuth } from "../lib/auth-context";
+import { LoadingScreen } from "../components/LoadingScreen";
 
 function NotFoundComponent() {
   return (
@@ -133,19 +136,50 @@ import { DateTimeWidget } from "../components/DateTimeWidget";
 import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
 import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
 
+function AppShell() {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const searchObj = location.search as { visit?: string };
+  const isVisiting = location.pathname === "/" && Boolean(searchObj?.visit);
+  const isMinimalRoute = location.pathname === "/login" || location.pathname === "/admin";
+
+  useEffect(() => {
+    if (!loading) {
+      const isPublicRoute = location.pathname === "/login" || location.pathname === "/admin";
+      if ((!user || !profile) && !isPublicRoute) {
+        navigate({ to: "/login" });
+      } else if (user && profile && location.pathname === "/login") {
+        navigate({ to: "/" });
+      }
+    }
+  }, [loading, user, profile, location.pathname, navigate]);
+
+  if (loading) {
+    return <LoadingScreen message="Menghubungkan ke TreeNest..." />;
+  }
+
+  return (
+    <>
+      <GlobalStudyTimerBar />
+      {!isVisiting && !isMinimalRoute && <NotificationCenterWidget />}
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+      {!isVisiting && !isMinimalRoute && <DateTimeWidget />}
+      {!isVisiting && !isMinimalRoute && <DailyQuestWidget />}
+      {!isMinimalRoute && <BottomNav />}
+    </>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <GlobalStudyTimerBar />
-        <NotificationCenterWidget />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <DateTimeWidget />
-        <DailyQuestWidget />
-        <BottomNav />
+        <AppShell />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -24,6 +24,7 @@ import {
   Mail,
   CheckCircle2,
   RotateCcw,
+  Film,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ImageCropperModal } from "@/components/ImageCropperModal";
@@ -351,6 +352,10 @@ function AccountPage() {
   const activeProfile = authProfile || seedProfile();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [themeLoading, setThemeLoading] = useState(false);
+  const isDark =
+    activeProfile.themePreference === "dark" ||
+    (typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
   const [draftUsername, setDraftUsername] = useState(activeProfile.username);
   const [draftBio, setDraftBio] = useState(activeProfile.bio ?? "");
 
@@ -380,9 +385,21 @@ function AccountPage() {
   const [draftLinks, setDraftLinks] = useState<SocialLink[]>(activeProfile.socialLinks ?? []);
   const [savingSocial, setSavingSocial] = useState(false);
 
-  // Theme
-  const [themeLoading, setThemeLoading] = useState(false);
-  const isDark = activeProfile.themePreference === "dark";
+  // Treehouse Video Privacy State
+  const [privacySetting, setPrivacySetting] = useState<"public" | "friends" | "private">(
+    activeProfile.treehouseVideoPrivacy || "public",
+  );
+
+  useEffect(() => {
+    if (authProfile) {
+      setDraftUsername(authProfile.username);
+      setDraftBio(authProfile.bio ?? "");
+      setDraftLinks(authProfile.socialLinks ?? []);
+      if (authProfile.treehouseVideoPrivacy) {
+        setPrivacySetting(authProfile.treehouseVideoPrivacy);
+      }
+    }
+  }, [authProfile]);
 
   // Delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -741,6 +758,56 @@ function AccountPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Pengaturan Privasi Video Rumah Pohon (Hanya Level 20 Max) ── */}
+      {activeProfile.level >= 20 && (
+        <div className="mt-4 rounded-3xl border border-amber-500/40 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <Film className="size-4 text-amber-500" /> Privasi Video Rumah Pohon
+            </h3>
+            <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-black text-amber-700 dark:text-amber-300">
+              LEVEL 20 UNLOCKED
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tentukan siapa saja yang dapat menonton video yang kamu pamerkan di Rumah Pohon saat user lain mengunjungi Home Page kamu.
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            {[
+              { value: "private", label: "Privat", desc: "Hanya Kamu", icon: Lock },
+              { value: "friends", label: "Teman", desc: "Teman Kamu", icon: UserCheck },
+              { value: "public", label: "Publik", desc: "Semua User", icon: Globe },
+            ].map((opt) => {
+              const Icon = opt.icon;
+              const isSelected = privacySetting === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    const newVal = opt.value as "public" | "friends" | "private";
+                    setPrivacySetting(newVal);
+                    if (!authProfile?.uid) return;
+                    await updateUserProfile(authProfile.uid, { treehouseVideoPrivacy: newVal });
+                    await refreshProfile();
+                  }}
+                  className={`flex flex-col items-center justify-center rounded-2xl border p-3 text-center transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-2 border-amber-500 bg-amber-500/15 text-foreground font-bold shadow-soft scale-[1.02]"
+                      : "border-border/60 bg-secondary/30 text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className={`size-4 ${isSelected ? "text-amber-500" : "text-muted-foreground"}`} />
+                  <span className="mt-1 text-xs font-bold">{opt.label}</span>
+                  <span className="text-[9px] opacity-80">{opt.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Sosial Media ── */}
       <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/40 transition-all duration-300">

@@ -1,4 +1,4 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
 
@@ -94,27 +94,33 @@
     oklch(0.90 0.04 160) 100%
   );
   --gradient-ground: linear-gradient(180deg, var(--grass) 0%, var(--leaf) 35%, var(--wood) 100%);
-  --gradient-soft: linear-gradient(160deg, oklch(0.90 0.042 145) 0%, oklch(0.86 0.052 148) 100%);
+  --gradient-soft: linear-gradient(
+    160deg,
+    oklch(0.87 0.085 145) 0%,
+    oklch(0.82 0.10 150) 50%,
+    oklch(0.88 0.065 162) 100%
+  );
   --gradient-leaf: linear-gradient(135deg, var(--leaf) 0%, var(--leaf-soft) 100%);
   --gradient-wood: linear-gradient(180deg, oklch(0.62 0.07 62) 0%, var(--soil) 100%);
 
   --shadow-soft: 0 8px 24px -12px oklch(0.28 0.05 150 / 0.28);
   --shadow-float: 0 16px 40px -18px oklch(0.28 0.05 150 / 0.38);
+  --google-glow: 0 0 20px rgba(0, 0, 0, 0.22), 0 0 45px rgba(0, 0, 0, 0.35), 0 0 80px rgba(0, 0, 0, 0.18);
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.16 0.025 180);
+  --background: oklch(0.13 0.025 260);
   --foreground: oklch(0.96 0.01 150);
-  --card: oklch(0.22 0.028 180);
+  --card: oklch(0.18 0.028 260);
   --card-foreground: oklch(0.96 0.01 150);
-  --popover: oklch(0.22 0.028 180);
+  --popover: oklch(0.18 0.028 260);
   --popover-foreground: oklch(0.96 0.01 150);
   --primary: oklch(0.72 0.13 148);
   --primary-foreground: oklch(0.16 0.03 150);
-  --secondary: oklch(0.27 0.028 180);
+  --secondary: oklch(0.24 0.028 260);
   --secondary-foreground: oklch(0.96 0.01 150);
-  --muted: oklch(0.26 0.025 180);
+  --muted: oklch(0.22 0.025 260);
   --muted-foreground: oklch(0.76 0.02 170);
   --accent: oklch(0.32 0.04 220);
   --accent-foreground: oklch(0.96 0.01 150);
@@ -124,18 +130,32 @@
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.70 0.12 148);
 
-  --gradient-soft: linear-gradient(160deg, oklch(0.17 0.025 180) 0%, oklch(0.14 0.025 180) 100%);
+  --gradient-soft: linear-gradient(
+    160deg,
+    oklch(0.16 0.055 160) 0%,
+    oklch(0.12 0.035 220) 28%,
+    oklch(0.10 0.020 260) 55%,
+    oklch(0.13 0.040 180) 78%,
+    oklch(0.17 0.060 148) 100%
+  );
+  --google-glow: 0 0 25px rgba(255, 255, 255, 0.32), 0 0 55px rgba(255, 255, 255, 0.48), 0 0 90px rgba(255, 255, 255, 0.26);
+}
+
+.shadow-google-glow {
+  box-shadow: var(--google-glow);
 }
 
 @layer base {
   html {
-    background-color: var(--color-background);
+    background-image: var(--gradient-soft);
+    background-attachment: fixed;
     color: var(--color-foreground);
     overflow-x: hidden;
   }
 
   body {
-    background-color: var(--color-background);
+    background-image: var(--gradient-soft);
+    background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     overflow-x: hidden;
@@ -145,10 +165,10 @@
   input,
   textarea,
   select {
-    /* Light mode: dark text on light backgrounds */
-    color: oklch(0.20 0.04 150);
-    -webkit-text-fill-color: oklch(0.20 0.04 150);
-    caret-color: oklch(0.20 0.04 150);
+    /* Base input text colors use currentColor to prevent WebKit delay bugs */
+    color: inherit;
+    -webkit-text-fill-color: currentColor;
+    caret-color: currentColor;
   }
 
   /* Dark mode: force light text so it shows on dark card backgrounds */
@@ -156,20 +176,24 @@
   .dark textarea,
   .dark select {
     color: oklch(0.96 0.01 150) !important;
-    -webkit-text-fill-color: oklch(0.96 0.01 150) !important;
+    -webkit-text-fill-color: currentColor !important;
     caret-color: oklch(0.96 0.01 150) !important;
   }
 
-  ::placeholder {
-    color: var(--color-muted-foreground);
-    opacity: 0.75;
+  ::placeholder,
+  input::placeholder,
+  textarea::placeholder,
+  select::placeholder {
+    color: oklch(0.48 0.035 150);
+    opacity: 0.95 !important;
   }
 
+  .dark ::placeholder,
   .dark input::placeholder,
   .dark textarea::placeholder,
   .dark select::placeholder {
-    color: oklch(0.76 0.02 170) !important;
-    opacity: 0.75 !important;
+    color: oklch(0.80 0.02 170) !important;
+    opacity: 0.95 !important;
   }
 
   input:-webkit-autofill,
@@ -181,8 +205,24 @@
   select:-webkit-autofill,
   select:-webkit-autofill:hover,
   select:-webkit-autofill:focus {
-    -webkit-text-fill-color: var(--color-foreground);
+    -webkit-text-fill-color: currentColor !important;
     -webkit-box-shadow: 0 0 0px 1000px var(--color-background) inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Dedicated login page input styling for dark card contrast */
+  .login-input {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #10b981 !important;
+  }
+
+  .login-input:-webkit-autofill,
+  .login-input:-webkit-autofill:hover,
+  .login-input:-webkit-autofill:focus {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0px 1000px #022c22 inset !important;
     transition: background-color 5000s ease-in-out 0s;
   }
 

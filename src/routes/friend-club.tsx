@@ -727,7 +727,7 @@ function ListPanel({
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2 rounded-2xl border border-leaf/30 bg-leaf/5 p-3">
+      <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft">
         <Star className="size-4 shrink-0 text-leaf" />
         <p className="text-xs text-muted-foreground">
           Pilih hingga <span className="font-bold text-foreground">{maxFeatured} teman</span> untuk

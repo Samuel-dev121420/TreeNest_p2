@@ -257,6 +257,7 @@ export async function updateUserProfile(
     avatarUrl?: string;
     socialLinks?: import("./social").SocialLink[];
     themePreference?: "light" | "dark";
+    treehouseVideoPrivacy?: "public" | "friends" | "private";
     accountId?: string;
   },
 ): Promise<void> {
@@ -276,6 +277,7 @@ export async function updateUserProfile(
     if (patch.avatarUrl !== undefined) data.avatarUrl = patch.avatarUrl;
     if (patch.socialLinks !== undefined) data.socialLinks = patch.socialLinks;
     if (patch.themePreference !== undefined) data.themePreference = patch.themePreference;
+    if (patch.treehouseVideoPrivacy !== undefined) data.treehouseVideoPrivacy = patch.treehouseVideoPrivacy;
     localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
   }
 
@@ -326,6 +328,7 @@ export async function updateUserProfile(
     if (patch.avatarUrl !== undefined) updates["avatarUrl"] = patch.avatarUrl;
     if (patch.socialLinks !== undefined) updates["socialLinks"] = patch.socialLinks;
     if (patch.themePreference !== undefined) updates["themePreference"] = patch.themePreference;
+    if (patch.treehouseVideoPrivacy !== undefined) updates["treehouseVideoPrivacy"] = patch.treehouseVideoPrivacy;
     await updateDoc(userRef, updates);
 
     // Perbarui dokumen friendships di Firestore

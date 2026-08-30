@@ -206,6 +206,7 @@ export type Profile = {
   loginDates?: string[] | undefined;
   socialLinks?: SocialLink[] | undefined;
   themePreference?: ("light" | "dark") | undefined;
+  treehouseVideoPrivacy?: ("public" | "friends" | "private") | undefined;
 };
 
 export function seedProfile(): Profile {

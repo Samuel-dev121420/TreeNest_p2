@@ -12,8 +12,9 @@ import {
   Home,
   CheckCircle2,
   TreePine,
+  Lock,
 } from "lucide-react";
-import { getUserVideos, getFeaturedVideoId, getUserFriends, getFeaturedFriends } from "@/lib/firestore-service";
+import { getUserVideos, getFeaturedVideoId, getUserFriends, getFeaturedFriends, getUserProfile } from "@/lib/firestore-service";
 import { youtubeId, tiktokId, type GalleryVideo, type Friend } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
 
@@ -22,29 +23,46 @@ interface TreehouseModalProps {
   username: string;
   level: number;
   onClose: () => void;
+  viewerUid?: string | undefined;
+  isFriend?: boolean | undefined;
+  treehouseVideoPrivacy?: "public" | "friends" | "private" | undefined;
 }
 
-export function TreehouseModal({ uid, username, level, onClose }: TreehouseModalProps) {
+export function TreehouseModal({
+  uid,
+  username,
+  level,
+  onClose,
+  viewerUid,
+  isFriend = false,
+  treehouseVideoPrivacy,
+}: TreehouseModalProps) {
   const [featuredVideo, setFeaturedVideo] = useState<GalleryVideo | null>(null);
   const [videoPlayUrl, setVideoPlayUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [friendsCount, setFriendsCount] = useState(0);
   const [visitingFriends, setVisitingFriends] = useState<Friend[]>([]);
 
+  const [profilePrivacy, setProfilePrivacy] = useState<"public" | "friends" | "private">(treehouseVideoPrivacy || "public");
+
   useEffect(() => {
     let active = true;
     async function loadTreehouseData() {
       setLoading(true);
       try {
-        const [videos, fid, friends, featIds] = await Promise.all([
+        const [videos, fid, friends, featIds, profile] = await Promise.all([
           getUserVideos(uid),
           getFeaturedVideoId(uid),
           getUserFriends(uid),
           getFeaturedFriends(uid),
+          getUserProfile(uid),
         ]);
 
         if (!active) return;
         setFriendsCount(friends.length);
+        if (profile?.treehouseVideoPrivacy) {
+          setProfilePrivacy(profile.treehouseVideoPrivacy);
+        }
 
         // Cari video yang spesifik di-setting sebagai featured & approved
         const feat: GalleryVideo | null =
@@ -73,6 +91,21 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
       active = false;
     };
   }, [uid]);
+
+  const isOwner = viewerUid ? viewerUid === uid : true;
+  const effectivePrivacy = treehouseVideoPrivacy || profilePrivacy;
+  let canViewVideo = true;
+  let privacyMsg = "";
+
+  if (!isOwner) {
+    if (effectivePrivacy === "private") {
+      canViewVideo = false;
+      privacyMsg = "Pemilik akun telah mengatur Tayangan ini sebagai Privat.";
+    } else if (effectivePrivacy === "friends" && !isFriend) {
+      canViewVideo = false;
+      privacyMsg = `Tayangan ini hanya dapat dilihat oleh teman "${username}".`;
+    }
+  }
 
   const yt = featuredVideo ? youtubeId(featuredVideo.url) : null;
   const isTikTok = featuredVideo?.sourceType === "tiktok";
@@ -135,6 +168,18 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
             {loading ? (
               <div className="flex aspect-video w-full items-center justify-center text-xs text-neutral-400">
                 Memuat Rumah Pohon...
+              </div>
+            ) : !canViewVideo ? (
+              <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-neutral-900 to-neutral-950">
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                  <Lock className="size-7" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-neutral-200">Video Dilindungi Privasi</p>
+                  <p className="mt-1 max-w-sm text-xs text-neutral-400">
+                    {privacyMsg}
+                  </p>
+                </div>
               </div>
             ) : featuredVideo ? (
               <div className="w-full bg-black">
