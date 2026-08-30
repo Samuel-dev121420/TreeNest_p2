@@ -102,10 +102,9 @@
   --shadow-float: 0 16px 40px -18px oklch(0.28 0.05 150 / 0.38);
 }
 
-.dark, html.dark, body.dark {
+.dark {
   color-scheme: dark;
   --background: oklch(0.16 0.025 180);
-  background-color: oklch(0.16 0.025 180) !important;
   --foreground: oklch(0.96 0.01 150);
   --card: oklch(0.22 0.028 180);
   --card-foreground: oklch(0.96 0.01 150);

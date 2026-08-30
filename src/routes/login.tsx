@@ -64,9 +64,10 @@ function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
-  const [forgotError, setForgotError] = useState("");
-
-
+  useEffect(() => {
+    // Selalu pastikan halaman login menggunakan tampilan light mode (latar putih bersih)
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   useEffect(() => {
     let timer: number;
