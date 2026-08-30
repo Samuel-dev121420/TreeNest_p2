@@ -136,6 +136,36 @@ export function youtubeId(url: string): string | null {
   return null;
 }
 
+/** Ambil ID video TikTok dari berbagai format URL. */
+export function tiktokId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /(?:tiktok\.com\/@[\w.-]+\/video\/)(\d+)/,
+    /(?:tiktok\.com\/embed\/v2\/)(\d+)/,
+    /(?:tiktok\.com\/embed\/)(\d+)/,
+    /(?:tiktok\.com\/v\/)(\d+)/,
+    /(?:tiktok\.com\/t\/)(\w+)/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1] ?? null;
+  }
+  return null;
+}
+
+/** Ambil URL thumbnail/cover video dari TikTok via oEmbed API. */
+export async function fetchTikTokThumbnail(url: string): Promise<string | null> {
+  if (!url || !url.includes("tiktok.com")) return null;
+  try {
+    const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.thumbnail_url || data.cover_url || null;
+  } catch {
+    return null;
+  }
+}
+
 export function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);

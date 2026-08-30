@@ -14,7 +14,7 @@ import {
   TreePine,
 } from "lucide-react";
 import { getUserVideos, getFeaturedVideoId, getUserFriends, getFeaturedFriends } from "@/lib/firestore-service";
-import { youtubeId, type GalleryVideo, type Friend } from "@/lib/social";
+import { youtubeId, tiktokId, type GalleryVideo, type Friend } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
 
 interface TreehouseModalProps {
@@ -75,6 +75,8 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
   }, [uid]);
 
   const yt = featuredVideo ? youtubeId(featuredVideo.url) : null;
+  const isTikTok = featuredVideo?.sourceType === "tiktok";
+  const tt = isTikTok && featuredVideo ? tiktokId(featuredVideo.url) : null;
 
   return (
     <div
@@ -106,7 +108,7 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
           <button
             onClick={onClose}
             aria-label="Tutup"
-            className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="size-5" />
           </button>
@@ -117,15 +119,15 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
           {/* 1. Layar Proyektor Video Rumah Pohon */}
           <div className="overflow-hidden rounded-3xl border-2 border-amber-600/30 bg-neutral-950 shadow-float">
             <div className="flex items-center justify-between border-b border-amber-900/40 bg-neutral-900 px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Film className="size-4 text-amber-400" />
-                <span className="text-xs font-bold text-amber-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <Film className="size-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-amber-200 truncate">
                   {featuredVideo ? `Pameran Video: ${featuredVideo.title}` : "Layar Pameran Rumah Pohon"}
                 </span>
               </div>
               {featuredVideo && (
-                <span className="flex items-center gap-1 rounded-md bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
-                  <CheckCircle2 className="size-3" /> Featured Video
+                <span className="flex items-center gap-1 shrink-0 rounded-md bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
+                  <CheckCircle2 className="size-3" /> Featured {isTikTok ? "TikTok" : yt ? "YouTube" : "Video"}
                 </span>
               )}
             </div>
@@ -135,22 +137,40 @@ export function TreehouseModal({ uid, username, level, onClose }: TreehouseModal
                 Memuat Rumah Pohon...
               </div>
             ) : featuredVideo ? (
-              <div className="aspect-video w-full bg-black">
+              <div className="w-full bg-black">
                 {yt ? (
-                  <iframe
-                    className="size-full"
-                    src={`https://www.youtube.com/embed/${yt}?autoplay=0`}
-                    title={featuredVideo.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  <div className="aspect-video w-full">
+                    <iframe
+                      className="size-full rounded-2xl"
+                      src={`https://www.youtube.com/embed/${yt}?autoplay=0`}
+                      title={featuredVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : isTikTok ? (
+                  <div className="w-full overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '60vh' }}>
+                    <iframe
+                      className="size-full border-0"
+                      src={
+                        tt
+                          ? `https://www.tiktok.com/player/v1/${tt}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
+                          : featuredVideo.url
+                      }
+                      title={featuredVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
                 ) : (
-                  <video
-                    className="size-full object-contain"
-                    src={videoPlayUrl || featuredVideo.url}
-                    controls
-                    controlsList="nodownload"
-                  />
+                  <div className="aspect-video w-full">
+                    <video
+                      className="size-full object-contain rounded-2xl"
+                      src={videoPlayUrl || featuredVideo.url}
+                      controls
+                      controlsList="nodownload"
+                    />
+                  </div>
                 )}
               </div>
             ) : (

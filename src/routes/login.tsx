@@ -66,10 +66,7 @@ function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState("");
 
-  useEffect(() => {
-    // Selalu pastikan halaman login menggunakan tampilan light mode (latar putih bersih)
-    document.documentElement.classList.remove("dark");
-  }, []);
+
 
   useEffect(() => {
     let timer: number;
@@ -186,7 +183,7 @@ function LoginPage() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background/90" />
 
       {/* Card Form — Selalu Default Putih */}
-      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/90 bg-white/95 p-6 sm:p-8 shadow-float backdrop-blur-md text-neutral-900">
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/90 bg-white/95 p-6 sm:p-8 shadow-float backdrop-blur-md text-neutral-900 transition-all duration-300 hover:shadow-2xl">
         {pendingVerificationUser ? (
           <div className="text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/15 text-primary">

@@ -221,18 +221,18 @@ function StudyPage() {
               {sessions.slice(0, 10).map((s) => (
                 <li
                   key={s.id}
-                  className="flex items-center justify-between rounded-xl border border-border/80 bg-background/80 dark:bg-secondary/50 dark:border-border/60 px-4 py-3 text-sm shadow-xs transition-all hover:border-primary/40"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/80 bg-background/80 dark:bg-secondary/50 dark:border-border/60 px-4 py-3 text-sm shadow-xs transition-all hover:border-primary/40 min-w-0"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground">{s.duration} menit</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-foreground truncate">{s.duration} menit</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="text-xs text-muted-foreground">
                       {new Date(s.completedAt).toLocaleString("id-ID")}
                     </span>
                     <button
                       onClick={() => setSessions((prev) => prev.filter((item) => item.id !== s.id))}
-                      className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                       title="Hapus sesi ini"
                     >
                       <Trash2 className="size-3.5" />

@@ -70,30 +70,50 @@ export function DailyQuestWidget() {
 
   return (
     <>
-      {/* ── FLOATING TOAST NOTIFICATIONS ── */}
-      <div className="pointer-events-none fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-float backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-4 ${
-              toast.type === "levelup"
-                ? "border-primary/50 bg-primary/95 text-primary-foreground"
-                : "border-leaf/50 bg-leaf/95 text-white"
-            }`}
-          >
-            <Sparkles className="size-6 shrink-0 animate-pulse" />
-            <div>
-              <p className="font-display text-sm font-bold">{toast.title}</p>
-              <p className="text-xs opacity-90">{toast.subtitle}</p>
-            </div>
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="ml-2 text-white/80 hover:text-white"
+      {/* ── FLOATING TOAST NOTIFICATIONS (Reworked Light & Dark Mode) ── */}
+      <div className="pointer-events-none fixed top-5 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2.5">
+        {toasts.map((toast) => {
+          const isLevelUp = toast.type === "levelup";
+          return (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto flex items-center gap-3.5 rounded-3xl border px-5 py-3.5 shadow-2xl backdrop-blur-xl transition-all animate-in fade-in zoom-in-95 slide-in-from-top-6 duration-300 min-w-[280px] max-w-sm ${
+                isLevelUp
+                  ? "border-amber-400/60 bg-gradient-to-r from-amber-500/95 via-yellow-500/95 to-amber-600/95 text-white shadow-amber-500/25"
+                  : "border-emerald-500/40 bg-white/95 text-neutral-900 shadow-xl dark:bg-zinc-900/95 dark:border-emerald-500/50 dark:text-zinc-100"
+              }`}
             >
-              <X className="size-4" />
-            </button>
-          </div>
-        ))}
+              <div
+                className={`flex size-10 shrink-0 items-center justify-center rounded-2xl border ${
+                  isLevelUp
+                    ? "bg-white/20 border-white/40 text-yellow-100"
+                    : "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400"
+                }`}
+              >
+                <Sparkles className="size-5 animate-pulse" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-display text-sm font-extrabold tracking-tight ${isLevelUp ? "text-white" : "text-neutral-900 dark:text-white"}`}>
+                  {toast.title}
+                </p>
+                <p className={`text-xs font-semibold truncate ${isLevelUp ? "text-white/90" : "text-neutral-600 dark:text-zinc-400"}`}>
+                  {toast.subtitle}
+                </p>
+              </div>
+              <button
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className={`rounded-full p-1 transition-colors cursor-pointer ${
+                  isLevelUp
+                    ? "text-white/80 hover:bg-white/20 hover:text-white"
+                    : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                }`}
+                title="Tutup Notifikasi"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* ── DAILY QUEST WIDGET CONTAINER ── */}

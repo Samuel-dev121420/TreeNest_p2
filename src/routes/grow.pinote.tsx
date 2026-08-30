@@ -18,6 +18,7 @@ import {
   X,
   ArrowLeft,
   HardDrive,
+  AlertTriangle,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -85,6 +86,7 @@ export function PiNotePage() {
   const [previewItem, setPreviewItem] = useState<PinoteItem | null>(null);
   const [renamingItem, setRenamingItem] = useState<PinoteItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [deletingItem, setDeletingItem] = useState<PinoteItem | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -284,9 +286,12 @@ export function PiNotePage() {
   }
 
   function handleDeleteItem(item: PinoteItem) {
-    if (!confirm(`Hapus "${item.name}"${item.type === "folder" ? " dan seluruh isinya?" : "?"}`)) {
-      return;
-    }
+    setDeletingItem(item);
+  }
+
+  function confirmDeleteItem() {
+    if (!deletingItem) return;
+    const item = deletingItem;
 
     // Recursive helper to get all child IDs
     function getAllChildIds(parentId: string): string[] {
@@ -309,6 +314,7 @@ export function PiNotePage() {
       setCurrentFolderId(null);
     }
     setItems((prev) => prev.filter((i) => !idsToDelete.has(i.id)));
+    setDeletingItem(null);
   }
 
   // Get item icon
@@ -355,19 +361,19 @@ export function PiNotePage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsCreatingFolder(true)}
-              className="flex items-center gap-1.5 rounded-2xl bg-amber-600 dark:bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow-soft transition-all hover:bg-amber-700 dark:hover:bg-amber-600 active:scale-95"
+              className="flex items-center gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-300 px-3.5 py-2 text-xs font-bold shadow-xs transition-all hover:bg-amber-500/20 dark:hover:bg-amber-500/30 active:scale-95 cursor-pointer"
             >
-              <Folder className="size-4" /> + Folder
+              <Folder className="size-4 text-amber-600 dark:text-amber-400" /> + Folder
             </button>
             <button
               onClick={handleOpenCreateNote}
-              className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 dark:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-soft transition-all hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-95"
+              className="flex items-center gap-1.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:text-emerald-300 px-3.5 py-2 text-xs font-bold shadow-xs transition-all hover:bg-emerald-500/20 dark:hover:bg-emerald-500/30 active:scale-95 cursor-pointer"
             >
-              <FileText className="size-4" /> + Catatan
+              <FileText className="size-4 text-emerald-600 dark:text-emerald-400" /> + Catatan
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-2xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95"
+              className="flex items-center gap-1.5 rounded-2xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
             >
               <Upload className="size-4" /> Upload File
             </button>
@@ -542,6 +548,7 @@ export function PiNotePage() {
             </p>
             <input
               autoFocus
+              maxLength={60}
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
@@ -577,6 +584,7 @@ export function PiNotePage() {
             <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
             <input
               autoFocus
+              maxLength={60}
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
@@ -622,6 +630,7 @@ export function PiNotePage() {
             </div>
             <div className="mt-4 flex flex-1 flex-col gap-3">
               <input
+                maxLength={80}
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
                 placeholder="Judul Catatan"
@@ -714,6 +723,52 @@ export function PiNotePage() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Custom Delete Confirmation */}
+      {deletingItem && (
+        <div
+          onClick={() => setDeletingItem(null)}
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  Konfirmasi Hapus {deletingItem.type === "folder" ? "Folder" : deletingItem.type === "note" ? "Catatan" : "File"}
+                </h3>
+                <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-foreground/90 leading-relaxed break-words">
+              Apakah Anda yakin ingin menghapus{" "}
+              <strong className="text-foreground">"{deletingItem.name}"</strong>
+              {deletingItem.type === "folder" ? " dan seluruh isinya?" : "?"}
+            </p>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setDeletingItem(null)}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDeleteItem}
+                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
+              >
+                Hapus
+              </button>
             </div>
           </div>
         </div>

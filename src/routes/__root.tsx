@@ -116,11 +116,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-background text-foreground">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('treenest_theme');if(t==='dark'){document.documentElement.classList.add('dark');}else if(!t){var s=localStorage.getItem('treenest_session_user');if(s&&JSON.parse(s).themePreference==='dark'){document.documentElement.classList.add('dark');}}}catch(e){}})();`,
+          }}
+        />
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground min-h-screen">
         {children}
         <Scripts />
       </body>

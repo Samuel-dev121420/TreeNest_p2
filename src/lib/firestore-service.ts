@@ -21,9 +21,11 @@ import {
   type SentRequest,
   type GalleryVideo,
   type GalleryVideoSource,
+  fetchTikTokThumbnail,
 } from "./social";
 import { generateId } from "./grow-tools";
 import { deleteVideoBlob } from "./video-storage";
+import { addNotification } from "./notification-service";
 
 /** Cek apakah email adalah admin yang dikonfigurasi via VITE_ADMIN_EMAIL */
 export function isAdminEmail(email?: string | null): boolean {
@@ -1316,6 +1318,14 @@ export async function deleteGalleryVideoAdmin(videoId: string): Promise<void> {
   }
 }
 
+/** Hapus SELURUH riwayat video (status: approved / rejected) oleh Admin */
+export async function clearAllVideoHistoryAdmin(): Promise<void> {
+  const historyVideos = await getAllGalleryVideosAdmin("history");
+  for (const video of historyVideos) {
+    await deleteGalleryVideoAdmin(video.id);
+  }
+}
+
 /** Tambah video baru ke gallery (status: pending) */
 export async function addGalleryVideo(
   uid: string,
@@ -1326,13 +1336,20 @@ export async function addGalleryVideo(
     thumbnail?: string;
   },
 ): Promise<GalleryVideo> {
+  let thumb = data.thumbnail ?? "";
+
+  if (data.sourceType === "tiktok" && !thumb) {
+    const fetchedThumb = await fetchTikTokThumbnail(data.url);
+    if (fetchedThumb) thumb = fetchedThumb;
+  }
+
   const video: GalleryVideo = {
     id: generateId(),
     uid,
     title: data.title,
     url: data.url,
     sourceType: data.sourceType,
-    thumbnail: data.thumbnail ?? "",
+    thumbnail: thumb,
     status: "pending",
     submittedAt: Date.now(),
   };
@@ -1359,18 +1376,66 @@ export async function moderateVideo(
   videoId: string,
   status: "approved" | "rejected",
   commentOrReason?: string,
+  targetUid?: string,
+  videoTitle?: string,
 ): Promise<void> {
-  if (!isFirebaseConfigured || !db) return;
-  try {
-    const updates: Record<string, unknown> = { status, moderatedAt: Date.now() };
-    if (status === "rejected") {
-      if (commentOrReason) updates["reason"] = commentOrReason;
-    } else if (status === "approved") {
-      if (commentOrReason) updates["approvalComment"] = commentOrReason;
+  if (isFirebaseConfigured && db) {
+    try {
+      const updates: Record<string, unknown> = { status, moderatedAt: Date.now() };
+      if (status === "rejected") {
+        if (commentOrReason) updates["reason"] = commentOrReason;
+      } else if (status === "approved") {
+        if (commentOrReason) updates["approvalComment"] = commentOrReason;
+      }
+      await updateDoc(doc(db, GALLERY_COLLECTION, videoId), updates);
+    } catch (err) {
+      console.error("Error moderating video:", err);
     }
-    await updateDoc(doc(db, GALLERY_COLLECTION, videoId), updates);
+  }
+
+  // Update di localStorage fallback jika ada
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("treenest_gallery_videos_")) {
+        const local = localStorage.getItem(key);
+        if (local) {
+          const list: GalleryVideo[] = JSON.parse(local);
+          let modified = false;
+          const updated = list.map((v) => {
+            if (v.id === videoId) {
+              modified = true;
+              return {
+                ...v,
+                status,
+                reason: status === "rejected" ? commentOrReason : v.reason,
+                approvalComment: status === "approved" ? commentOrReason : v.approvalComment,
+              };
+            }
+            return v;
+          });
+          if (modified) {
+            localStorage.setItem(key, JSON.stringify(updated));
+          }
+        }
+      }
+    }
   } catch (err) {
-    console.error("Error moderating video:", err);
+    console.error("Error updating local video status:", err);
+  }
+
+  // Kirim notifikasi ke pemilik video jika targetUid tersedia
+  if (targetUid) {
+    addNotification({
+      type: status === "approved" ? "video_approved" : "video_rejected",
+      title: status === "approved" ? "Video Disetujui! 🎉" : "Video Ditolak ⚠️",
+      message:
+        status === "approved"
+          ? `Videomu "${videoTitle || 'TreeGallery'}" telah disetujui Admin!`
+          : `Videomu "${videoTitle || 'TreeGallery'}" ditolak. ${commentOrReason ? `Alasan: ${commentOrReason}` : ''}`,
+      link: "/treegallery",
+      targetUid,
+    });
   }
 }
 

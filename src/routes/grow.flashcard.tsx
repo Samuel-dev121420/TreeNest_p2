@@ -15,6 +15,8 @@ import {
   Pencil,
   Info,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -53,6 +55,8 @@ function FlashcardPage() {
   const [flipped, setFlipped] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
   const [showAddDeckForm, setShowAddDeckForm] = useState(false);
+  const [showAllDecks, setShowAllDecks] = useState(false);
+  const [showAllCards, setShowAllCards] = useState(false);
 
   // Edit Deck state
   const [editingDeck, setEditingDeck] = useState<FlashDeck | null>(null);
@@ -309,9 +313,9 @@ function FlashcardPage() {
         </div>
       )}
 
-      {/* SECTION 1: Koleksi Deck Belajar (Modern Carousel Grid Bar) */}
-      <div className="mb-8 rounded-3xl border border-border/70 bg-card p-5 sm:p-6 shadow-soft space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-4">
+      {/* SECTION 1: Koleksi Deck Belajar (Folder Style Full-Width Rows) */}
+      <div className="mb-8 rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-200 dark:border-border/60 pb-4">
           <div className="flex items-center gap-2">
             <Layers className="size-5 text-primary shrink-0" />
             <div>
@@ -322,7 +326,7 @@ function FlashcardPage() {
 
           <button
             onClick={() => setShowAddDeckForm((v) => !v)}
-            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-2xl bg-primary/15 px-3.5 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/25 active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-2xl bg-primary text-primary-foreground border border-primary/20 px-4 py-2 text-xs font-bold shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
           >
             {showAddDeckForm ? <X className="size-4" /> : <FolderPlus className="size-4" />}
             {showAddDeckForm ? "Tutup Form" : "+ Buat Deck Baru"}
@@ -331,8 +335,9 @@ function FlashcardPage() {
 
         {/* Form Tambah Deck Baru */}
         {showAddDeckForm && (
-          <div className="flex flex-col sm:flex-row gap-2 rounded-2xl bg-secondary/50 p-3 border border-border/60 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex flex-col sm:flex-row gap-2 rounded-2xl bg-secondary/50 p-3 border border-neutral-300 dark:border-border/60 animate-in fade-in zoom-in-95 duration-150">
             <input
+              maxLength={60}
               value={newDeckName}
               onChange={(e) => setNewDeckName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addDeck()}
@@ -349,7 +354,7 @@ function FlashcardPage() {
           </div>
         )}
 
-        {/* List Cards Deck */}
+        {/* List Cards Deck - 1 per row (like PiNote folders) */}
         {filteredDecks.length === 0 ? (
           <EmptyState
             icon={Layers}
@@ -357,68 +362,88 @@ function FlashcardPage() {
             description={searchQuery ? "Coba kata kunci pencarian lain." : "Klik tombol '+ Buat Deck Baru' di atas untuk memulai."}
           />
         ) : (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredDecks.map((d) => {
-              const cardCount = cards.filter((c) => c.deckId === d.id).length;
-              const isActive = activeDeckId === d.id;
-              return (
-                <div
-                  key={d.id}
-                  onClick={() => handleToggleSelectDeck(d.id)}
-                  className={`group relative flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition-all hover:shadow-soft active:scale-[0.99] min-w-0 ${
-                    isActive
-                      ? "border-2 border-primary bg-primary/10 shadow-soft"
-                      : "border-border/70 bg-background dark:bg-secondary/40 hover:border-primary/40 hover:bg-muted/60"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 min-w-0">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <BookOpen className={`size-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                        <h3 className="font-bold text-sm text-foreground truncate min-w-0">{d.name}</h3>
+          <div className="space-y-3">
+            <div className="grid gap-3 grid-cols-1">
+              {(showAllDecks ? filteredDecks : filteredDecks.slice(0, 5)).map((d) => {
+                const cardCount = cards.filter((c) => c.deckId === d.id).length;
+                const isActive = activeDeckId === d.id;
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => handleToggleSelectDeck(d.id)}
+                    className={`group relative flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all hover:shadow-soft active:scale-[0.99] min-w-0 ${
+                      isActive
+                        ? "border-2 border-primary bg-primary/10 shadow-soft"
+                        : "border-neutral-300 dark:border-border/80 bg-background dark:bg-secondary/40 hover:border-primary/50 hover:bg-muted/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                        <BookOpen className="size-5" />
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground font-medium">
-                        {cardCount} {cardCount === 1 ? "kartu" : "kartu"} tersimpan
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-sm text-foreground truncate break-words">{d.name}</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground font-medium">
+                          {cardCount} {cardCount === 1 ? "kartu" : "kartu"} tersimpan
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {/* Edit Deck button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditDeck(d);
-                        }}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer opacity-80 group-hover:opacity-100"
-                        title="Edit Deck"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {isActive && (
+                        <span className="hidden sm:inline-flex items-center rounded-full bg-primary/15 border border-primary/30 px-3 py-1 text-[11px] font-extrabold text-primary">
+                          Deck Aktif
+                        </span>
+                      )}
 
-                      {/* Delete Deck button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingDeck(d);
-                        }}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer opacity-80 group-hover:opacity-100"
-                        title="Hapus Deck"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {/* Edit Deck button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDeck(d);
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer opacity-80 group-hover:opacity-100"
+                          title="Edit Deck"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+
+                        {/* Delete Deck button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingDeck(d);
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer opacity-80 group-hover:opacity-100"
+                          title="Hapus Deck"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  {isActive && (
-                    <div className="mt-3 flex items-center justify-center text-[11px] font-extrabold text-primary border-t border-primary/20 pt-2 text-center">
-                      <span className="flex items-center justify-center gap-1">
-                        Deck Aktif Saat Ini
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* Show More / Show Less Button for Decks */}
+            {filteredDecks.length > 5 && (
+              <button
+                onClick={() => setShowAllDecks((v) => !v)}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-neutral-300 dark:border-border/80 bg-secondary/40 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-secondary active:scale-[0.99] cursor-pointer"
+              >
+                {showAllDecks ? (
+                  <>
+                    Tampilkan Lebih Sedikit <ChevronUp className="size-4 text-primary" />
+                  </>
+                ) : (
+                  <>
+                    Tampilkan Lebih Banyak ({filteredDecks.length - 5} deck lainnya) <ChevronDown className="size-4 text-primary" />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -460,8 +485,8 @@ function FlashcardPage() {
           </div>
 
           {/* Form Tambah Kartu Baru */}
-          <div className="rounded-3xl border border-border/70 bg-card p-5 sm:p-6 shadow-soft space-y-4">
-            <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+          <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
+            <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-border/60 pb-3">
               <Plus className="size-5 text-primary shrink-0" />
               <h3 className="text-base font-bold text-foreground">Tambah Kartu Baru</h3>
             </div>
@@ -473,6 +498,7 @@ function FlashcardPage() {
                   Judul Kartu :
                 </label>
                 <input
+                  maxLength={80}
                   value={cardTitle}
                   onChange={(e) => setCardTitle(e.target.value)}
                   placeholder="Ketik Judul Kartu..."
@@ -487,6 +513,7 @@ function FlashcardPage() {
                     Sisi Depan (Pertanyaan / Kata) :
                   </label>
                   <input
+                    maxLength={250}
                     value={front}
                     onChange={(e) => setFront(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addCard()}
@@ -500,6 +527,7 @@ function FlashcardPage() {
                     Sisi Belakang (Jawaban / Penjelasan) :
                   </label>
                   <input
+                    maxLength={500}
                     value={back}
                     onChange={(e) => setBack(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addCard()}
@@ -519,7 +547,7 @@ function FlashcardPage() {
             </button>
           </div>
 
-          {/* Minimalist Cards Grid Section */}
+          {/* Minimalist Cards Grid Section (2 cards per row) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h3 className="text-base font-bold text-foreground">
@@ -528,7 +556,7 @@ function FlashcardPage() {
             </div>
 
             {deckCards.length === 0 ? (
-              <div className="rounded-3xl border border-border/70 bg-card p-6 text-center shadow-soft">
+              <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-6 text-center shadow-soft">
                 <EmptyState
                   icon={Layers}
                   title="Deck Masih Kosong"
@@ -536,49 +564,69 @@ function FlashcardPage() {
                 />
               </div>
             ) : (
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {deckCards.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedDetailCard(c)}
-                    className="group flex cursor-pointer items-center justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/60 hover:shadow-soft active:scale-[0.99] min-w-0 shadow-xs"
-                  >
-                    {/* Left: Sparkles Icon + Title */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Sparkles className="size-4.5" />
+              <div className="space-y-3">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                  {(showAllCards ? deckCards : deckCards.slice(0, 10)).map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => setSelectedDetailCard(c)}
+                      className="group flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-300 dark:border-border/80 bg-card p-4 transition-all hover:border-primary/60 hover:shadow-soft active:scale-[0.99] min-w-0 shadow-xs"
+                    >
+                      {/* Left: Sparkles Icon + Title */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                          <Sparkles className="size-4.5" />
+                        </div>
+                        <span className="text-sm font-bold text-foreground truncate min-w-0 break-words">
+                          {c.title || c.front}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-foreground truncate min-w-0">
-                        {c.title || c.front}
-                      </span>
-                    </div>
 
-                    {/* Right: Edit & Delete Action Buttons */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditCard(c);
-                        }}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
-                        title="Edit Kartu"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
+                      {/* Right: Edit & Delete Action Buttons */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCard(c);
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+                          title="Edit Kartu"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingCard(c);
-                        }}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                        title="Hapus Kartu"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingCard(c);
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                          title="Hapus Kartu"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                {/* Show More / Show Less Button for Cards */}
+                {deckCards.length > 10 && (
+                  <button
+                    onClick={() => setShowAllCards((v) => !v)}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-neutral-300 dark:border-border/80 bg-secondary/40 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-secondary active:scale-[0.99] cursor-pointer"
+                  >
+                    {showAllCards ? (
+                      <>
+                        Tampilkan Lebih Sedikit <ChevronUp className="size-4 text-primary" />
+                      </>
+                    ) : (
+                      <>
+                        Tampilkan Lebih Banyak ({deckCards.length - 10} kartu lainnya) <ChevronDown className="size-4 text-primary" />
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -709,6 +757,7 @@ function FlashcardPage() {
                 Nama Deck:
               </label>
               <input
+                maxLength={60}
                 value={editDeckName}
                 onChange={(e) => setEditDeckName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSaveEditDeck()}
@@ -765,6 +814,7 @@ function FlashcardPage() {
                   Judul Kartu :
                 </label>
                 <input
+                  maxLength={80}
                   value={editCardTitle}
                   onChange={(e) => setEditCardTitle(e.target.value)}
                   placeholder="Ketik Judul Kartu..."
@@ -778,6 +828,7 @@ function FlashcardPage() {
                     Sisi Depan (Pertanyaan / Kata) :
                   </label>
                   <input
+                    maxLength={250}
                     value={editCardFront}
                     onChange={(e) => setEditCardFront(e.target.value)}
                     placeholder="Ketik Pertanyaan/Kata..."
@@ -790,6 +841,7 @@ function FlashcardPage() {
                     Sisi Belakang (Jawaban / Penjelasan) :
                   </label>
                   <input
+                    maxLength={500}
                     value={editCardBack}
                     onChange={(e) => setEditCardBack(e.target.value)}
                     placeholder="Ketik Jawaban/Penjelasan..."

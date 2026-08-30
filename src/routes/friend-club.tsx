@@ -277,15 +277,15 @@ function FriendClubPage() {
       description="Cari Teman, Kelola Permintaan, dan Atur Teman."
     >
       {/* Tab Selector */}
-      <div className="mb-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft">
+      <div className="mb-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft transition-all duration-300">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => handleSelectTab(t.key)}
-            className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+            className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
               tab === t.key
-                ? "bg-primary text-primary-foreground shadow-soft"
-                : "text-muted-foreground hover:bg-muted"
+                ? "bg-primary text-primary-foreground shadow-soft scale-[1.02]"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {t.label}

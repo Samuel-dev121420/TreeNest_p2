@@ -5,11 +5,12 @@ import {
   getAllGalleryVideosAdmin,
   moderateVideo,
   deleteGalleryVideoAdmin,
+  clearAllVideoHistoryAdmin,
   getUserProfile,
   type UserProfile,
 } from "@/lib/firestore-service";
-import { ShieldCheck, Check, X, Clock, Video, ArrowLeft, LogOut, Trash2, Play, Film, ExternalLink } from "lucide-react";
-import { youtubeId, timeAgo, type GalleryVideo } from "@/lib/social";
+import { ShieldCheck, Check, X, Clock, Video, ArrowLeft, LogOut, Trash2, Play, Film, ExternalLink, AlertTriangle } from "lucide-react";
+import { youtubeId, tiktokId, fetchTikTokThumbnail, timeAgo, type GalleryVideo } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/admin")({
@@ -37,6 +38,7 @@ function AdminDashboardPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [previewVideo, setPreviewVideo] = useState<GalleryVideo | null>(null);
+  const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
 
   useEffect(() => {
     loadVideos(filter);
@@ -74,7 +76,8 @@ function AdminDashboardPage() {
   async function handleApproveSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!approvingId) return;
-    await moderateVideo(approvingId, "approved", approvalComment.trim());
+    const target = videos.find((v) => v.id === approvingId);
+    await moderateVideo(approvingId, "approved", approvalComment.trim(), target?.uid, target?.title);
     setApprovingId(null);
     setApprovalComment("");
     loadVideos();
@@ -83,7 +86,8 @@ function AdminDashboardPage() {
   async function handleReject(e: React.FormEvent) {
     e.preventDefault();
     if (!rejectingId) return;
-    await moderateVideo(rejectingId, "rejected", rejectReason);
+    const target = videos.find((v) => v.id === rejectingId);
+    await moderateVideo(rejectingId, "rejected", rejectReason, target?.uid, target?.title);
     setRejectingId(null);
     setRejectReason("");
     loadVideos();
@@ -93,6 +97,12 @@ function AdminDashboardPage() {
     if (!confirm("Hapus video ini secara permanen dari server?")) return;
     await deleteGalleryVideoAdmin(videoId);
     loadVideos();
+  }
+
+  async function handleClearAllHistory() {
+    await clearAllVideoHistoryAdmin();
+    setShowClearHistoryModal(false);
+    loadVideos("history");
   }
 
   return (
@@ -137,24 +147,36 @@ function AdminDashboardPage() {
 
       {/* Konten Utama */}
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {/* Filter Tab */}
-        <div className="mb-6 flex gap-2 overflow-x-auto rounded-3xl border-2 border-border/80 bg-card dark:border-border/60 dark:bg-secondary/40 p-1.5 shadow-soft">
-          {[
-            { key: "pending", label: "Menunggu Moderasi" },
-            { key: "history", label: "Riwayat Video" },
-          ].map((t) => (
+        {/* Filter Tab & Action Buttons */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-2 overflow-x-auto rounded-3xl border-2 border-border/80 bg-card dark:border-border/60 dark:bg-secondary/40 p-1.5 shadow-soft">
+            {[
+              { key: "pending", label: "Menunggu Moderasi" },
+              { key: "history", label: "Riwayat Video" },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => handleFilterChange(t.key as "pending" | "history")}
+                className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
+                  filter === t.key
+                    ? "bg-primary text-primary-foreground shadow-soft"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {filter === "history" && videos.length > 0 && (
             <button
-              key={t.key}
-              onClick={() => handleFilterChange(t.key as "pending" | "history")}
-              className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                filter === t.key
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
+              onClick={() => setShowClearHistoryModal(true)}
+              className="flex items-center gap-1.5 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive shadow-soft transition-all hover:bg-destructive hover:text-white active:scale-95 cursor-pointer"
             >
-              {t.label}
+              <Trash2 className="size-3.5" />
+              <span>Hapus Semua Riwayat Video</span>
             </button>
-          ))}
+          )}
         </div>
 
         {/* Daftar Video */}
@@ -379,6 +401,44 @@ function AdminDashboardPage() {
             }}
           />
         )}
+
+        {/* Modal Konfirmasi Hapus Semua Riwayat Video */}
+        {showClearHistoryModal && (
+          <div
+            onClick={() => setShowClearHistoryModal(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            >
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                <AlertTriangle className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Hapus Semua Riwayat Video?</h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Apakah Anda yakin ingin menghapus <strong>SELURUH riwayat video</strong> (disetujui & ditolak) secara permanen dari server? Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handleClearAllHistory}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
+                >
+                  Ya, Hapus Semua
+                </button>
+                <button
+                  onClick={() => setShowClearHistoryModal(false)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary/80 text-secondary-foreground dark:bg-secondary dark:text-foreground py-2.5 text-xs font-bold transition-colors hover:bg-secondary/60 cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -396,6 +456,8 @@ function AdminPreviewModal({
   onReject: () => void;
 }) {
   const yt = youtubeId(video.url);
+  const isTikTok = video.sourceType === "tiktok";
+  const ttId = isTikTok ? tiktokId(video.url) : null;
   const [resolvedUrl, setResolvedUrl] = useState<string>(video.url);
 
   useEffect(() => {
@@ -408,18 +470,74 @@ function AdminPreviewModal({
     };
   }, [video.url, video.id]);
 
+  function renderPlayer() {
+    if (yt) {
+      return (
+        <div className="aspect-video w-full bg-black">
+          <iframe
+            className="size-full"
+            src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    if (isTikTok) {
+      const playerSrc = ttId
+        ? `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
+        : null;
+      if (!playerSrc) {
+        return (
+          <div className="flex w-full items-center justify-center bg-black" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
+            <a href={video.url} target="_blank" rel="noreferrer"
+              className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-foreground">
+              <ExternalLink className="size-4" /> Buka di TikTok
+            </a>
+          </div>
+        );
+      }
+      return (
+        <div className="w-full bg-black overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
+          <iframe
+            className="size-full border-0"
+            src={playerSrc}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="aspect-video w-full bg-black">
+        <video
+          className="size-full object-contain"
+          src={resolvedUrl || video.url}
+          controls
+          autoPlay
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl overflow-hidden rounded-3xl border border-border/70 bg-card shadow-float animate-in zoom-in-95 duration-150"
+        className={`w-full overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in zoom-in-95 duration-150 ${
+          isTikTok ? "max-w-sm sm:max-w-[390px]" : "max-w-2xl"
+        }`}
       >
-        <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5 bg-card">
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-card">
+          <div className="min-w-0 flex items-center gap-2">
+            <span className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider bg-primary/15 text-primary`}>
               Moderasi: {video.sourceType}
             </span>
             <p className="line-clamp-1 text-sm font-bold text-foreground">{video.title}</p>
@@ -427,43 +545,13 @@ function AdminPreviewModal({
           <button
             onClick={onClose}
             aria-label="Tutup"
-            className="rounded-full p-2 text-muted-foreground hover:bg-muted"
+            className="rounded-full p-2 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        <div className="aspect-video w-full bg-black">
-          {yt ? (
-            <iframe
-              className="size-full"
-              src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          ) : video.sourceType === "tiktok" ? (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-pink-500/10 to-cyan-500/10">
-              <Film className="size-12 text-muted-foreground/60" />
-              <p className="text-sm text-muted-foreground">Video Tautan TikTok</p>
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              >
-                <ExternalLink className="size-4" /> Buka di TikTok
-              </a>
-            </div>
-          ) : (
-            <video
-              className="size-full object-contain"
-              src={resolvedUrl || video.url}
-              controls
-              autoPlay
-            />
-          )}
-        </div>
+        {renderPlayer()}
 
         <div className="flex items-center justify-between border-t border-border/60 bg-card px-5 py-3.5">
           <p className="text-xs text-muted-foreground">UID: {video.uid}</p>
@@ -472,7 +560,7 @@ function AdminPreviewModal({
               <button
                 type="button"
                 onClick={onApprove}
-                className="rounded-xl bg-leaf px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+                className="rounded-xl bg-leaf px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 cursor-pointer"
               >
                 Approve Video
               </button>
@@ -481,7 +569,7 @@ function AdminPreviewModal({
               <button
                 type="button"
                 onClick={onReject}
-                className="rounded-xl bg-destructive/15 text-destructive px-4 py-2 text-xs font-bold hover:bg-destructive/25 transition-colors"
+                className="rounded-xl bg-destructive/15 text-destructive px-4 py-2 text-xs font-bold hover:bg-destructive/25 transition-colors cursor-pointer"
               >
                 Reject Video
               </button>
@@ -495,6 +583,7 @@ function AdminPreviewModal({
 
 function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null }) {
   const [localUrl, setLocalUrl] = useState<string | null>(null);
+  const [tiktokThumb, setTiktokThumb] = useState<string | null>(video.thumbnail || null);
 
   useEffect(() => {
     let active = true;
@@ -507,16 +596,31 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       resolveVideoUrl(video.url, video.id).then((u) => {
         if (active && u) setLocalUrl(u);
       });
+    } else if (!yt && video.sourceType === "tiktok" && !video.thumbnail) {
+      fetchTikTokThumbnail(video.url).then((thumbUrl) => {
+        if (active && thumbUrl) setTiktokThumb(thumbUrl);
+      });
     }
     return () => {
       active = false;
     };
-  }, [video.url, video.id, video.sourceType, yt]);
+  }, [video.url, video.id, video.sourceType, video.thumbnail, yt]);
 
   if (yt) {
     return (
       <img
         src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`}
+        alt={video.title}
+        loading="lazy"
+        className="size-full object-cover transition-transform group-hover:scale-105"
+      />
+    );
+  }
+
+  if (tiktokThumb) {
+    return (
+      <img
+        src={tiktokThumb}
         alt={video.title}
         loading="lazy"
         className="size-full object-cover transition-transform group-hover:scale-105"
@@ -537,7 +641,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
 
   return (
     <div className="flex size-full items-center justify-center bg-gradient-to-br from-leaf/15 to-primary/10 text-muted-foreground">
-      <Film className="size-8" />
+      <Film className="size-8 text-muted-foreground/60" />
     </div>
   );
 }

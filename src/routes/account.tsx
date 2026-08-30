@@ -466,12 +466,13 @@ function AccountPage() {
     if (!authProfile?.uid) return;
     setThemeLoading(true);
     const newTheme: "light" | "dark" = isDark ? "light" : "dark";
-    await updateUserProfile(authProfile.uid, { themePreference: newTheme });
+    localStorage.setItem("treenest_theme", newTheme);
     if (newTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
+    await updateUserProfile(authProfile.uid, { themePreference: newTheme });
     await refreshProfile();
     setThemeLoading(false);
   }
@@ -530,7 +531,7 @@ function AccountPage() {
   return (
     <PageShell title="Account" description="Informasi dan Pengaturan Profil TreeNest Kamu.">
       {/* ── Kartu Profil Utama ── */}
-      <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-soft">
+      <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-soft hover:shadow-float transition-all duration-300">
         <div className="h-20 bg-gradient-leaf" />
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between">
@@ -593,7 +594,7 @@ function AccountPage() {
                   type="button"
                   onClick={handleResetAvatarToDefault}
                   title="Reset foto profil ke default (inisial)"
-                  className="self-end mb-1 flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all shadow-xs"
+                  className="self-end mb-1 flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all shadow-xs cursor-pointer active:scale-95"
                 >
                   <RotateCcw className="size-3.5" />
                   <span>Reset Foto</span>
@@ -612,7 +613,7 @@ function AccountPage() {
             {!editing ? (
               <button
                 onClick={startEdit}
-                className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
+                className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <Pencil className="size-3.5" /> Edit Profil
               </button>
@@ -621,14 +622,14 @@ function AccountPage() {
                 <button
                   onClick={saveEdit}
                   disabled={saving}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-60"
                 >
                   <Check className="size-3.5" /> {saving ? "Menyimpan..." : "Simpan"}
                 </button>
                 <button
                   onClick={cancelEdit}
                   aria-label="Batal edit"
-                  className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
+                  className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 active:scale-95 cursor-pointer"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -678,7 +679,7 @@ function AccountPage() {
       </div>
 
       {/* ── Info Akun ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft space-y-3">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/40 transition-all duration-300 space-y-3">
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Sparkles className="size-4 text-sun" /> Informasi Akun & Keamanan
         </h3>
@@ -710,7 +711,7 @@ function AccountPage() {
           <button
             type="button"
             onClick={() => setShowPasswordModal(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors shadow-xs"
+            className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
           >
             <KeyRound className="size-3.5 text-primary" /> Ubah Password
           </button>
@@ -728,7 +729,7 @@ function AccountPage() {
             disabled={themeLoading}
             className={`relative flex h-8 w-14 items-center rounded-full transition-colors duration-300 ${
               isDark ? "bg-primary" : "bg-secondary"
-            } border border-border/70 disabled:opacity-60`}
+            } border border-border/70 disabled:opacity-60 cursor-pointer`}
           >
             <span
               className={`absolute flex size-6 items-center justify-center rounded-full bg-card shadow-soft transition-all duration-300 ${
@@ -742,7 +743,7 @@ function AccountPage() {
       </div>
 
       {/* ── Sosial Media ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/40 transition-all duration-300">
         <div className="flex items-center justify-between mb-4">
           <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Globe className="size-4 text-sky-deep" /> Sosial Media
@@ -750,7 +751,7 @@ function AccountPage() {
           {!editingSocial ? (
             <button
               onClick={startEditSocial}
-              className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/70"
+              className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Pencil className="size-3.5" /> Edit
             </button>
@@ -759,13 +760,13 @@ function AccountPage() {
               <button
                 onClick={saveSocial}
                 disabled={savingSocial}
-                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-60"
               >
                 <Check className="size-3.5" /> {savingSocial ? "Menyimpan..." : "Simpan"}
               </button>
               <button
                 onClick={() => setEditingSocial(false)}
-                className="rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground hover:bg-secondary/70"
+                className="rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground hover:bg-secondary/70 active:scale-95 cursor-pointer"
               >
                 <X className="size-3.5" />
               </button>
@@ -826,7 +827,7 @@ function AccountPage() {
                         type="button"
                         key={opt.value}
                         onClick={() => setLinkVisibility(platform, opt.value)}
-                        className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-bold transition-colors border ${
+                        className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-bold transition-all cursor-pointer border ${
                           active
                             ? "bg-primary/15 border-primary/50 text-primary shadow-xs"
                             : "bg-secondary border-border/50 text-muted-foreground hover:bg-secondary/70"
@@ -850,7 +851,7 @@ function AccountPage() {
       </div>
 
       {/* ── Progress Pohon ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-leaf/50 transition-all duration-300">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Sprout className="size-4 text-leaf" /> Pertumbuhan Pohon
@@ -878,11 +879,11 @@ function AccountPage() {
             return (
               <div key={s.key} className="flex flex-1 flex-col items-center gap-1 text-center">
                 <div
-                  className={`flex size-9 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
+                  className={`flex size-9 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
                     current
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110 shadow-soft"
                       : reached
-                        ? "bg-leaf/15 text-leaf"
+                        ? "bg-leaf/15 text-leaf hover:scale-105"
                         : "bg-secondary text-muted-foreground"
                   }`}
                 >
@@ -901,7 +902,7 @@ function AccountPage() {
 
       {/* ── Mode Admin (Bold Visual Styling) ── */}
       {authProfile?.role === "admin" && (
-        <div className="mt-6 rounded-3xl border-2 border-primary/60 bg-primary/15 p-6 shadow-soft">
+        <div className="mt-6 rounded-3xl border-2 border-primary/60 bg-primary/15 p-6 shadow-soft hover:shadow-float transition-all duration-300">
           <div className="flex items-center gap-2 text-primary font-black tracking-wide uppercase text-sm">
             <ShieldCheck className="size-5 shrink-0" />
             <span>Mode Admin (Admin Access & Moderasi)</span>
@@ -912,7 +913,7 @@ function AccountPage() {
           <button
             type="button"
             onClick={() => navigate({ to: "/admin" })}
-            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95"
+            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
           >
             <ShieldCheck className="size-4" /> Buka Panel Moderasi Admin ↗
           </button>
@@ -920,21 +921,21 @@ function AccountPage() {
       )}
 
       {/* ── Sesi & Logout ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft">
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/30 transition-all duration-300">
         <p className="text-sm font-bold text-foreground">Sesi Pengguna</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Akun kamu tersambung dengan sistem autentikasi TreeNest.
         </p>
         <button
           onClick={handleLogout}
-          className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 active:scale-95"
+          className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 hover:scale-105 active:scale-95 cursor-pointer"
         >
           <LogOut className="size-4" /> Logout dari Akun
         </button>
       </div>
 
       {/* ── Zona Bahaya (Bold Visual Styling) ── */}
-      <div className="mt-6 rounded-3xl border-2 border-destructive/40 bg-destructive/10 p-6 shadow-soft">
+      <div className="mt-6 rounded-3xl border-2 border-destructive/40 bg-destructive/10 p-6 shadow-soft hover:shadow-float hover:border-destructive/60 transition-all duration-300">
         <div className="flex items-center gap-2 text-destructive font-black tracking-wide uppercase text-sm">
           <AlertTriangle className="size-5 shrink-0" />
           <span>Zona Bahaya (Danger Zone)</span>
@@ -945,7 +946,7 @@ function AccountPage() {
         <button
           type="button"
           onClick={() => setShowDeleteModal(true)}
-          className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-destructive px-5 py-2.5 text-sm font-bold text-destructive-foreground shadow-soft transition-all hover:bg-destructive/90 active:scale-95"
+          className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-destructive px-5 py-2.5 text-sm font-bold text-destructive-foreground shadow-soft transition-all hover:bg-destructive/90 hover:scale-105 active:scale-95 cursor-pointer"
         >
           <Trash2 className="size-4" /> Hapus Akun Saya
         </button>

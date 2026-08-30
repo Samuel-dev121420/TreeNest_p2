@@ -23,7 +23,7 @@ import {
   getAllApprovedVideos,
   type UserProfile,
 } from "@/lib/firestore-service";
-import { youtubeId, timeAgo, type GalleryVideo, type GalleryVideoSource } from "@/lib/social";
+import { youtubeId, tiktokId, fetchTikTokThumbnail, timeAgo, type GalleryVideo, type GalleryVideoSource } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/treegallery-all")({
@@ -397,6 +397,7 @@ function AllVideosPage() {
 
 function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null }) {
   const [localUrl, setLocalUrl] = useState<string | null>(null);
+  const [tiktokThumb, setTiktokThumb] = useState<string | null>(video.thumbnail || null);
 
   useEffect(() => {
     let active = true;
@@ -409,16 +410,30 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       resolveVideoUrl(video.url, video.id).then((u) => {
         if (active && u) setLocalUrl(u);
       });
+    } else if (!yt && video.sourceType === "tiktok" && !video.thumbnail) {
+      fetchTikTokThumbnail(video.url).then((thumbUrl) => {
+        if (active && thumbUrl) setTiktokThumb(thumbUrl);
+      });
     }
     return () => {
       active = false;
     };
-  }, [video.url, video.id, video.sourceType, yt]);
+  }, [video.url, video.id, video.sourceType, video.thumbnail, yt]);
 
   if (yt) {
     return (
       <img
         src={`https://img.youtube.com/vi/${yt}/hqdefault.jpg`}
+        alt={video.title}
+        className="size-full object-cover"
+      />
+    );
+  }
+
+  if (tiktokThumb) {
+    return (
+      <img
+        src={tiktokThumb}
         alt={video.title}
         className="size-full object-cover"
       />
@@ -452,6 +467,8 @@ function SourceBadge({ source }: { source: GalleryVideoSource }) {
 
 function VideoPlayerModal({ video, onClose }: { video: GalleryVideo; onClose: () => void }) {
   const yt = youtubeId(video.url);
+  const isTikTok = video.sourceType === "tiktok";
+  const ttId = isTikTok ? tiktokId(video.url) : null;
   const [resolvedUrl, setResolvedUrl] = useState<string>(video.url);
 
   useEffect(() => {
@@ -464,18 +481,74 @@ function VideoPlayerModal({ video, onClose }: { video: GalleryVideo; onClose: ()
     };
   }, [video.url, video.id]);
 
+  function renderPlayer() {
+    if (yt) {
+      return (
+        <div className="aspect-video w-full bg-black">
+          <iframe
+            className="size-full"
+            src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    if (isTikTok) {
+      const playerSrc = ttId
+        ? `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
+        : null;
+      if (!playerSrc) {
+        return (
+          <div className="flex w-full items-center justify-center bg-black" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
+            <a href={video.url} target="_blank" rel="noreferrer"
+              className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-foreground">
+              <ExternalLink className="size-4" /> Buka di TikTok
+            </a>
+          </div>
+        );
+      }
+      return (
+        <div className="w-full bg-black overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
+          <iframe
+            className="size-full border-0"
+            src={playerSrc}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="aspect-video w-full bg-black">
+        <video
+          className="size-full object-contain"
+          src={resolvedUrl || video.url}
+          controls
+          autoPlay
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl overflow-hidden rounded-3xl border border-border/70 bg-card shadow-float animate-in zoom-in-95 duration-150"
+        className={`w-full overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in zoom-in-95 duration-150 ${
+          isTikTok ? "max-w-sm sm:max-w-[390px]" : "max-w-2xl"
+        }`}
       >
-        <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5 bg-card">
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-card">
+          <div className="min-w-0 flex items-center gap-2">
+            <span className="shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider bg-primary/15 text-primary">
               {video.sourceType}
             </span>
             <p className="line-clamp-1 text-sm font-bold text-foreground">{video.title}</p>
@@ -483,41 +556,27 @@ function VideoPlayerModal({ video, onClose }: { video: GalleryVideo; onClose: ()
           <button
             onClick={onClose}
             aria-label="Tutup"
-            className="rounded-full p-2 text-muted-foreground hover:bg-muted"
+            className="rounded-full p-2 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        <div className="aspect-video w-full bg-black">
-          {yt ? (
-            <iframe
-              className="size-full"
-              src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          ) : video.sourceType === "tiktok" ? (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-pink-500/10 to-cyan-500/10">
-              <Film className="size-12 text-muted-foreground/60" />
-              <p className="text-sm text-muted-foreground">Video Tautan TikTok</p>
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              >
-                <ExternalLink className="size-4" /> Buka di TikTok
-              </a>
-            </div>
-          ) : (
-            <video
-              className="size-full object-contain"
-              src={resolvedUrl || video.url}
-              controls
-              autoPlay
-            />
+        {renderPlayer()}
+
+        <div className="flex items-center justify-between border-t border-border/60 bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Diunggah {timeAgo(video.submittedAt)}
+          </p>
+          {isTikTok && (
+            <a
+              href={video.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80 transition-colors"
+            >
+              <ExternalLink className="size-3.5" /> Buka di TikTok
+            </a>
           )}
         </div>
       </div>

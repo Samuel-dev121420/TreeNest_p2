@@ -142,11 +142,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       p.exp = 50;
     }
     setProfile(p);
-    // Apply theme from profile
-    if (p?.themePreference === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    // Apply theme from profile & persist in localStorage
+    if (p?.themePreference) {
+      localStorage.setItem("treenest_theme", p.themePreference);
+      if (p.themePreference === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
     if (isNewLogin) {
       incrementTotalLogins(uid).catch(console.error);
@@ -167,6 +170,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  // Synchronous theme initialization on mount to prevent any light mode flash
+  useEffect(() => {
+    try {
+      const storedTheme = localStorage.getItem("treenest_theme");
+      if (storedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else if (storedTheme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        const storedUser = localStorage.getItem(LOCAL_STORAGE_SESSION_KEY);
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed?.themePreference === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
       // Mode Fallback / Mock
@@ -175,6 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           setProfile(parsed);
+          if (parsed?.themePreference === "dark") {
+            document.documentElement.classList.add("dark");
+          }
         } catch {
           // ignore
         }

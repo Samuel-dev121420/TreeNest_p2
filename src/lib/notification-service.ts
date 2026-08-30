@@ -66,25 +66,37 @@ export function subscribeNotifications(listener: () => void) {
 export function addNotification(
   notif: Omit<AppNotification, "id" | "timestamp" | "read">,
 ) {
-  const current = getStoredNotifications();
-  // Prevent exact duplicate notifications within 1 minute
-  const isDuplicate = current.some(
+  let all: AppNotification[] = [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) all = JSON.parse(raw);
+  } catch {
+    all = [];
+  }
+
+  const now = Date.now();
+  // Filter out notifications older than 7 days
+  const valid = all.filter((n) => now - n.timestamp <= EXPIRATION_MS);
+
+  // Prevent exact duplicate notifications for the same recipient within 1 minute
+  const isDuplicate = valid.some(
     (n) =>
       n.type === notif.type &&
       n.title === notif.title &&
       n.message === notif.message &&
-      Date.now() - n.timestamp < 60000,
+      n.targetUid === notif.targetUid &&
+      now - n.timestamp < 60000,
   );
   if (isDuplicate) return;
 
   const newItem: AppNotification = {
     ...notif,
-    id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    timestamp: Date.now(),
+    id: `notif_${now}_${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: now,
     read: false,
   };
 
-  const updated = [newItem, ...current].slice(0, 100);
+  const updated = [newItem, ...valid].slice(0, 200);
   saveNotifications(updated);
 }
 

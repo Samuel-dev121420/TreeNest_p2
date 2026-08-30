@@ -239,13 +239,15 @@ export async function awardActivityExp(
     saveDailyQuestState(uid, questState),
   ]);
 
-  // Dispatch toast notice
-  emitToast({
-    id: `toast_${Date.now()}_${Math.random()}`,
-    type: leveledUp ? "levelup" : "exp",
-    title: leveledUp ? `Naik Level! 🎉 Level ${newLevel}` : `+${gainedExp} EXP! 🌱`,
-    subtitle: activityLabel,
-  });
+  // Dispatch toast notice (HANYA jika level pengguna belum mencapai Level Max 20)
+  if (currentLevel < 20) {
+    emitToast({
+      id: `toast_${Date.now()}_${Math.random()}`,
+      type: leveledUp ? "levelup" : "exp",
+      title: leveledUp ? `Naik Level! 🎉 Level ${newLevel}` : `+${gainedExp} EXP! 🌱`,
+      subtitle: activityLabel,
+    });
+  }
 
   // Notify listeners to update real-time UI
   notifyListeners();

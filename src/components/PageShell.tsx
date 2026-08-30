@@ -12,11 +12,15 @@ export function PageShell({
   return (
     <div className="min-h-screen bg-gradient-soft pb-32">
       <div className="mx-auto w-full max-w-3xl px-5 pt-10">
-        <header className="animate-grow-in">
-          <h1 className="text-3xl font-bold text-foreground">{title}</h1>
-          {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
-        </header>
-        <div className="mt-8">{children}</div>
+        {title ? (
+          <header>
+            <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+            {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
+          </header>
+        ) : null}
+        <div className={title ? "mt-8" : ""}>
+          {children}
+        </div>
       </div>
     </div>
   );

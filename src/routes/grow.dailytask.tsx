@@ -12,6 +12,7 @@ import {
   ChevronDown,
   AlertCircle,
   Bell,
+  Pencil,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -38,6 +39,8 @@ function ReminderPage() {
   const [tasks, setTasks] = useLocalStorage<DailyTask[]>(`treenest.dailytask.tasks.${uid}`, []);
   const [dateKey, setDateKey] = useState(todayKey);
   const [newTask, setNewTask] = useState("");
+  const [editingTask, setEditingTask] = useState<DailyTask | null>(null);
+  const [editText, setEditText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
 
@@ -104,6 +107,20 @@ function ReminderPage() {
 
   function deleteTask(id: string) {
     setTasks((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  function openEditTask(task: DailyTask) {
+    setEditingTask(task);
+    setEditText(task.text);
+  }
+
+  function handleSaveEditTask() {
+    if (!editingTask || !editText.trim()) return;
+    setTasks((prev) =>
+      prev.map((t) => (t.id === editingTask.id ? { ...t, text: editText.trim() } : t)),
+    );
+    setEditingTask(null);
+    setEditText("");
   }
 
   return (
@@ -251,6 +268,7 @@ function ReminderPage() {
         {/* Input */}
         <div className="flex gap-2 min-w-0">
           <input
+            maxLength={150}
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTask()}
@@ -261,7 +279,7 @@ function ReminderPage() {
             onClick={addTask}
             disabled={!newTask.trim()}
             aria-label="Tambah pengingat"
-            className="shrink-0 flex items-center justify-center rounded-xl bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="shrink-0 flex items-center justify-center rounded-xl bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
           >
             <Plus className="size-5" />
           </button>
@@ -283,11 +301,11 @@ function ReminderPage() {
             filteredDayTasks.map((t) => (
               <div
                 key={t.id}
-                className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3.5 transition-colors hover:border-border min-w-0 shadow-xs"
+                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5 transition-colors hover:border-border min-w-0 shadow-xs"
               >
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors mt-0.5 ${
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors self-center cursor-pointer ${
                     t.done
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-muted-foreground/30 hover:border-primary/50"
@@ -296,18 +314,28 @@ function ReminderPage() {
                   {t.done ? <CheckSquare className="size-3.5" /> : null}
                 </button>
                 <span
-                  className={`min-w-0 flex-1 text-sm font-medium break-words [word-break:break-word] overflow-hidden ${
+                  className={`min-w-0 flex-1 self-center py-0.5 text-sm font-medium leading-normal break-words [word-break:break-word] overflow-hidden ${
                     t.done ? "text-muted-foreground line-through" : "text-foreground"
                   }`}
                 >
                   {t.text}
                 </span>
-                <button
-                  onClick={() => deleteTask(t.id)}
-                  className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0 self-center">
+                  <button
+                    onClick={() => openEditTask(t)}
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+                    title="Edit Pengingat"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteTask(t.id)}
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                    title="Hapus Pengingat"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -368,6 +396,63 @@ function ReminderPage() {
                 className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL EDIT PENGINGAT ── */}
+      {editingTask && (
+        <div
+          onClick={() => setEditingTask(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Pencil className="size-4 text-primary" />
+                <h3 className="text-base font-bold text-foreground">Edit Pengingat</h3>
+              </div>
+              <button
+                onClick={() => setEditingTask(null)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                Teks Pengingat:
+              </label>
+              <input
+                autoFocus
+                maxLength={150}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEditTask()}
+                placeholder="Ketik teks pengingat..."
+                className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setEditingTask(null)}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveEditTask}
+                disabled={!editText.trim()}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+              >
+                Simpan Perubahan
               </button>
             </div>
           </div>

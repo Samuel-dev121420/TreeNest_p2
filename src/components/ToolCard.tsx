@@ -33,14 +33,14 @@ export function ToolCard({
   return (
     <Link
       to={to}
-      className={`group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-gradient-to-br ${gradients[color]} p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-float`}
+      className={`group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-gradient-to-br ${gradients[color]} p-6 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-float active:scale-95`}
     >
       {showBadge && (
         <span className="absolute right-4 top-4 size-3 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
       )}
       <div>
         <div
-          className={`mb-3 flex size-11 items-center justify-center rounded-2xl bg-card/80 ${iconColors[color]}`}
+          className={`mb-3 flex size-11 items-center justify-center rounded-2xl bg-card/80 ${iconColors[color]} transition-transform duration-300 group-hover:scale-110`}
         >
           <Icon className="size-6" strokeWidth={2} />
         </div>
@@ -48,7 +48,7 @@ export function ToolCard({
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
       <div className="mt-4 flex items-center gap-1 text-sm font-semibold text-foreground/70 transition-colors group-hover:text-foreground">
-        Buka <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        Buka <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
       </div>
     </Link>
   );
