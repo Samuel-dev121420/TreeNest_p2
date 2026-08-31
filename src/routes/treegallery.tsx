@@ -459,7 +459,7 @@ function TreeGalleryPage() {
         <div className="text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">Aturan &amp; Penjelasan singkat</p>
           <p className="mt-0.5">
-            · Silahkan pilih video (≤ 180 detik untuk tipe File Upload).<br></br> · Video tayang setelah moderasi Admin. <br></br>· Pilih 1 video untuk Rumah Pohon setiap harinya dan buat streak Anda!
+            · Silahkan pilih video (≤ 180 detik untuk tipe File Upload).<br></br> · Video tayang setelah moderasi Admin. <br></br>· Pilih 1 video untuk Rumah Pohon setiap harinya.
           </p>
         </div>
       </div>

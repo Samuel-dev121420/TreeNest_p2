@@ -520,8 +520,43 @@ export async function sendFriendRequest(
     }
   }
 
-  if (fromUser.uid === resolvedToUid) {
+  if (fromUser.uid === resolvedToUid || fromUser.accountId === toUser.accountId) {
     return { success: false, error: "Tidak dapat menambahkan diri sendiri." };
+  }
+
+  // 1. Cek apakah sudah berteman resmi sebelumnya
+  const currentFriends = await getUserFriends(fromUser.uid, fromUser.accountId);
+  if (
+    currentFriends.some(
+      (f) =>
+        f.accountId === toUser.accountId ||
+        (resolvedToUid && f.uid === resolvedToUid),
+    )
+  ) {
+    return { success: true };
+  }
+
+  // 2. Cek apakah pihak lawan (toUser) SUDAH mengirim permintaan pertemanan ke fromUser (Mutual request)
+  // Jika ya, langsung otomatis terima dan jadikan mereka berteman resmi dua arah!
+  const rawGlobalReqs = localStorage.getItem("treenest_global_friend_requests");
+  const globalReqs: StoredFriendRequest[] = rawGlobalReqs ? JSON.parse(rawGlobalReqs) : [];
+  const existingIncoming = globalReqs.find(
+    (r) =>
+      (r.fromUid === resolvedToUid || r.fromAccountId === toUser.accountId) &&
+      (r.toUid === fromUser.uid || r.toAccountId === fromUser.accountId) &&
+      r.status === "pending",
+  );
+
+  if (existingIncoming) {
+    await acceptFriendRequest(existingIncoming.id, fromUser, {
+      uid: resolvedToUid,
+      accountId: toUser.accountId,
+      name: toUser.name,
+      initials: toUser.initials,
+      hue: toUser.hue,
+      avatarUrl: toUser.avatarUrl,
+    });
+    return { success: true };
   }
 
   const reqData: Omit<StoredFriendRequest, "id"> = {
@@ -542,11 +577,12 @@ export async function sendFriendRequest(
   };
 
   if (!isFirebaseConfigured || !db) {
-    const raw = localStorage.getItem("treenest_global_friend_requests");
-    const list: StoredFriendRequest[] = raw ? JSON.parse(raw) : [];
-    // Cek apakah sudah pernah kirim request pending
+    const list: StoredFriendRequest[] = globalReqs;
     const exists = list.some(
-      (r) => r.fromUid === fromUser.uid && r.toUid === resolvedToUid && r.status === "pending",
+      (r) =>
+        ((r.fromUid === fromUser.uid && r.toUid === resolvedToUid) ||
+          (r.fromAccountId === fromUser.accountId && r.toAccountId === toUser.accountId)) &&
+        r.status === "pending",
     );
     if (!exists) {
       list.push({ id: generateId(), ...reqData });
@@ -556,6 +592,27 @@ export async function sendFriendRequest(
   }
 
   try {
+    // Check if reverse incoming request exists in Firestore
+    const reverseQ = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("fromUid", "==", resolvedToUid),
+      where("toUid", "==", fromUser.uid),
+      where("status", "==", "pending"),
+    );
+    const reverseSnap = await getDocs(reverseQ);
+    if (!reverseSnap.empty && reverseSnap.docs[0]) {
+      const incomingDoc = reverseSnap.docs[0];
+      await acceptFriendRequest(incomingDoc.id, fromUser, {
+        uid: resolvedToUid,
+        accountId: toUser.accountId,
+        name: toUser.name,
+        initials: toUser.initials,
+        hue: toUser.hue,
+        avatarUrl: toUser.avatarUrl,
+      });
+      return { success: true };
+    }
+
     // Check if already pending
     const q = query(
       collection(db, FRIEND_REQUESTS_COLLECTION),
@@ -583,13 +640,37 @@ export async function getIncomingFriendRequests(
 ): Promise<FriendRequest[]> {
   if (!uid || uid === "guest") return [];
 
+  // Ambil daftar teman yang sudah resmi untuk memfilter request usang
+  const currentFriends = await getUserFriends(uid, accountId);
+  const friendAccountIds = new Set(currentFriends.map((f) => f.accountId));
+  const friendUids = new Set(currentFriends.map((f) => f.uid));
+
   const map = new Map<string, FriendRequest>();
+  let hasStaleLocal = false;
 
   // 1. Baca dari local storage
   const raw = localStorage.getItem("treenest_global_friend_requests");
   if (raw) {
     const list: StoredFriendRequest[] = JSON.parse(raw);
-    list
+    const validList = list.filter((r) => {
+      // Jika kedua akun sudah resmi berteman, jangan tampilkan request
+      if (
+        friendAccountIds.has(r.fromAccountId) ||
+        friendAccountIds.has(r.toAccountId) ||
+        friendUids.has(r.fromUid) ||
+        friendUids.has(r.toUid)
+      ) {
+        hasStaleLocal = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (hasStaleLocal) {
+      localStorage.setItem("treenest_global_friend_requests", JSON.stringify(validList));
+    }
+
+    validList
       .filter(
         (r) =>
           (r.toUid === uid || (accountId && r.toAccountId === accountId)) &&
@@ -626,6 +707,13 @@ export async function getIncomingFriendRequests(
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const data = d.data() as StoredFriendRequest;
+      // Jangan masukkan jika sudah berteman resmi
+      if (friendAccountIds.has(data.fromAccountId) || friendUids.has(data.fromUid)) {
+        // Hapus request usang di Firestore
+        deleteDoc(d.ref).catch(() => {});
+        return;
+      }
+
       map.set(d.id, {
         id: d.id,
         from: {
@@ -654,13 +742,36 @@ export async function getSentFriendRequests(
 ): Promise<SentRequest[]> {
   if (!uid || uid === "guest") return [];
 
+  // Ambil daftar teman yang sudah resmi untuk memfilter sent request usang
+  const currentFriends = await getUserFriends(uid, accountId);
+  const friendAccountIds = new Set(currentFriends.map((f) => f.accountId));
+  const friendUids = new Set(currentFriends.map((f) => f.uid));
+
   const map = new Map<string, SentRequest>();
+  let hasStaleLocal = false;
 
   // 1. Baca dari local storage
   const raw = localStorage.getItem("treenest_global_friend_requests");
   if (raw) {
     const list: StoredFriendRequest[] = JSON.parse(raw);
-    list
+    const validList = list.filter((r) => {
+      if (
+        friendAccountIds.has(r.fromAccountId) ||
+        friendAccountIds.has(r.toAccountId) ||
+        friendUids.has(r.fromUid) ||
+        friendUids.has(r.toUid)
+      ) {
+        hasStaleLocal = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (hasStaleLocal) {
+      localStorage.setItem("treenest_global_friend_requests", JSON.stringify(validList));
+    }
+
+    validList
       .filter(
         (r) =>
           (r.fromUid === uid || (accountId && r.fromAccountId === accountId)) &&
@@ -697,6 +808,12 @@ export async function getSentFriendRequests(
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const data = d.data() as StoredFriendRequest;
+      if (friendAccountIds.has(data.toAccountId) || friendUids.has(data.toUid)) {
+        // Hapus request usang di Firestore
+        deleteDoc(d.ref).catch(() => {});
+        return;
+      }
+
       map.set(d.id, {
         id: d.id,
         to: {
@@ -743,7 +860,7 @@ export type StoredFriendship = {
 
 const FRIENDSHIPS_COLLECTION = "friendships";
 
-/** Terima permintaan pertemanan (kedua akun saling berteman secara dua arah) */
+/** Terima permintaan pertemanan (kedua akun saling berteman secara dua arah & seluruh request pending kedua pihak dibersihkan) */
 export async function acceptFriendRequest(
   requestId: string,
   currentUser: { uid: string; accountId: string; name: string; initials: string; hue: number; avatarUrl?: string | undefined },
@@ -799,14 +916,24 @@ export async function acceptFriendRequest(
     since: now,
   };
 
-  // 1. Selalu simpan ke Local Storage terlebih dahulu agar relasi instan & permanen
+  // 1. Bersihkan SEMUA request pertemanan dua arah antara kedua user ini dari Local Storage
   const rawReq = localStorage.getItem("treenest_global_friend_requests");
   if (rawReq) {
-    const reqs: StoredFriendRequest[] = JSON.parse(rawReq);
-    localStorage.setItem(
-      "treenest_global_friend_requests",
-      JSON.stringify(reqs.filter((r) => r.id !== requestId)),
-    );
+    try {
+      const reqs: StoredFriendRequest[] = JSON.parse(rawReq);
+      const cleaned = reqs.filter((r) => {
+        if (r.id === requestId) return false;
+        const isBetweenUsers =
+          (r.fromUid === fromUid && r.toUid === toUid) ||
+          (r.fromUid === toUid && r.toUid === fromUid) ||
+          (r.fromAccountId === requestFrom.accountId && r.toAccountId === currentUser.accountId) ||
+          (r.fromAccountId === currentUser.accountId && r.toAccountId === requestFrom.accountId);
+        return !isBetweenUsers;
+      });
+      localStorage.setItem("treenest_global_friend_requests", JSON.stringify(cleaned));
+    } catch {
+      // ignore
+    }
   }
 
   const rawGlobal = localStorage.getItem("treenest_global_friendships");
@@ -835,9 +962,30 @@ export async function acceptFriendRequest(
     return;
   }
 
-  // 2. Tulis ke Firestore
+  // 2. Tulis ke Firestore & Hapus SEMUA request pending dua arah antara kedua user di Firestore
   try {
-    await deleteDoc(doc(db, FRIEND_REQUESTS_COLLECTION, requestId));
+    const deletePromises: Promise<void>[] = [];
+    if (requestId) {
+      deletePromises.push(deleteDoc(doc(db, FRIEND_REQUESTS_COLLECTION, requestId)).catch(() => {}));
+    }
+
+    // Query dan hapus request dari A ke B dan B ke A
+    const q1 = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("fromUid", "==", fromUid),
+      where("toUid", "==", toUid),
+    );
+    const q2 = query(
+      collection(db, FRIEND_REQUESTS_COLLECTION),
+      where("fromUid", "==", toUid),
+      where("toUid", "==", fromUid),
+    );
+
+    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+    snap1.docs.forEach((d) => deletePromises.push(deleteDoc(d.ref).catch(() => {})));
+    snap2.docs.forEach((d) => deletePromises.push(deleteDoc(d.ref).catch(() => {})));
+
+    await Promise.all(deletePromises);
     await setDoc(doc(db, FRIENDSHIPS_COLLECTION, docId), friendshipData);
 
     try {
@@ -856,9 +1004,6 @@ export async function acceptFriendRequest(
 
   // Sync total pertemanan resmi
   await syncUserFriendCount(toUid);
-  if (fromUid && !fromUid.startsWith("uid_")) {
-    await syncUserFriendCount(fromUid);
-  }
 }
 
 /** Tolak permintaan pertemanan */

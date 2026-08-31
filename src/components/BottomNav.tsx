@@ -76,12 +76,31 @@ export function BottomNav() {
       try {
         const reqViewed = Number(localStorage.getItem(`treenest.friend.viewed_requests.${uid}`) || 0);
         const frViewed = Number(localStorage.getItem(`treenest.friend.viewed_friends.${uid}`) || 0);
-        const localReqs = localStorage.getItem(`treenest_friend_requests_${uid}`);
-        const localFriends = localStorage.getItem(`treenest_friends_${uid}`);
-        const reqs: any[] = localReqs ? JSON.parse(localReqs) : [];
-        const friends: any[] = localFriends ? JSON.parse(localFriends) : [];
-        const hasReq = reqs.filter((r) => r.status === "pending").length > reqViewed;
-        const hasFr = friends.length > frViewed;
+        const globalReqsRaw = localStorage.getItem("treenest_global_friend_requests");
+        const localFriendsRaw = localStorage.getItem(`treenest_friends_${uid}`);
+        const globalFriendsRaw = localStorage.getItem("treenest_global_friendships");
+
+        const globalReqs: any[] = globalReqsRaw ? JSON.parse(globalReqsRaw) : [];
+        const localFriends: any[] = localFriendsRaw ? JSON.parse(localFriendsRaw) : [];
+        const globalFriends: any[] = globalFriendsRaw ? JSON.parse(globalFriendsRaw) : [];
+
+        const friendAccountIds = new Set([
+          ...localFriends.map((f: any) => f.accountId),
+          ...globalFriends
+            .filter((f: any) => f.users?.includes(uid))
+            .map((f: any) => (f.userA?.uid === uid ? f.userB?.accountId : f.userA?.accountId)),
+        ]);
+
+        const validIncoming = globalReqs.filter(
+          (r: any) =>
+            (r.toUid === uid || (profile?.accountId && r.toAccountId === profile.accountId)) &&
+            r.status === "pending" &&
+            !friendAccountIds.has(r.fromAccountId),
+        );
+
+        const totalFriendsCount = Math.max(localFriends.length, friendAccountIds.size);
+        const hasReq = validIncoming.length > reqViewed;
+        const hasFr = totalFriendsCount > frViewed;
         setHasFriendBadge(hasReq || hasFr);
       } catch {
         // ignore

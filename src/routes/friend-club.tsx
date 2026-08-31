@@ -97,8 +97,8 @@ function FriendClubPage() {
       return;
     }
     try {
-      const [fList, inReqs, outReqs, featList] = await Promise.all([
-        getUserFriends(uid, profile?.accountId),
+      const fList = await getUserFriends(uid, profile?.accountId);
+      const [inReqs, outReqs, featList] = await Promise.all([
         getIncomingFriendRequests(uid, profile?.accountId),
         getSentFriendRequests(uid, profile?.accountId),
         getFeaturedFriends(uid),
@@ -110,9 +110,27 @@ function FriendClubPage() {
         updateFeaturedFriends(uid, validFeat).catch(() => {});
       }
 
+      // Pastikan request masuk dan terkirim sama sekali tidak menampilkan user yang sudah resmi berteman
+      const cleanInReqs = inReqs.filter(
+        (r) =>
+          !fList.some(
+            (f) =>
+              f.accountId === r.from.accountId ||
+              (r.from.uid && f.uid === r.from.uid),
+          ),
+      );
+      const cleanOutReqs = outReqs.filter(
+        (s) =>
+          !fList.some(
+            (f) =>
+              f.accountId === s.to.accountId ||
+              (s.to.uid && f.uid === s.to.uid),
+          ),
+      );
+
       setFriends(fList);
-      setRequests(inReqs);
-      setSent(outReqs);
+      setRequests(cleanInReqs);
+      setSent(cleanOutReqs);
       setFeatured(validFeat);
     } catch (err) {
       console.error("Error loading social data:", err);
