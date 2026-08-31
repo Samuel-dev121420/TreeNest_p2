@@ -248,7 +248,7 @@ export function TreehouseModal({
                 <Trophy className="size-4" />
                 <h3 className="text-xs font-bold uppercase tracking-wider">Milestone Tertinggi</h3>
               </div>
-              <p className="mt-2 text-sm font-bold text-foreground">Master of TreeNest 🌿</p>
+              <p className="mt-2 text-sm font-bold text-foreground">Master of TreeNest</p>
               <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                 Pohonmu telah mencapai evolusi penuh (House Tree). Selamat atas pencapaian dedikasi dan pertumbuhanmu!
               </p>

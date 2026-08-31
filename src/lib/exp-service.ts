@@ -244,7 +244,7 @@ export async function awardActivityExp(
     emitToast({
       id: `toast_${Date.now()}_${Math.random()}`,
       type: leveledUp ? "levelup" : "exp",
-      title: leveledUp ? `Naik Level! 🎉 Level ${newLevel}` : `+${gainedExp} EXP! 🌱`,
+      title: leveledUp ? `Naik Level! Level ${newLevel}` : `+${gainedExp} EXP!`,
       subtitle: activityLabel,
     });
   }

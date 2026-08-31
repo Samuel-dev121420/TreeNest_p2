@@ -247,7 +247,7 @@ function FriendClubPage() {
       import("@/lib/notification-service").then(({ addNotification }) => {
         addNotification({
           type: "friend_accepted",
-          title: "Teman Baru Terhubung! 🎉",
+          title: "Teman Baru Terhubung!",
           message: "Kamu memiliki teman baru yang sudah resmi berteman.",
           link: "/friend-club?tab=list",
           targetUid: uid,

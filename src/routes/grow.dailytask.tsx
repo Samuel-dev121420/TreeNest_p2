@@ -178,7 +178,7 @@ function ReminderPage() {
 
           {uncheckedSummary.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-2">
-              Semua pengingat hari ini dan sebelumnya sudah selesai! 🎉
+              Semua pengingat hari ini dan sebelumnya sudah selesai!
             </p>
           ) : (
             <div className="space-y-2.5">

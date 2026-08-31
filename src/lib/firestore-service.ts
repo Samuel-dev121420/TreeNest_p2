@@ -125,7 +125,7 @@ export async function createUserProfile(
     username,
     accountId,
     email,
-    bio: "Tumbuh pelan, tapi pasti. 🌱",
+    bio: "Tumbuh pelan, tapi pasti.",
     initials,
     hue,
     level: resolvedRole === "admin" ? 20 : 1,
@@ -1431,7 +1431,7 @@ export async function moderateVideo(
   if (targetUid) {
     addNotification({
       type: status === "approved" ? "video_approved" : "video_rejected",
-      title: status === "approved" ? "Video Disetujui! 🎉" : "Video Ditolak ⚠️",
+      title: status === "approved" ? "Video Disetujui!" : "Video Ditolak",
       message:
         status === "approved"
           ? `Videomu "${videoTitle || 'TreeGallery'}" telah disetujui Admin!`

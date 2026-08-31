@@ -214,7 +214,7 @@ export function seedProfile(): Profile {
     username: "Rafi",
     accountId: "TN-4821",
     email: "—",
-    bio: "Tumbuh pelan, tapi pasti. 🌱",
+    bio: "Tumbuh pelan, tapi pasti.",
     initials: "RA",
     hue: 150,
     level: 8,

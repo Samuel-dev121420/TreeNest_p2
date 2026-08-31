@@ -8,6 +8,7 @@ import {
   X,
   Sprout,
   ShieldCheck,
+  ArrowUpRight,
   KeyRound,
   Camera,
   LogIn,
@@ -152,7 +153,7 @@ function ChangePasswordModal({
             </div>
             <p className="font-bold text-xs text-foreground break-all">{email}</p>
             <div className="rounded-xl bg-secondary/50 p-2.5 text-left text-[11px] text-muted-foreground space-y-1">
-              <p className="font-bold text-foreground">📌 Tips Pemeriksaan:</p>
+              <p className="font-bold text-foreground">Tips Pemeriksaan:</p>
               <p>• Periksa folder <strong>Kotak Masuk (Inbox)</strong>.</p>
               <p>• Jika belum muncul, periksa folder <strong>Spam / Promosi / Sampah</strong>.</p>
             </div>
@@ -982,7 +983,7 @@ function AccountPage() {
             onClick={() => navigate({ to: "/admin" })}
             className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
           >
-            <ShieldCheck className="size-4" /> Buka Panel Moderasi Admin ↗
+            <ShieldCheck className="size-4" /> <span>Buka Panel Moderasi Admin</span> <ArrowUpRight className="size-4" />
           </button>
         </div>
       )}

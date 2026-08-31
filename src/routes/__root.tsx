@@ -16,6 +16,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { BottomNav } from "../components/BottomNav";
 import { AuthProvider, useAuth } from "../lib/auth-context";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { motion, AnimatePresence } from "framer-motion";
 
 function NotFoundComponent() {
   return (
@@ -156,16 +157,41 @@ function AppShell() {
     }
   }, [loading, user, profile, location.pathname, navigate]);
 
+  // Scroll to top instantly on route change to prevent scroll shifts
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname]);
+
   if (loading) {
     return <LoadingScreen message="Menghubungkan ke TreeNest..." />;
   }
+
+  const isHome = location.pathname === "/";
 
   return (
     <>
       <GlobalStudyTimerBar />
       {!isVisiting && !isMinimalRoute && <NotificationCenterWidget />}
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {/* Page Transition Motion Wrapper — EXCLUDE Home Page (instant render) */}
+      {isHome ? (
+        <Outlet />
+      ) : (
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, scale: 0.982 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.982 }}
+            transition={{
+              duration: 0.40,
+              ease: [0.16, 1, 0.3, 1], // Gentle, smooth iOS/macOS style easing
+            }}
+            className="w-full flex-1 overflow-x-hidden"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      )}
       {!isVisiting && !isMinimalRoute && <DateTimeWidget />}
       {!isVisiting && !isMinimalRoute && <DailyQuestWidget />}
       {!isMinimalRoute && <BottomNav />}

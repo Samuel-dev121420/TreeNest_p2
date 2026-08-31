@@ -1,4 +1,4 @@
-import { Sprout, TreePine } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export function LoadingScreen({ message = "Menghubungkan ke TreeNest..." }: { message?: string }) {
   return (
@@ -8,28 +8,43 @@ export function LoadingScreen({ message = "Menghubungkan ke TreeNest..." }: { me
       <div className="pointer-events-none absolute h-96 w-96 rounded-full bg-leaf-soft/20 blur-3xl" />
 
       {/* Main Glass Card Container */}
-      <div className="relative flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card/85 p-8 shadow-float backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
-        {/* Animated Sprout Icon with Leaf Gradient */}
-        <div className="relative flex size-20 items-center justify-center rounded-3xl bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card animate-bounce">
-          <Sprout className="size-10 stroke-[2.5]" />
-          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-sun text-foreground shadow-xs">
-            <TreePine className="size-3" />
-          </span>
+      <div className="relative flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card/85 p-8 shadow-float backdrop-blur-md animate-in fade-in zoom-in-95 duration-300 min-w-[240px]">
+        {/* Google-style Smooth Circular Spinner */}
+        <div className="relative flex size-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+          <svg className="size-8 animate-spin text-primary" viewBox="0 0 50 50">
+            <circle
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+              className="opacity-20"
+            />
+            <circle
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeDasharray="90"
+              strokeDashoffset="35"
+              strokeLinecap="round"
+              className="opacity-90"
+            />
+          </svg>
         </div>
 
         {/* Brand Title */}
-        <h2 className="mt-5 text-xl font-extrabold text-foreground tracking-tight">
+        <h2 className="mt-4 text-xl font-extrabold text-foreground tracking-tight">
           Tree<span className="text-primary">Nest</span>
         </h2>
 
         {/* Loading Message */}
-        <p className="mt-1.5 text-xs font-semibold text-muted-foreground">{message}</p>
-
-        {/* Elegant Animated Progress Bar */}
-        <div className="mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-secondary/80">
-          <div className="h-full w-full origin-left bg-gradient-leaf animate-pulse rounded-full" />
-        </div>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">{message}</p>
       </div>
     </div>
   );
 }
+

@@ -389,7 +389,7 @@ function TreeGalleryPage() {
       import("@/lib/notification-service").then(({ addNotification }) => {
         addNotification({
           type: "video_approved",
-          title: "Video Disetujui! 🎉",
+          title: "Video Disetujui!",
           message: `Video '${targetVideo.title}' milikmu telah disetujui Admin dan tayang di TreeGallery!`,
           link: "/treegallery",
           targetUid: targetVideo.uid,

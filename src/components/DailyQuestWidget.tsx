@@ -180,7 +180,7 @@ export function DailyQuestWidget() {
                 </div>
 
                 {/* Animated EXP Progress Bar */}
-                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80">
+                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80 border border-white/90 shadow-xs">
                   <motion.div
                     className="h-full rounded-full bg-gradient-leaf"
                     initial={{ width: 0 }}
@@ -267,7 +267,7 @@ export function DailyQuestWidget() {
               </div>
 
               <p className="mt-3 text-center text-[10px] text-muted-foreground">
-                Quest di-reset otomatis setiap hari 🕛
+                Quest di-reset otomatis setiap hari
               </p>
             </motion.div>
           )}

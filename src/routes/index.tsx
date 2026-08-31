@@ -165,7 +165,7 @@ function HomePage() {
             </p>
             <p className="text-xs font-bold text-primary">Lv {level}</p>
           </div>
-          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 border border-white/90 shadow-xs dark:bg-secondary/80 dark:border-transparent">
+          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 border border-white/90 shadow-xs dark:bg-secondary/80">
             <div
               className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700 shadow-xs"
               style={{ width: `${pct}%` }}
@@ -351,13 +351,13 @@ function HomePage() {
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground dark:text-emerald-100">
-                Pohonmu Sedang Bertumbuh 🌱
+                Pohonmu Sedang Bertumbuh
               </h3>
               <p className="mt-1 text-xs text-muted-foreground leading-relaxed dark:text-emerald-300/80">
                 Pohonmu saat ini berada di <strong>Level {level} ({stage.label})</strong>.
               </p>
               <div className="mt-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground text-left space-y-1.5 dark:bg-emerald-900/50 dark:text-emerald-200/80">
-                <p className="font-bold text-foreground dark:text-emerald-100">🏡 Kunci Membuka Rumah Pohon:</p>
+                <p className="font-bold text-foreground dark:text-emerald-100">Kunci Membuka Rumah Pohon:</p>
                 <p>• Capai <strong>Level {TREEHOUSE_LEVEL} (House Tree)</strong>.</p>
                 <p>• Selesaikan Daily Quest dan aktivitas produktif untuk mengumpulkan EXP.</p>
                 <p>• Setelah terbuka, kamu bisa masuk dan memamerkan videomu di sini!</p>
@@ -368,7 +368,7 @@ function HomePage() {
               onClick={() => setShowTreeTip(false)}
               className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white"
             >
-              Semangat Menanam! 🌿
+              Semangat Menanam!
             </button>
           </div>
         </div>

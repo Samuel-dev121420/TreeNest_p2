@@ -246,7 +246,7 @@ function LoginPage() {
                 <Leaf className="size-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">"Tumbuh pelan, tapi pasti." 🌱</p>
+                <p className="text-xs font-semibold text-white">"Tumbuh pelan, tapi pasti."</p>
                 <p className="text-[11px] text-slate-300">Sanctuary produktivitas harianmu</p>
               </div>
             </div>
@@ -265,7 +265,7 @@ function LoginPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold font-display text-white tracking-tight">
-                    Verifikasi Alamat Email ✉️
+                    Verifikasi Alamat Email
                   </h2>
                   <p className="mt-1 text-xs text-slate-300">
                     Tautan konfirmasi telah dikirim ke:
@@ -514,7 +514,7 @@ function LoginPage() {
               {/* Bottom Note */}
               <div className="mt-7 border-t border-white/10 pt-4 text-center">
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  🌱 Tumbuhkan pohonmu, kumpulkan EXP harian, dan ciptakan ruang tenang bersama teman.
+                  Tumbuhkan pohonmu, kumpulkan EXP harian, dan ciptakan ruang tenang bersama teman.
                 </p>
               </div>
             </>
@@ -558,7 +558,7 @@ function LoginPage() {
                     {forgotEmail}
                   </p>
                   <div className="rounded-xl bg-slate-950/80 p-3 text-left text-[11px] text-slate-300 space-y-1 border border-white/10">
-                    <p className="font-semibold text-slate-100">📌 Tips Pemeriksaan:</p>
+                    <p className="font-semibold text-slate-100">Tips Pemeriksaan:</p>
                     <p>• Periksa folder <strong>Kotak Masuk (Inbox)</strong>.</p>
                     <p>• Jika belum muncul, periksa folder <strong>Spam / Promosi</strong>.</p>
                   </div>
