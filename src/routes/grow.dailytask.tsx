@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
   CheckSquare,
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Bell,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -21,6 +22,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, todayKey, formatDateLabel, type DailyTask } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/grow/dailytask")({
   head: () => ({
@@ -45,6 +47,9 @@ function ReminderPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [deletingTask, setDeletingTask] = useState<DailyTask | null>(null);
+  const [highlightTargetDate, setHighlightTargetDate] = useState(false);
+
+  const dateNavigatorRef = useRef<HTMLDivElement>(null);
 
   useScrollLock(Boolean(showDatePickerModal || editingTask || deletingTask));
 
@@ -118,6 +123,53 @@ function ReminderPage() {
     setEditText(task.text);
   }
 
+  function handleOpenUncheckedDate(targetDate: string) {
+    setDateKey(targetDate);
+    setHighlightTargetDate(true);
+
+    // Automatic smooth scroll to bring the target date & tasks directly to the top view
+    requestAnimationFrame(() => {
+      if (dateNavigatorRef.current) {
+        const topPadding = 10; // Jarak nyaman dari bagian atas viewport
+        const elementPosition = dateNavigatorRef.current.getBoundingClientRect().top;
+        const offsetPosition =
+          elementPosition + (window.pageYOffset || document.documentElement.scrollTop) - topPadding;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth",
+        });
+      }
+    });
+
+    setTimeout(() => {
+      setHighlightTargetDate(false);
+    }, 2200);
+  }
+
+  function handleGoToToday() {
+    setDateKey(todayStr);
+    setHighlightTargetDate(true);
+
+    requestAnimationFrame(() => {
+      if (dateNavigatorRef.current) {
+        const topPadding = 10;
+        const elementPosition = dateNavigatorRef.current.getBoundingClientRect().top;
+        const offsetPosition =
+          elementPosition + (window.pageYOffset || document.documentElement.scrollTop) - topPadding;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth",
+        });
+      }
+    });
+
+    setTimeout(() => {
+      setHighlightTargetDate(false);
+    }, 1800);
+  }
+
   function handleSaveEditTask() {
     if (!editingTask || !editText.trim()) return;
     setTasks((prev) =>
@@ -141,8 +193,8 @@ function ReminderPage() {
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari pengingat..."
-            className="w-full rounded-2xl border border-input bg-card py-2.5 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none shadow-soft focus:ring-2 focus:ring-ring"
+            placeholder="Cari pengingat harian..."
+            className="w-full rounded-2xl border border-input bg-card pl-10 pr-10 py-3 text-sm outline-none focus:ring-2 focus:ring-ring shadow-soft"
           />
           {searchQuery && (
             <button
@@ -205,8 +257,8 @@ function ReminderPage() {
                   </div>
 
                   <button
-                    onClick={() => setDateKey(item.date)}
-                    className="shrink-0 flex items-center justify-center gap-1 rounded-xl bg-primary/15 px-3 py-1.5 font-bold text-primary transition-all hover:bg-primary/25 active:scale-95 cursor-pointer"
+                    onClick={() => handleOpenUncheckedDate(item.date)}
+                    className="shrink-0 flex items-center justify-center gap-1 rounded-xl bg-primary/15 px-3 py-1.5 font-bold text-primary transition-all hover:bg-primary/25 active:scale-95 cursor-pointer hover:shadow-xs"
                   >
                     Buka Tanggal Ini <ChevronRight className="size-3.5" />
                   </button>
@@ -217,7 +269,14 @@ function ReminderPage() {
         </div>
 
         {/* Date navigator + Calendar Quick Picker Trigger */}
-        <div className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-soft">
+        <div
+          ref={dateNavigatorRef}
+          className={`flex items-center justify-between rounded-3xl border bg-card p-4 shadow-soft transition-all duration-500 scroll-mt-6 ${
+            highlightTargetDate
+              ? "border-primary ring-4 ring-primary/25 bg-primary/5 shadow-float scale-[1.01]"
+              : "border-border/70"
+          }`}
+        >
           <button
             onClick={() => shiftDate(-1)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted"
@@ -226,23 +285,77 @@ function ReminderPage() {
             <ChevronLeft className="size-5" />
           </button>
           
-          <button
-            onClick={() => setShowDatePickerModal(true)}
-            className="group flex flex-col items-center rounded-2xl px-3 py-1.5 transition-all hover:bg-secondary/60 active:scale-95"
-            title="Pilih tanggal cepat"
-          >
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                {formatDateLabel(dateKey)}
-              </p>
-              <ChevronDown className="size-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-y-0.5" />
+          <div className="flex flex-col items-center gap-1.5 min-h-[52px] justify-center">
+            <button
+              onClick={() => setShowDatePickerModal(true)}
+              className="group flex flex-col items-center rounded-2xl px-3 py-1 transition-all hover:bg-secondary/60 active:scale-95 cursor-pointer"
+              title="Pilih tanggal cepat"
+            >
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                  {formatDateLabel(dateKey)}
+                </p>
+                <ChevronDown className="size-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-y-0.5" />
+              </div>
+            </button>
+
+            {/* Area Dynamic Motion Badge & Button */}
+            <div className="flex items-center justify-center min-h-[22px]">
+              <AnimatePresence mode="wait" initial={false}>
+                {highlightTargetDate && dateKey === todayStr ? (
+                  <motion.span
+                    key="back-today-badge"
+                    initial={{ opacity: 0, y: -4, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.9 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary animate-pulse"
+                  >
+                    ✓ Kembali ke Hari Ini
+                  </motion.span>
+                ) : highlightTargetDate ? (
+                  <motion.span
+                    key="date-switched-badge"
+                    initial={{ opacity: 0, y: -4, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.9 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary animate-pulse"
+                  >
+                    ✓ Tanggal Dialihkan
+                  </motion.span>
+                ) : dateKey === todayStr ? (
+                  <motion.span
+                    key="today-badge"
+                    initial={{ opacity: 0, y: -4, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.9 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary"
+                  >
+                    Hari ini
+                  </motion.span>
+                ) : (
+                  <motion.button
+                    key="back-to-today-btn"
+                    initial={{ opacity: 0, y: -6, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.9 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    type="button"
+                    onClick={handleGoToToday}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-0.5 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer shadow-xs"
+                    title="Lompat kembali ke tanggal hari ini"
+                  >
+                    <RotateCcw className="size-2.5" />
+                    <span>Kembali ke Hari Ini</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
-            {dateKey === todayStr ? (
-              <span className="mt-0.5 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                Hari ini
-              </span>
-            ) : null}
-          </button>
+          </div>
 
           <button
             onClick={() => shiftDate(1)}
