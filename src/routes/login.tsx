@@ -121,6 +121,8 @@ function LoginPage() {
       if (res.success) {
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("treenest_admin_return_path");
+          sessionStorage.removeItem("treenest_admin_return_scroll");
+          sessionStorage.removeItem("treenest_restore_scroll");
         }
         if (res.profile?.role === "admin") {
           navigate({ to: "/admin" });
@@ -145,6 +147,8 @@ function LoginPage() {
     if (res.success) {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("treenest_admin_return_path");
+        sessionStorage.removeItem("treenest_admin_return_scroll");
+        sessionStorage.removeItem("treenest_restore_scroll");
       }
       if (res.profile?.role === "admin") {
         navigate({ to: "/admin" });

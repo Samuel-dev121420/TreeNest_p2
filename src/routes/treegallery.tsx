@@ -177,6 +177,43 @@ function TreeGalleryPage() {
     loadData();
   }, [loadData]);
 
+  // Scroll Restoration when returning from Admin Panel
+  useEffect(() => {
+    let r1: number | undefined;
+    let t1: NodeJS.Timeout | undefined;
+    let t2: NodeJS.Timeout | undefined;
+    let t3: NodeJS.Timeout | undefined;
+    let t4: NodeJS.Timeout | undefined;
+
+    const restoreScrollStr =
+      typeof window !== "undefined" ? sessionStorage.getItem("treenest_restore_scroll") : null;
+    if (restoreScrollStr) {
+      const targetScroll = Number(restoreScrollStr);
+      if (targetScroll > 0) {
+        const doScroll = () => {
+          window.scrollTo({ top: targetScroll, left: 0, behavior: "instant" });
+        };
+        doScroll();
+        r1 = requestAnimationFrame(doScroll);
+        t1 = setTimeout(doScroll, 40);
+        t2 = setTimeout(doScroll, 120);
+        t3 = setTimeout(doScroll, 250);
+        t4 = setTimeout(() => {
+          doScroll();
+          sessionStorage.removeItem("treenest_restore_scroll");
+        }, 450);
+      }
+    }
+
+    return () => {
+      if (r1) cancelAnimationFrame(r1);
+      if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+      if (t3) clearTimeout(t3);
+      if (t4) clearTimeout(t4);
+    };
+  }, []);
+
   // ─── Derived ──────────────────────────────────────────────────────
   const approved = useMemo(() => myVideos.filter((v) => v.status === "approved"), [myVideos]);
   const displayedApproved = useMemo(() => approved.slice(0, 3), [approved]);
@@ -846,9 +883,13 @@ function TreeGalleryPage() {
             <button
               onClick={() => {
                 if (typeof window !== "undefined") {
+                  const currentScroll = window.scrollY || document.documentElement.scrollTop || 0;
                   sessionStorage.setItem("treenest_admin_return_path", "/treegallery");
+                  sessionStorage.setItem("treenest_admin_return_scroll", String(Math.round(currentScroll)));
+                  navigate({ to: "/admin", search: { from: "/treegallery", scroll: Math.round(currentScroll) } });
+                } else {
+                  navigate({ to: "/admin", search: { from: "/treegallery" } });
                 }
-                navigate({ to: "/admin", search: { from: "/treegallery" } });
               }}
               className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
             >

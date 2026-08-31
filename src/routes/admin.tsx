@@ -17,8 +17,11 @@ import { youtubeId, tiktokId, fetchTikTokThumbnail, timeAgo, type GalleryVideo }
 import { resolveVideoUrl } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/admin")({
-  validateSearch: (search: Record<string, unknown>): { from?: string | undefined } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { from?: string | undefined; scroll?: number | undefined } => ({
     from: typeof search["from"] === "string" ? search["from"] : undefined,
+    scroll: typeof search["scroll"] === "number" ? search["scroll"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -34,7 +37,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { from: searchFrom } = Route.useSearch();
+  const { from: searchFrom, scroll: searchScroll } = Route.useSearch();
   const returnPath =
     searchFrom ||
     (typeof window !== "undefined"
@@ -70,7 +73,16 @@ function AdminDashboardPage() {
 
   function handleBack() {
     if (typeof window !== "undefined") {
+      const savedScroll =
+        searchScroll !== undefined
+          ? searchScroll
+          : Number(sessionStorage.getItem("treenest_admin_return_scroll") || 0);
+
+      if (savedScroll > 0) {
+        sessionStorage.setItem("treenest_restore_scroll", String(savedScroll));
+      }
       sessionStorage.removeItem("treenest_admin_return_path");
+      sessionStorage.removeItem("treenest_admin_return_scroll");
     }
     navigate({ to: returnPath });
   }

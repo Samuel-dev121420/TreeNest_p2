@@ -157,9 +157,13 @@ function AppShell() {
     }
   }, [loading, user, profile, location.pathname, navigate]);
 
-  // Scroll to top instantly on route change to prevent scroll shifts
+  // Scroll to top on normal route change, unless a scroll restoration is scheduled
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const restoreScrollStr =
+      typeof window !== "undefined" ? sessionStorage.getItem("treenest_restore_scroll") : null;
+    if (restoreScrollStr === null) {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
   }, [location.pathname]);
 
   if (loading) {
