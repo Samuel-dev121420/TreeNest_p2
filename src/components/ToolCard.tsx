@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, type LucideIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function ToolCard({
   to,
@@ -50,9 +51,14 @@ export function ToolCard({
   const style = cardStyles[color];
 
   return (
+    <motion.div
+      whileHover={{ y: -6, scale: 1.015 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 340, damping: 22 }}
+    >
     <Link
       to={to}
-      className={`group relative flex flex-col justify-between rounded-3xl border ${style.card} p-5 sm:p-6 shadow-soft backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98] select-none`}
+      className={`group relative flex flex-col justify-between rounded-3xl border ${style.card} p-5 sm:p-6 shadow-soft backdrop-blur-md transition-colors duration-300 hover:shadow-xl select-none`}
     >
       {/* Dynamic pulse / active badge */}
       {showBadge && (
@@ -104,5 +110,6 @@ export function ToolCard({
         </div>
       </div>
     </Link>
+    </motion.div>
   );
 }

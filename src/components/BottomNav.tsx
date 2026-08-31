@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { Images, Sprout, Home, Users, User, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getStudyTimerSnapshot, subscribeStudyTimer } from "@/lib/study-timer-service";
 import { hasUncheckedReminders } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
@@ -90,9 +91,14 @@ export function BottomNav() {
             aria-label="Kembali ke Home"
             className="group -mt-7 flex shrink-0 flex-col items-center gap-1 cursor-pointer"
           >
-            <span className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card transition-transform group-hover:scale-105 group-active:scale-95">
+            <motion.span
+              whileTap={{ scale: 0.88 }}
+              whileHover={{ scale: 1.08 }}
+              transition={{ type: "spring", stiffness: 400, damping: 18 }}
+              className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card"
+            >
               <ArrowLeft className="size-7" strokeWidth={2.5} />
-            </span>
+            </motion.span>
             <span className="text-[11px] font-bold text-foreground">Kembali</span>
           </Link>
         </div>
@@ -124,9 +130,14 @@ export function BottomNav() {
           className="group -mt-8 flex shrink-0 flex-col items-center gap-1"
           activeProps={{ "data-active": "true" }}
         >
-          <span className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card transition-transform group-hover:scale-105 group-active:scale-95">
+          <motion.span
+            whileTap={{ scale: 0.88 }}
+            whileHover={{ scale: 1.08 }}
+            transition={{ type: "spring", stiffness: 400, damping: 18 }}
+            className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card"
+          >
             <Home className="size-7" strokeWidth={2.2} />
-          </span>
+          </motion.span>
           <span className="text-[11px] font-semibold text-foreground">Home</span>
         </Link>
 
@@ -156,15 +167,29 @@ function NavItem({
   return (
     <Link
       to={to}
-      className="group relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/12 hover:text-primary hover:scale-105 active:scale-95 dark:hover:bg-white/10 dark:hover:text-white"
+      className="group relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-muted-foreground transition-colors duration-200 hover:bg-primary/12 hover:text-primary dark:hover:bg-white/10 dark:hover:text-white"
       activeProps={{ className: "text-primary bg-primary/15 font-bold shadow-xs dark:bg-primary/25 dark:text-emerald-300" }}
     >
-      <div className="relative">
-        <Icon className="size-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={2.2} />
-        {showBadge && (
-          <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
-        )}
-      </div>
+      <motion.div
+        whileTap={{ scale: 0.82 }}
+        whileHover={{ scale: 1.15 }}
+        transition={{ type: "spring", stiffness: 420, damping: 18 }}
+        className="relative"
+      >
+        <Icon className="size-5" strokeWidth={2.2} />
+        <AnimatePresence>
+          {showBadge && (
+            <motion.span
+              key="badge"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 20 }}
+              className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse"
+            />
+          )}
+        </AnimatePresence>
+      </motion.div>
       <span className="text-[10px] font-semibold leading-none">{label}</span>
     </Link>
   );

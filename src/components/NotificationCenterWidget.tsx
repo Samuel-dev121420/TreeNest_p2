@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getStoredNotifications,
   subscribeNotifications,
@@ -121,10 +122,13 @@ export function NotificationCenterWidget() {
 
   return (
     <div className="fixed left-4 top-17 z-40 flex flex-col items-start select-none">
-      {/* Compact Toggle Button — EXACT match to DailyQuestWidget styling */}
-      <button
+      {/* Compact Toggle Button */}
+      <motion.button
         onClick={() => setExpanded((prev) => !prev)}
-        className={`flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer ${
+        whileTap={{ scale: 0.93 }}
+        whileHover={{ scale: 1.05 }}
+        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        className={`flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md cursor-pointer ${
           expanded ? "ring-2 ring-primary/40 border-white" : ""
         }`}
       >
@@ -137,107 +141,146 @@ export function NotificationCenterWidget() {
           </span>
           <span>Notifikasi</span>
           {unreadCount > 0 && (
-            <span className="rounded-full bg-primary/20 px-1.5 text-[10px] font-bold text-primary leading-none">
+            <motion.span
+              key={unreadCount}
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 18 }}
+              className="rounded-full bg-primary/20 px-1.5 text-[10px] font-bold text-primary leading-none"
+            >
               {unreadCount}
-            </span>
+            </motion.span>
           )}
         </div>
-        {expanded ? (
-          <ChevronUp className="size-3.5 text-primary" />
-        ) : (
+        <motion.div
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
           <ChevronDown className="size-3.5 text-primary" />
-        )}
-      </button>
+        </motion.div>
+      </motion.button>
 
       {/* Expandable Downward Panel */}
-      {expanded && (
-        <div className="mt-2 w-80 max-h-[28rem] flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-float backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Panel Header */}
-          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-secondary/30 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="size-3.5 text-primary" />
-              <span className="text-xs font-bold text-foreground">Pusat Notifikasi</span>
-            </div>
-            {notifications.length > 0 && (
-              <button
-                onClick={() => clearAllNotifications()}
-                className="flex items-center gap-1 text-[11px] font-semibold text-destructive transition-colors hover:underline"
-              >
-                <Trash2 className="size-3" /> Hapus Semua
-              </button>
-            )}
-          </div>
-
-          {/* List Content */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {notifications.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                Tidak ada notifikasi dalam 7 hari terakhir.
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            key="notif-panel"
+            initial={{ opacity: 0, y: -8, scaleY: 0.92, scaleX: 0.97 }}
+            animate={{ opacity: 1, y: 0, scaleY: 1, scaleX: 1 }}
+            exit={{ opacity: 0, y: -8, scaleY: 0.92, scaleX: 0.97 }}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            style={{ originY: 0 }}
+            className="mt-2 w-80 max-h-[28rem] flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-float backdrop-blur-md"
+          >
+            {/* Panel Header */}
+            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-secondary/30 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="size-3.5 text-primary" />
+                <span className="text-xs font-bold text-foreground">Pusat Notifikasi</span>
               </div>
-            ) : (
-              groupedByDay.map((group) => (
-                <div key={group.dayLabel} className="space-y-1.5">
-                  {/* Day Header Divider */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                      {group.dayLabel}
-                    </span>
-                    <div className="flex-1 h-px bg-border/60" />
-                  </div>
+              {notifications.length > 0 && (
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => clearAllNotifications()}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-destructive transition-colors hover:underline"
+                >
+                  <Trash2 className="size-3" /> Hapus Semua
+                </motion.button>
+              )}
+            </div>
 
-                  {/* Group Items */}
-                  {group.items.map((item) => {
-                    const Icon = ICON_MAP[item.type] || Bell;
-                    return (
-                      <div
-                        key={item.id}
-                        className={`group relative flex flex-col gap-1.5 rounded-2xl border p-2.5 text-xs transition-all ${
-                          item.read
-                            ? "border-border/50 bg-background/60 dark:bg-secondary/30 opacity-75"
-                            : "border-primary/40 bg-primary/10 shadow-xs"
-                        }`}
-                      >
-                        {/* Title Row */}
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <Icon className="size-3.5 text-primary shrink-0" />
-                            <span className="font-bold text-foreground min-w-0 flex-1 break-words [word-break:break-word] overflow-hidden">
-                              {item.title}
+            {/* List Content */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {notifications.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-8 text-center text-xs text-muted-foreground"
+                >
+                  Tidak ada notifikasi dalam 7 hari terakhir.
+                </motion.div>
+              ) : (
+                groupedByDay.map((group, groupIndex) => (
+                  <div key={group.dayLabel} className="space-y-1.5">
+                    {/* Day Header Divider */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: groupIndex * 0.04 }}
+                      className="flex items-center gap-2 pt-1"
+                    >
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                        {group.dayLabel}
+                      </span>
+                      <div className="flex-1 h-px bg-border/60" />
+                    </motion.div>
+
+                    {/* Group Items */}
+                    {group.items.map((item, itemIndex) => {
+                      const Icon = ICON_MAP[item.type] || Bell;
+                      return (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                          transition={{
+                            delay: groupIndex * 0.04 + itemIndex * 0.05,
+                            type: "spring",
+                            stiffness: 360,
+                            damping: 26,
+                          }}
+                          layout
+                          className={`group relative flex flex-col gap-1.5 rounded-2xl border p-2.5 text-xs transition-colors ${
+                            item.read
+                              ? "border-border/50 bg-background/60 dark:bg-secondary/30 opacity-75"
+                              : "border-primary/40 bg-primary/10 shadow-xs"
+                          }`}
+                        >
+                          {/* Title Row */}
+                          <div className="flex items-start justify-between gap-2 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <Icon className="size-3.5 text-primary shrink-0" />
+                              <span className="font-bold text-foreground min-w-0 flex-1 break-words [word-break:break-word] overflow-hidden">
+                                {item.title}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-semibold text-muted-foreground shrink-0 ml-1">
+                              {formatTime(item.timestamp, group.dayLabel)}
                             </span>
                           </div>
-                          <span className="text-[10px] font-semibold text-muted-foreground shrink-0 ml-1">
-                            {formatTime(item.timestamp, group.dayLabel)}
-                          </span>
-                        </div>
 
-                        <p className="text-[11px] text-muted-foreground leading-relaxed break-words [word-break:break-word] overflow-hidden">
-                          {item.message}
-                        </p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed break-words [word-break:break-word] overflow-hidden">
+                            {item.message}
+                          </p>
 
-                        <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/40">
-                          <button
-                            onClick={() => handleOpenNotification(item)}
-                            className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-95"
-                          >
-                            Buka <ExternalLink className="size-2.5" />
-                          </button>
-                          <button
-                            onClick={() => removeNotification(item.id)}
-                            className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive shrink-0"
-                            title="Hapus notifikasi ini"
-                          >
-                            <Trash2 className="size-3" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+                          <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/40">
+                            <motion.button
+                              whileTap={{ scale: 0.92 }}
+                              onClick={() => handleOpenNotification(item)}
+                              className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground transition-all hover:bg-primary/90"
+                            >
+                              Buka <ExternalLink className="size-2.5" />
+                            </motion.button>
+                            <motion.button
+                              whileTap={{ scale: 0.88 }}
+                              onClick={() => removeNotification(item.id)}
+                              className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive shrink-0"
+                              title="Hapus notifikasi ini"
+                            >
+                              <Trash2 className="size-3" />
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
