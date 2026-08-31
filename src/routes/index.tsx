@@ -7,6 +7,7 @@ import tree2Img from "@/assets/tree-2.png";
 import tree3Img from "@/assets/tree-3.png";
 import tree4Img from "@/assets/tree-4.png";
 import pohonCemaraImg from "@/assets/Pohon Cemara.png";
+import bushImg from "@/assets/bush.png";
 import { DEMO_USER, expNeeded, stageForLevel, TREEHOUSE_LEVEL } from "@/lib/treenest";
 import { getUserFriends, getFeaturedFriends, getUserProfile, searchUserByAccountId } from "@/lib/firestore-service";
 import type { Friend } from "@/lib/social";
@@ -272,11 +273,20 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Semak & rumput kecil — Berada pas di atas tanah rumput */}
-      <Bush className="bottom-[20%] left-[6%] w-24 z-10" />
-      <Bush className="bottom-[19%] left-[24%] w-14 opacity-90 z-10" flip />
-      <Bush className="bottom-[20%] right-[8%] w-20 z-10" flip />
-      <Bush className="bottom-[19%] right-[26%] w-12 opacity-90 z-10" />
+      {/* Semak & rumput — Tersebar rapi, berdempetan harmonis tanpa saling menabrak berat */}
+      {/* Sisi Kiri */}
+      <Bush className="bottom-[19.2%] left-[1.5%] w-22 z-10 opacity-95" delay="0.2s" />
+      <Bush className="bottom-[19.8%] left-[9.5%] w-14 z-10 opacity-85" flip delay="1.1s" />
+      <Bush className="bottom-[19.2%] left-[18%] w-20 z-10 opacity-95" delay="0.6s" />
+      <Bush className="bottom-[19.8%] left-[26.5%] w-14 z-10 opacity-85" flip delay="1.5s" />
+      <Bush className="bottom-[19.0%] left-[35%] w-15 z-10 opacity-90" delay="0.8s" />
+
+      {/* Sisi Kanan */}
+      <Bush className="bottom-[19.0%] right-[35%] w-15 z-10 opacity-90" flip delay="1.3s" />
+      <Bush className="bottom-[19.8%] right-[26.5%] w-14 z-10 opacity-85" delay="1.7s" />
+      <Bush className="bottom-[19.2%] right-[18%] w-20 z-10 opacity-95" flip delay="0.5s" />
+      <Bush className="bottom-[19.8%] right-[9.5%] w-14 z-10 opacity-85" delay="1.2s" />
+      <Bush className="bottom-[19.2%] right-[1.5%] w-22 z-10 opacity-95" flip delay="0.3s" />
 
       {/* Bola profil: pengguna + teman tampil (Berjalan anggun di atas permukaan rumput) */}
       <div className="absolute inset-x-0 bottom-[14%] h-16 z-10">
@@ -448,37 +458,31 @@ function Orb({
    Menggunakan Gambar Pohon Cemara (src/assets/Pohon Cemara.png)
 ───────────────────────────────────────────────────────── */
 function SceneBackground() {
-  // Pohon Latar Belakang Cemara — terdistribusi rapat di sepanjang horizon tanah (bottom-[20%]), termasuk di belakang Pohon Utama dan nembus tepi layar kiri/kanan
+  // Pohon Latar Belakang Cemara — terdistribusi alami & berlapis selayaknya hutan pinus di horizon tanah (bottom-[20%])
   const horizonTrees = [
-    // Tepi Kiri Nembus Layar
-    { img: pohonCemaraImg, pos: "-left-[5%]", height: "h-48", delay: "0s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "left-[2%]", height: "h-36", delay: "0.8s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "left-[6%]", height: "h-42", delay: "0.4s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "left-[11%]", height: "h-44", delay: "1.1s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "left-[16%]", height: "h-36", delay: "0.2s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "left-[21%]", height: "h-40", delay: "0.7s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "left-[27%]", height: "h-34", delay: "1.4s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "left-[31%]", height: "h-42", delay: "0.9s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "left-[36%]", height: "h-44", delay: "0.3s", anim: "animate-breeze" },
+    // Sisi Kiri & Tepi Kiri Nembus Layar
+    { img: pohonCemaraImg, pos: "-left-[4%]", height: "h-48", bottom: "bottom-0", opacity: "opacity-90", delay: "0s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[3.5%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.4s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[8%]", height: "h-44", bottom: "bottom-0", opacity: "opacity-90", delay: "0.7s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[15%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.8s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[20%]", height: "h-44", bottom: "bottom-0", opacity: "opacity-90", delay: "0.4s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[27%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.2s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "left-[32%]", height: "h-42", bottom: "bottom-0", opacity: "opacity-90", delay: "0.5s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "left-[38%]", height: "h-46", bottom: "bottom-0", opacity: "opacity-90", delay: "1.6s", anim: "animate-sway" },
 
-    // Pohon Cemara di Belakang Pohon Utama (Area Tengah)
-    { img: pohonCemaraImg, pos: "left-[41%]", height: "h-38", delay: "1.0s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "left-[45%]", height: "h-44", delay: "0.5s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "left-[55%] -translate-x-1/2", height: "h-48", delay: "1.2s", anim: "animate-sway" },
+    // Area Tengah (Di Belakang Pohon Utama)
+    { img: pohonCemaraImg, pos: "left-[45%]", height: "h-42", bottom: "bottom-0", opacity: "opacity-85", delay: "0.9s", anim: "animate-breeze" },
     
-    { img: pohonCemaraImg, pos: "left-[59%]", height: "h-38", delay: "1.6s", anim: "animate-sway" },
 
-    // Area Kanan
-    { img: pohonCemaraImg, pos: "right-[36%]", height: "h-40", delay: "1.8s", anim: "animate-sway" },
-    
-    { img: pohonCemaraImg, pos: "right-[26%]", height: "h-42", delay: "1.2s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "right-[21%]", height: "h-44", delay: "0.6s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "right-[16%]", height: "h-36", delay: "1.5s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "right-[11%]", height: "h-40", delay: "0.1s", anim: "animate-breeze" },
-    { img: pohonCemaraImg, pos: "right-[4%]", height: "h-44", delay: "1.3s", anim: "animate-sway" },
-    { img: pohonCemaraImg, pos: "right-[1%]", height: "h-36", delay: "0.7s", anim: "animate-breeze" },
-    // Tepi Kanan Nembus Layar
-    { img: pohonCemaraImg, pos: "-right-[5%]", height: "h-48", delay: "1.6s", anim: "animate-sway" },
+    // Sisi Kanan & Tepi Kanan Nembus Layar (Persis Simetris dengan Sisi Kiri)
+    { img: pohonCemaraImg, pos: "right-[38%]", height: "h-46", bottom: "bottom-0", opacity: "opacity-90", delay: "1.6s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[32%]", height: "h-42", bottom: "bottom-0", opacity: "opacity-90", delay: "0.5s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "right-[27%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.2s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[20%]", height: "h-44", bottom: "bottom-0", opacity: "opacity-90", delay: "0.4s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "right-[15%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.8s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "right-[8%]", height: "h-44", bottom: "bottom-0", opacity: "opacity-90", delay: "0.7s", anim: "animate-breeze" },
+    { img: pohonCemaraImg, pos: "right-[3.5%]", height: "h-36", bottom: "bottom-0", opacity: "opacity-85", delay: "1.4s", anim: "animate-sway" },
+    { img: pohonCemaraImg, pos: "-right-[4%]", height: "h-48", bottom: "bottom-0", opacity: "opacity-90", delay: "0s", anim: "animate-breeze" },
   ];
 
   return (
@@ -562,12 +566,12 @@ function SceneBackground() {
         </svg>
       </div>
 
-      {/* ── Pohon Latar Belakang Cemara (Termasuk di Belakang Pohon Utama & Menembus Tepi Layar Kiri & Kanan) ── */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[20%] h-48 select-none z-[1]">
+      {/* ── Pohon Latar Belakang Cemara (Hutan Alami Abstrak & Rapi di Horizon) ── */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[20%] h-56 select-none z-[1] overflow-hidden">
         {horizonTrees.map((t, idx) => (
           <div
             key={idx}
-            className={`${t.anim} absolute ${t.pos} bottom-0 flex items-end opacity-90`}
+            className={`${t.anim} absolute ${t.pos} ${t.bottom ?? "bottom-0"} flex items-end ${t.opacity ?? "opacity-90"}`}
             style={{ animationDelay: t.delay }}
           >
             <img
@@ -655,26 +659,25 @@ function GrassLine() {
 function Bush({
   className,
   flip = false,
+  delay,
 }: {
   className?: string;
   flip?: boolean;
+  delay?: string;
 }) {
   return (
     <div
-      className={`animate-breeze pointer-events-none absolute ${className ?? ""}`}
-      style={{ transform: flip ? "scaleX(-1)" : undefined }}
+      className={`animate-breeze pointer-events-none absolute select-none ${className ?? ""}`}
+      style={{
+        transform: flip ? "scaleX(-1)" : undefined,
+        animationDelay: delay,
+      }}
     >
-      <svg viewBox="0 0 80 40" className="w-full" aria-hidden="true">
-        <path
-          d="M4 40 C 2 24, 18 10, 32 18 C 38 6, 56 6, 64 18 C 76 12, 82 28, 76 40 Z"
-          fill="var(--leaf-soft)"
-          opacity="0.9"
-        />
-        <path
-          d="M12 40 C 8 28, 22 18, 34 24 C 40 14, 54 14, 60 24 C 70 20, 74 32, 68 40 Z"
-          fill="var(--leaf)"
-        />
-      </svg>
+      <img
+        src={bushImg}
+        alt=""
+        className="h-auto w-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.12)]"
+      />
     </div>
   );
 }

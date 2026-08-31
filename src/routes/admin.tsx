@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
+import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getAllGalleryVideosAdmin,
@@ -407,18 +408,20 @@ function AdminDashboardPage() {
 
         {/* Modal Player Moderasi Video */}
         {previewVideo && (
-          <AdminPreviewModal
+          <VideoPlayerModal
             video={previewVideo}
             onClose={() => setPreviewVideo(null)}
-            onApprove={() => {
-              setApprovingId(previewVideo.id);
-              setApprovalComment("");
-              setPreviewVideo(null);
-            }}
-            onReject={() => {
-              setRejectingId(previewVideo.id);
-              setRejectReason("");
-              setPreviewVideo(null);
+            adminActions={{
+              onApprove: () => {
+                setApprovingId(previewVideo.id);
+                setApprovalComment("");
+                setPreviewVideo(null);
+              },
+              onReject: () => {
+                setRejectingId(previewVideo.id);
+                setRejectReason("");
+                setPreviewVideo(null);
+              },
             }}
           />
         )}
@@ -465,142 +468,9 @@ function AdminDashboardPage() {
   );
 }
 
-function AdminPreviewModal({
-  video,
-  onClose,
-  onApprove,
-  onReject,
-}: {
-  video: GalleryVideo;
-  onClose: () => void;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
-  const yt = youtubeId(video.url);
-  const isTikTok = video.sourceType === "tiktok";
-  const ttId = isTikTok ? tiktokId(video.url) : null;
-  const [resolvedUrl, setResolvedUrl] = useState<string>(video.url);
+// AdminPreviewModal has been replaced by the shared VideoPlayerModal component.
+// See: src/components/VideoPlayerModal.tsx (adminActions prop).
 
-  useEffect(() => {
-    let active = true;
-    resolveVideoUrl(video.url, video.id).then((u) => {
-      if (active && u) setResolvedUrl(u);
-    });
-    return () => {
-      active = false;
-    };
-  }, [video.url, video.id]);
-
-  function renderPlayer() {
-    if (yt) {
-      return (
-        <div className="aspect-video w-full bg-black">
-          <iframe
-            className="size-full"
-            src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      );
-    }
-
-    if (isTikTok) {
-      const playerSrc = ttId
-        ? `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
-        : null;
-      if (!playerSrc) {
-        return (
-          <div className="flex w-full items-center justify-center bg-black" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
-            <a href={video.url} target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-foreground">
-              <ExternalLink className="size-4" /> Buka di TikTok
-            </a>
-          </div>
-        );
-      }
-      return (
-        <div className="w-full bg-black overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
-          <iframe
-            className="size-full border-0"
-            src={playerSrc}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div className="aspect-video w-full bg-black">
-        <video
-          className="size-full object-contain"
-          src={resolvedUrl || video.url}
-          controls
-          autoPlay
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in zoom-in-95 duration-150 ${
-          isTikTok ? "max-w-sm sm:max-w-[390px]" : "max-w-2xl"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-card">
-          <div className="min-w-0 flex items-center gap-2">
-            <span className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider bg-primary/15 text-primary`}>
-              Moderasi: {video.sourceType}
-            </span>
-            <p className="line-clamp-1 text-sm font-bold text-foreground">{video.title}</p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-full p-2 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        {renderPlayer()}
-
-        <div className="flex items-center justify-between border-t border-border/60 bg-card px-5 py-3.5">
-          <p className="text-xs text-muted-foreground">UID: {video.uid}</p>
-          <div className="flex items-center gap-2">
-            {video.status !== "approved" && (
-              <button
-                type="button"
-                onClick={onApprove}
-                className="rounded-xl bg-leaf px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 cursor-pointer"
-              >
-                Approve Video
-              </button>
-            )}
-            {video.status !== "rejected" && (
-              <button
-                type="button"
-                onClick={onReject}
-                className="rounded-xl bg-destructive/15 text-destructive px-4 py-2 text-xs font-bold hover:bg-destructive/25 transition-colors cursor-pointer"
-              >
-                Reject Video
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null }) {
   const [localUrl, setLocalUrl] = useState<string | null>(null);

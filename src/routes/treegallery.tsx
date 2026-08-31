@@ -23,6 +23,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { EmptyState } from "@/components/EmptyState";
@@ -1049,7 +1050,7 @@ function TreeGalleryPage() {
       )}
 
       {/* ── MODAL PREVIEW ── */}
-      {preview && <PreviewModal video={preview} onClose={() => setPreview(null)} />}
+      {preview && <VideoPlayerModal video={preview} onClose={() => setPreview(null)} />}
 
       {/* ── MODAL KOMENTAR PERSETUJUAN (Opsional) ── */}
       {approveTarget && (
@@ -1377,133 +1378,5 @@ function SourceBadge({ source, small }: { source: string; small?: boolean }) {
   );
 }
 
-function PreviewModal({ video, onClose }: { video: GalleryVideo; onClose: () => void }) {
-  const yt = youtubeId(video.url);
-  const isTikTok = video.sourceType === "tiktok";
-  const ttId = isTikTok ? tiktokId(video.url) : null;
-  const [resolvedPlayUrl, setResolvedPlayUrl] = useState<string>(video.url);
-
-  useEffect(() => {
-    let active = true;
-    resolveVideoUrl(video.url, video.id).then((u) => {
-      if (active && u) setResolvedPlayUrl(u);
-    });
-    return () => {
-      active = false;
-    };
-  }, [video.url, video.id]);
-
-  function renderPlayer() {
-    if (yt) {
-      return (
-        <div className="aspect-video w-full bg-black">
-          <iframe
-            className="size-full"
-            src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      );
-    }
-
-    if (isTikTok) {
-      const playerSrc = ttId
-        ? `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
-        : null;
-      if (!playerSrc) {
-        return (
-          <div className="flex aspect-[9/16] max-h-[65vh] w-full items-center justify-center bg-black">
-            <a href={video.url} target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-foreground">
-              <ExternalLink className="size-4" /> Buka di TikTok
-            </a>
-          </div>
-        );
-      }
-      return (
-        <div className="w-full bg-black overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '65vh' }}>
-          <iframe
-            className="size-full border-0"
-            src={playerSrc}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
-      );
-    }
-
-    if (video.sourceType === "upload") {
-      return (
-        <div className="aspect-video w-full bg-black">
-          <video
-            className="size-full"
-            src={resolvedPlayUrl || video.url}
-            controls
-            autoPlay
-            controlsList="nodownload"
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex aspect-video w-full items-center justify-center bg-secondary">
-        <a
-          href={video.url}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-        >
-          <ExternalLink className="size-4" /> Buka Tautan
-        </a>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in zoom-in-95 duration-150 ${
-          isTikTok ? "max-w-sm sm:max-w-[390px]" : "max-w-2xl"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-card">
-          <div className="flex items-center gap-2 min-w-0">
-            <SourceBadge source={video.sourceType} small />
-            <p className="line-clamp-1 text-sm font-bold text-foreground">{video.title}</p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Tutup"
-            className="ml-2 shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-        {renderPlayer()}
-        <div className="flex items-center justify-between border-t border-border/60 bg-card px-4 py-3">
-          <p className="text-xs text-muted-foreground">
-            Diunggah {timeAgo(video.submittedAt)}
-          </p>
-          {isTikTok && (
-            <a
-              href={video.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80 transition-colors"
-            >
-              <ExternalLink className="size-3.5" /> Buka di TikTok
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// PreviewModal has been replaced by the shared VideoPlayerModal component.
+// See: src/components/VideoPlayerModal.tsx
