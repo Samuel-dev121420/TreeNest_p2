@@ -6,6 +6,7 @@ import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   MAX_FEATURED,
   type Friend,
@@ -86,6 +87,8 @@ function FriendClubPage() {
     friend: Friend;
     action: "add" | "remove";
   } | null>(null);
+
+  useScrollLock(Boolean(viewingAccountId || confirmDeleteFriend || confirmFeaturedAction));
 
   // Load all social data from Firestore / storage for this specific user
   const loadSocialData = useCallback(async () => {

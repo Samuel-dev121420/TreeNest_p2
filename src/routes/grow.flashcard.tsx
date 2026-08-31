@@ -22,6 +22,7 @@ import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, type FlashDeck, type FlashCard } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
@@ -78,6 +79,16 @@ function FlashcardPage() {
   // Delete Confirmation state
   const [deletingDeck, setDeletingDeck] = useState<FlashDeck | null>(null);
   const [deletingCard, setDeletingCard] = useState<FlashCard | null>(null);
+
+  useScrollLock(
+    Boolean(
+      selectedDetailCard ||
+        editingDeck ||
+        deletingDeck ||
+        deletingCard ||
+        editingCard,
+    ),
+  );
 
   const filteredDecks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

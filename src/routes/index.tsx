@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import tree1Img from "@/assets/tree-1.png";
 import tree2Img from "@/assets/tree-2.png";
 import tree3Img from "@/assets/tree-3.png";
@@ -61,6 +62,8 @@ function HomePage() {
   const [showTreeTip, setShowTreeTip] = useState(false);
   const [showTreeBadge, setShowTreeBadge] = useState(true);
   const [selectedFriendAccountId, setSelectedFriendAccountId] = useState<string | null>(null);
+
+  useScrollLock(Boolean(showTreehouse || selectedFriendAccountId || showTreeTip));
 
   // State for visited profile (visiting mode)
   const [visitedProfile, setVisitedProfile] = useState<FirestoreUserProfile | null>(null);

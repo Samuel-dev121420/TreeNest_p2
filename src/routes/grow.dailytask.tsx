@@ -18,6 +18,7 @@ import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, todayKey, formatDateLabel, type DailyTask } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
 
@@ -43,6 +44,9 @@ function ReminderPage() {
   const [editText, setEditText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<DailyTask | null>(null);
+
+  useScrollLock(Boolean(showDatePickerModal || editingTask || deletingTask));
 
   const todayStr = todayKey();
 

@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   LogOut,
   Sparkles,
@@ -116,6 +117,7 @@ function ChangePasswordModal({
   onClose: () => void;
   onSendReset: () => Promise<{ success: boolean; error?: string }>;
 }) {
+  useScrollLock(true);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -219,6 +221,7 @@ function DeleteAccountModal({
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }) {
+  useScrollLock(true);
   const [step, setStep] = useState<DeleteStep>("warning");
   const [phrase, setPhrase] = useState("");
   const [emailInput, setEmailInput] = useState("");

@@ -24,6 +24,7 @@ import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   generateId,
   formatBytes,
@@ -87,6 +88,8 @@ export function PiNotePage() {
   const [renamingItem, setRenamingItem] = useState<PinoteItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deletingItem, setDeletingItem] = useState<PinoteItem | null>(null);
+
+  useScrollLock(Boolean(isCreatingFolder || editingNoteItem || previewItem || renamingItem || deletingItem));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

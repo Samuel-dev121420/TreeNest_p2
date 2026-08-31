@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   X,
   Sparkles,
@@ -37,6 +39,7 @@ export function TreehouseModal({
   isFriend = false,
   treehouseVideoPrivacy,
 }: TreehouseModalProps) {
+  useScrollLock(true);
   const [featuredVideo, setFeaturedVideo] = useState<GalleryVideo | null>(null);
   const [videoPlayUrl, setVideoPlayUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);

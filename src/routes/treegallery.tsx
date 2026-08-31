@@ -23,6 +23,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { motion, AnimatePresence } from "framer-motion";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { EmptyState } from "@/components/EmptyState";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { useAuth, useIsAdmin } from "@/lib/auth-context";
@@ -35,6 +37,7 @@ import {
   moderateVideo,
   deleteGalleryVideo,
   deleteGalleryVideoAdmin,
+  clearAllVideoHistoryAdmin,
   setFeaturedVideo,
   getFeaturedVideoId,
   getUserProfile,
@@ -114,6 +117,19 @@ function TreeGalleryPage() {
   const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
   const [selectedUploaderAccountId, setSelectedUploaderAccountId] = useState<string | null>(null);
   const [deleteTargetVideo, setDeleteTargetVideo] = useState<GalleryVideo | null>(null);
+  const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
+
+  const isAnyModalOpen = Boolean(
+    showConfirmUpload ||
+    approveTarget ||
+    rejectTarget ||
+    preview ||
+    viewCommentVideo ||
+    selectedUploaderAccountId ||
+    deleteTargetVideo ||
+    showClearHistoryModal
+  );
+  useScrollLock(isAnyModalOpen);
 
   const [readComments, setReadComments] = useState<Record<string, boolean>>(() => {
     try {
@@ -371,6 +387,12 @@ function TreeGalleryPage() {
     }
   }
 
+  async function handleClearAllHistory() {
+    await clearAllVideoHistoryAdmin();
+    setShowClearHistoryModal(false);
+    await loadData();
+  }
+
   // ─── Featured ─────────────────────────────────────────────────────
   async function toggleFeatured(videoId: string) {
     const next = featuredId === videoId ? null : videoId;
@@ -497,90 +519,99 @@ function TreeGalleryPage() {
               ))}
             </div>
 
-            {/* File upload */}
-            {uploadTab === "file" && (
-              <div
-                onDragOver={(e) => {
-                  if (!uploading) {
-                    e.preventDefault();
-                    setDragOver(true);
-                  }
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleFileDrop}
-                onClick={() => {
-                  if (!uploading) fileInputRef.current?.click();
-                }}
-                className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-colors ${
-                  uploading
-                    ? "cursor-not-allowed opacity-50 border-border bg-secondary/20"
-                    : dragOver
-                      ? "cursor-pointer border-primary bg-primary/5"
-                      : file
-                        ? "cursor-pointer border-leaf/60 bg-leaf/5"
-                        : "cursor-pointer border-border/60 bg-secondary/40 hover:border-primary/60 hover:bg-primary/5"
-                }`}
+            {/* File upload / Link tab contents with Motion */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={uploadTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ACCEPT_TYPES}
-                  disabled={uploading}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                {file ? (
-                  <>
-                    <Film className="size-7 text-leaf" />
-                    <p className="text-center text-sm font-semibold text-leaf">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024 / 1024).toFixed(1)} MB
-                    </p>
-                    {!uploading && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFile(null);
-                        }}
-                        className="mt-1 text-xs text-muted-foreground underline hover:text-destructive"
-                      >
-                        Ganti file / Batalkan
-                      </button>
+                {uploadTab === "file" && (
+                  <div
+                    onDragOver={(e) => {
+                      if (!uploading) {
+                        e.preventDefault();
+                        setDragOver(true);
+                      }
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleFileDrop}
+                    onClick={() => {
+                      if (!uploading) fileInputRef.current?.click();
+                    }}
+                    className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-colors ${
+                      uploading
+                        ? "cursor-not-allowed opacity-50 border-border bg-secondary/20"
+                        : dragOver
+                          ? "cursor-pointer border-primary bg-primary/5"
+                          : file
+                            ? "cursor-pointer border-leaf/60 bg-leaf/5"
+                            : "cursor-pointer border-border/60 bg-secondary/40 hover:border-primary/60 hover:bg-primary/5"
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={ACCEPT_TYPES}
+                      disabled={uploading}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {file ? (
+                      <>
+                        <Film className="size-7 text-leaf" />
+                        <p className="text-center text-sm font-semibold text-leaf">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(file.size / 1024 / 1024).toFixed(1)} MB
+                        </p>
+                        {!uploading && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFile(null);
+                            }}
+                            className="mt-1 text-xs text-muted-foreground underline hover:text-destructive"
+                          >
+                            Ganti file / Batalkan
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-7 text-muted-foreground/60" />
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-semibold text-foreground">Klik</span> atau seret file
+                          video ke sini
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          MP4, WebM, MOV · Maks. {MAX_FILE_MB}MB
+                        </p>
+                      </>
                     )}
-                  </>
-                ) : (
-                  <>
-                    <Upload className="size-7 text-muted-foreground/60" />
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">Klik</span> atau seret file
-                      video ke sini
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      MP4, WebM, MOV · Maks. {MAX_FILE_MB}MB
-                    </p>
-                  </>
+                  </div>
                 )}
-              </div>
-            )}
 
-            {/* Link input */}
-            {uploadTab === "link" && (
-              <div className="space-y-2">
-                <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                  URL Video / Tautan
-                </label>
-                <input
-                  value={url}
-                  disabled={uploading}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://youtube.com/... atau https://tiktok.com/..."
-                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Mendukung: YouTube, TikTok, Instagram Reels, atau URL video langsung lainnya.
-                </p>
-              </div>
-            )}
+                {uploadTab === "link" && (
+                  <div className="space-y-2">
+                    <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                      URL Video / Tautan
+                    </label>
+                    <input
+                      value={url}
+                      disabled={uploading}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://youtube.com/... atau https://tiktok.com/..."
+                      className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Mendukung: YouTube, TikTok, Instagram Reels, atau URL video langsung lainnya.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
 
             {/* Progress */}
             {uploadProgress !== null && (
@@ -730,9 +761,9 @@ function TreeGalleryPage() {
             {approved.length > 3 && (
               <button
                 onClick={() => navigate({ to: "/treegallery-all" })}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 dark:bg-primary/20 py-3 text-xs font-bold text-primary shadow-soft transition-all hover:bg-primary/20 dark:hover:bg-primary/30 active:scale-[0.99] cursor-pointer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-border/80 bg-white text-foreground dark:border-border/60 dark:bg-slate-900/80 dark:text-foreground py-3 text-xs font-bold shadow-soft transition-all hover:bg-secondary hover:border-primary/40 dark:hover:bg-slate-800 dark:hover:border-emerald-400/50 hover:scale-[1.008] active:scale-[0.98] cursor-pointer group"
               >
-                Tampilkan Lainnya <ChevronDown className="size-4" />
+                <span>Tampilkan Lainnya</span> <ChevronDown className="size-4 text-primary group-hover:translate-y-0.5 transition-transform" />
               </button>
             )}
           </div>
@@ -821,24 +852,36 @@ function TreeGalleryPage() {
             </button>
           </div>
 
-          {/* Tab Filter Admin - hanya 2 tab */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              { key: "pending", label: "Menunggu Moderasi" },
-              { key: "history", label: "Riwayat Video" },
-            ].map((tab) => (
+          {/* Tab Filter Admin & Action Hapus Semua Riwayat Video */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex gap-2">
+              {[
+                { key: "pending", label: "Menunggu Moderasi" },
+                { key: "history", label: "Riwayat Video" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setAdminTab(tab.key as "pending" | "history")}
+                  className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                    adminTab === tab.key
+                      ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
+                      : "bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {adminTab === "history" && adminVideos.length > 0 && (
               <button
-                key={tab.key}
-                onClick={() => setAdminTab(tab.key as "pending" | "history")}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  adminTab === tab.key
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                }`}
+                onClick={() => setShowClearHistoryModal(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-1.5 text-xs font-bold text-destructive shadow-soft transition-all hover:bg-destructive hover:text-white active:scale-95 cursor-pointer"
               >
-                {tab.label}
+                <Trash2 className="size-3.5" />
+                <span>Hapus Semua Riwayat Video</span>
               </button>
-            ))}
+            )}
           </div>
 
           {/* Daftar Video Admin */}
@@ -1087,55 +1130,59 @@ function TreeGalleryPage() {
       {viewCommentVideo && (
         <div
           onClick={() => setViewCommentVideo(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float text-center space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            className="w-full max-w-md sm:max-w-lg overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
           >
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <MessageSquare className="size-6" />
-            </div>
             <div>
               <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Video: <strong>"{viewCommentVideo.title}"</strong>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                Video: <strong className="text-foreground">"{viewCommentVideo.title}"</strong>
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4 text-left space-y-2">
+            {/* Note Box — Full Kotak dengan Border & Teks Hitam (Light) / Putih (Dark) */}
+            <div className={`rounded-xl border border-black dark:border-white p-4 text-left shadow-xs transition-all ${
+              viewCommentVideo.status === "approved"
+                ? "bg-emerald-50/90 text-black dark:bg-emerald-950/40 dark:text-white"
+                : viewCommentVideo.status === "rejected"
+                ? "bg-rose-50/90 text-black dark:bg-rose-950/40 dark:text-white"
+                : "bg-amber-50/90 text-black dark:bg-amber-950/40 dark:text-white"
+            }`}>
               {viewCommentVideo.status === "approved" ? (
                 viewCommentVideo.approvalComment ? (
                   <div>
-                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-leaf">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-black dark:text-white">
                       Catatan Persetujuan Admin:
                     </p>
-                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                    <p className="mt-1 text-xs font-semibold text-black dark:text-white leading-relaxed">
                       "{viewCommentVideo.approvalComment}"
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs font-medium text-muted-foreground text-center">
+                  <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
                     Admin tidak memberikan catatan khusus untuk persetujuan video ini.
                   </p>
                 )
               ) : viewCommentVideo.status === "rejected" ? (
                 viewCommentVideo.reason ? (
                   <div>
-                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-destructive">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-black dark:text-white">
                       Alasan Penolakan Admin:
                     </p>
-                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                    <p className="mt-1 text-xs font-semibold text-black dark:text-white leading-relaxed">
                       "{viewCommentVideo.reason}"
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs font-medium text-muted-foreground text-center">
+                  <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
                     Admin tidak mencantumkan alasan penolakan spesifik.
                   </p>
                 )
               ) : (
-                <p className="text-xs font-medium text-muted-foreground text-center">
+                <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
                   Video Anda sedang dalam antrean moderasi Admin.
                 </p>
               )}
@@ -1143,10 +1190,48 @@ function TreeGalleryPage() {
 
             <button
               onClick={() => setViewCommentVideo(null)}
-              className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+              className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft active:scale-95"
             >
               Tutup
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL KONFIRMASI HAPUS SEMUA RIWAYAT VIDEO ── */}
+      {showClearHistoryModal && (
+        <div
+          onClick={() => setShowClearHistoryModal(false)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+              <Trash2 className="size-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Hapus Semua Riwayat Video?</h3>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                Tindakan ini akan menghapus <strong>seluruh riwayat video</strong> (disetujui & ditolak) secara permanen dari database. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleClearAllHistory}
+                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
+              >
+                Ya, Hapus Semua
+              </button>
+              <button
+                onClick={() => setShowClearHistoryModal(false)}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary/80 text-secondary-foreground dark:bg-secondary dark:text-foreground py-2.5 text-xs font-bold transition-colors hover:bg-secondary/60 cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, ZoomIn, ZoomOut, RotateCw, RotateCcw, Check, Move, Sparkles } from "lucide-react";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 
 interface ImageCropperModalProps {
   imageSrc: string;
@@ -15,6 +16,7 @@ export function ImageCropperModal({
   onCropComplete,
   onCancel,
 }: ImageCropperModalProps) {
+  useScrollLock(true);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [offset, setOffset] = useState({ x: 0, y: 0 });

@@ -15,6 +15,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth-context";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   getUserVideos,
   deleteGalleryVideo,
@@ -51,6 +52,8 @@ function AllVideosPage() {
   const [preview, setPreview] = useState<GalleryVideo | null>(null);
   const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
   const [deleteTargetVideo, setDeleteTargetVideo] = useState<GalleryVideo | null>(null);
+
+  useScrollLock(Boolean(preview || viewCommentVideo || deleteTargetVideo));
 
   const [readComments, setReadComments] = useState<Record<string, boolean>>(() => {
     try {
@@ -274,77 +277,66 @@ function AllVideosPage() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4 animate-in zoom-in-95 duration-150"
+              className="w-full max-w-md sm:max-w-lg overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
             >
-              <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="size-5 text-primary" />
-                  <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
-                </div>
-                <button
-                  onClick={() => setViewCommentVideo(null)}
-                  className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-
               <div>
-                <p className="text-xs font-bold text-muted-foreground">Video:</p>
-                <p className="text-sm font-semibold text-foreground">{viewCommentVideo.title}</p>
+                <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
+                  Video: <strong className="text-foreground">"{viewCommentVideo.title}"</strong>
+                </p>
               </div>
 
-              <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4 text-left space-y-2">
+              {/* Note Box — Full Kotak dengan Border & Teks Hitam (Light) / Putih (Dark) */}
+              <div className={`rounded-xl border border-black dark:border-white p-4 text-left shadow-xs transition-all ${
+                viewCommentVideo.status === "approved"
+                  ? "bg-emerald-50/90 text-black dark:bg-emerald-950/40 dark:text-white"
+                  : viewCommentVideo.status === "rejected"
+                  ? "bg-rose-50/90 text-black dark:bg-rose-950/40 dark:text-white"
+                  : "bg-amber-50/90 text-black dark:bg-amber-950/40 dark:text-white"
+              }`}>
                 {viewCommentVideo.status === "approved" ? (
                   viewCommentVideo.approvalComment ? (
                     <div>
-                      <p className="text-[11px] font-extrabold uppercase tracking-wider text-leaf">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-black dark:text-white">
                         Catatan Persetujuan Admin:
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                      <p className="mt-1 text-xs font-semibold text-black dark:text-white leading-relaxed">
                         "{viewCommentVideo.approvalComment}"
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground text-center">
+                    <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
                       Admin tidak memberikan catatan khusus untuk persetujuan video ini.
                     </p>
                   )
                 ) : viewCommentVideo.status === "rejected" ? (
                   viewCommentVideo.reason ? (
                     <div>
-                      <p className="text-[11px] font-extrabold uppercase tracking-wider text-destructive">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-black dark:text-white">
                         Alasan Penolakan Admin:
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
+                      <p className="mt-1 text-xs font-semibold text-black dark:text-white leading-relaxed">
                         "{viewCommentVideo.reason}"
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground text-center">
+                    <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
                       Admin tidak mencantumkan alasan penolakan spesifik.
                     </p>
                   )
                 ) : (
-                  <div>
-                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary">
-                      Catatan Admin:
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-foreground leading-relaxed">
-                      "{viewCommentVideo.approvalComment || viewCommentVideo.reason}"
-                    </p>
-                  </div>
+                  <p className="text-xs font-semibold text-black dark:text-white text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                    Video Anda sedang dalam antrean moderasi Admin.
+                  </p>
                 )}
               </div>
 
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setViewCommentVideo(null)}
-                  className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
+              <button
+                onClick={() => setViewCommentVideo(null)}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft active:scale-95"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         )}

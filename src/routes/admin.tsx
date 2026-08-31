@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getAllGalleryVideosAdmin,
@@ -40,6 +41,8 @@ function AdminDashboardPage() {
   const [approvalComment, setApprovalComment] = useState("");
   const [previewVideo, setPreviewVideo] = useState<GalleryVideo | null>(null);
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
+
+  useScrollLock(Boolean(rejectingId || approvingId || previewVideo || showClearHistoryModal));
 
   useEffect(() => {
     loadVideos(filter);

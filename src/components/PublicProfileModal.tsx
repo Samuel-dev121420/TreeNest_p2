@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   X,
   TreePine,
