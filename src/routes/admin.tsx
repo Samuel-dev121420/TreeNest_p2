@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getAllGalleryVideosAdmin,
   moderateVideo,
@@ -159,7 +160,7 @@ function AdminDashboardPage() {
                 onClick={() => handleFilterChange(t.key as "pending" | "history")}
                 className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
                   filter === t.key
-                    ? "bg-primary text-primary-foreground shadow-soft"
+                    ? "bg-primary text-primary-foreground shadow-soft scale-[1.02]"
                     : "text-muted-foreground hover:bg-muted"
                 }`}
               >
@@ -168,142 +169,159 @@ function AdminDashboardPage() {
             ))}
           </div>
 
-          {filter === "history" && videos.length > 0 && (
-            <button
-              onClick={() => setShowClearHistoryModal(true)}
-              className="flex items-center gap-1.5 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive shadow-soft transition-all hover:bg-destructive hover:text-white active:scale-95 cursor-pointer"
-            >
-              <Trash2 className="size-3.5" />
-              <span>Hapus Semua Riwayat Video</span>
-            </button>
-          )}
+          <AnimatePresence>
+            {filter === "history" && videos.length > 0 && (
+              <motion.button
+                key="clear-history-btn"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowClearHistoryModal(true)}
+                className="flex items-center gap-1.5 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive shadow-soft transition-all hover:bg-destructive hover:text-white cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Hapus Semua Riwayat Video</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Daftar Video */}
-        <div className="space-y-4">
-          {loading ? (
-            <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
-              Memuat daftar video moderasi...
-            </div>
-          ) : videos.length === 0 ? (
-            <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
-              Tidak ada video dalam kategori ini.
-            </div>
-          ) : (
-            videos.map((video) => {
-              const yId = youtubeId(video.url);
-              const isUpload = video.sourceType === "upload" || video.url.startsWith("indexeddb:") || video.url.startsWith("blob:");
-              const uploader = uploaderProfiles[video.uid];
-              return (
-                <div
-                  key={video.id}
-                  className="flex flex-col gap-4 rounded-3xl border-2 border-border/80 bg-card p-5 shadow-soft dark:border-border/60 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Thumbnail yang bisa diklik untuk preview langsung */}
-                    <div
-                      onClick={() => setPreviewVideo(video)}
-                      className="group relative h-24 w-36 flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-secondary shadow-inner"
-                      title="Klik untuk memutar video"
-                    >
-                      <VideoThumbnail video={video} yt={yId} />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex size-9 items-center justify-center rounded-full bg-white/90 text-neutral-950 shadow-md">
-                          <Play className="size-4 fill-current ml-0.5" />
+        {/* Daftar Video dengan Motion Animation */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={filter}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="space-y-4"
+          >
+            {loading ? (
+              <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
+                Memuat daftar video moderasi...
+              </div>
+            ) : videos.length === 0 ? (
+              <div className="rounded-3xl border-2 border-border/80 bg-card/60 dark:border-border/60 p-8 text-center text-sm font-medium text-muted-foreground">
+                Tidak ada video dalam kategori ini.
+              </div>
+            ) : (
+              videos.map((video) => {
+                const yId = youtubeId(video.url);
+                const isUpload = video.sourceType === "upload" || video.url.startsWith("indexeddb:") || video.url.startsWith("blob:");
+                const uploader = uploaderProfiles[video.uid];
+                return (
+                  <div
+                    key={video.id}
+                    className="flex flex-col gap-4 rounded-3xl border-2 border-border/80 bg-card p-5 shadow-soft dark:border-border/60 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Thumbnail yang bisa diklik untuk preview langsung */}
+                      <div
+                        onClick={() => setPreviewVideo(video)}
+                        className="group relative h-24 w-36 flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-secondary shadow-inner"
+                        title="Klik untuk memutar video"
+                      >
+                        <VideoThumbnail video={video} yt={yId} />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex size-9 items-center justify-center rounded-full bg-white/90 text-neutral-950 shadow-md">
+                            <Play className="size-4 fill-current ml-0.5" />
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Informasi Detail Video */}
-                    <div>
-                      <h3 className="font-bold text-foreground text-base">{video.title}</h3>
-                      {uploader && (
-                        <p className="mt-0.5 text-xs font-semibold text-foreground">
-                          Pengunggah: <span className="text-primary">{uploader.username}</span> ({uploader.accountId})
+                      {/* Informasi Detail Video */}
+                      <div>
+                        <h3 className="font-bold text-foreground text-base">{video.title}</h3>
+                        {uploader && (
+                          <p className="mt-0.5 text-xs font-semibold text-foreground">
+                            Pengunggah: <span className="text-primary">{uploader.username}</span> ({uploader.accountId})
+                          </p>
+                        )}
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Pengunggah (UID): <code className="font-mono text-[10px]">{video.uid}</code>
                         </p>
-                      )}
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Pengunggah (UID): <code className="font-mono text-[10px]">{video.uid}</code>
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Diunggah: {timeAgo(video.submittedAt)} · Tipe: <span className="font-semibold uppercase">{video.sourceType}</span>
-                      </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          Diunggah: {timeAgo(video.submittedAt)} · Tipe: <span className="font-semibold uppercase">{video.sourceType}</span>
+                        </p>
 
-                      <div className="mt-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewVideo(video)}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 px-3 py-1.5 text-xs font-bold text-primary transition-colors"
-                        >
-                          <Play className="size-3.5 fill-current" /> Putar Video
-                        </button>
-                        {!isUpload && (
-                          <a
-                            href={video.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground underline"
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewVideo(video)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 px-3 py-1.5 text-xs font-bold text-primary transition-colors"
                           >
-                            <ExternalLink className="size-3" /> Buka Tautan
-                          </a>
+                            <Play className="size-3.5 fill-current" /> Putar Video
+                          </button>
+                          {!isUpload && (
+                            <a
+                              href={video.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground underline"
+                            >
+                              <ExternalLink className="size-3" /> Buka Tautan
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Catatan jika disetujui */}
+                        {video.status === "approved" && video.approvalComment && (
+                          <p className="mt-2 rounded-xl bg-leaf/10 p-2 text-xs font-medium text-leaf">
+                            Catatan Persetujuan: {video.approvalComment}
+                          </p>
+                        )}
+
+                        {/* Reason jika ditolak */}
+                        {video.status === "rejected" && video.reason && (
+                          <p className="mt-2 rounded-xl bg-destructive/10 p-2 text-xs font-medium text-destructive">
+                            Alasan Penolakan: {video.reason}
+                          </p>
                         )}
                       </div>
+                    </div>
 
-                      {/* Catatan jika disetujui */}
-                      {video.status === "approved" && video.approvalComment && (
-                        <p className="mt-2 rounded-xl bg-leaf/10 p-2 text-xs font-medium text-leaf">
-                          Catatan Persetujuan: {video.approvalComment}
-                        </p>
+                    {/* Tombol Aksi Moderasi - HANYA untuk status pending */}
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {video.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setApprovingId(video.id);
+                              setApprovalComment("");
+                            }}
+                            className="inline-flex items-center justify-center rounded-2xl bg-gradient-leaf px-4 py-2 text-xs font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-95"
+                          >
+                            <Check className="mr-1.5 h-3.5 w-3.5" />
+                            Setujui
+                          </button>
+                          <button
+                            onClick={() => {
+                              setRejectingId(video.id);
+                              setRejectReason("");
+                            }}
+                            className="inline-flex items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-95"
+                          >
+                            <X className="mr-1.5 h-3.5 w-3.5" />
+                            Tolak
+                          </button>
+                        </>
                       )}
-
-                      {/* Reason jika ditolak */}
-                      {video.status === "rejected" && video.reason && (
-                        <p className="mt-2 rounded-xl bg-destructive/10 p-2 text-xs font-medium text-destructive">
-                          Alasan Penolakan: {video.reason}
-                        </p>
-                      )}
+                      <button
+                        onClick={() => handleDelete(video.id)}
+                        title="Hapus Video"
+                        className="inline-flex items-center justify-center rounded-2xl border border-border p-2 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Tombol Aksi Moderasi - HANYA untuk status pending */}
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    {video.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setApprovingId(video.id);
-                            setApprovalComment("");
-                          }}
-                          className="inline-flex items-center justify-center rounded-2xl bg-gradient-leaf px-4 py-2 text-xs font-bold text-white shadow-soft transition-all hover:opacity-90 active:scale-95"
-                        >
-                          <Check className="mr-1.5 h-3.5 w-3.5" />
-                          Setujui
-                        </button>
-                        <button
-                          onClick={() => {
-                            setRejectingId(video.id);
-                            setRejectReason("");
-                          }}
-                          className="inline-flex items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition-all hover:bg-destructive/20 active:scale-95"
-                        >
-                          <X className="mr-1.5 h-3.5 w-3.5" />
-                          Tolak
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => handleDelete(video.id)}
-                      title="Hapus Video"
-                      className="inline-flex items-center justify-center rounded-2xl border border-border p-2 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         {/* Modal Dialog Approve (Opsional Comment) */}
         {approvingId && (

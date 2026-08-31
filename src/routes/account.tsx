@@ -28,6 +28,7 @@ import {
   Film,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { motion, AnimatePresence } from "framer-motion";
 import { ImageCropperModal } from "@/components/ImageCropperModal";
 import { useAuth } from "@/lib/auth-context";
 import { seedProfile } from "@/lib/social";
@@ -655,44 +656,60 @@ function AccountPage() {
             )}
           </div>
 
-          {editing ? (
-            <div className="mt-4 space-y-3">
-              <Field label={`Username (${draftUsername.length}/30)`}>
-                <input
-                  value={draftUsername}
-                  maxLength={30}
-                  onChange={(e) => setDraftUsername(e.target.value.slice(0, 30))}
-                  placeholder="Ketik Username..."
-                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
-                />
-              </Field>
-              <Field label={`Bio (${draftBio.length}/150)`}>
-                <textarea
-                  value={draftBio}
-                  maxLength={150}
-                  onChange={(e) => setDraftBio(e.target.value.slice(0, 150))}
-                  rows={2}
-                  placeholder="Ketik Bio singkat..."
-                  className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
-                />
-              </Field>
-            </div>
-          ) : (
-            <div className="mt-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-foreground">{activeProfile.username}</h2>
-                {authProfile?.role === "admin" && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Admin
-                  </span>
-                )}
-              </div>
-              <p className="text-xs font-medium text-muted-foreground">ID {activeProfile.accountId}</p>
-              {activeProfile.bio ? (
-                <p className="mt-2 text-sm text-muted-foreground">{activeProfile.bio}</p>
-              ) : null}
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {editing ? (
+              <motion.div
+                key="editing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="mt-4 space-y-3"
+              >
+                <Field label={`Username (${draftUsername.length}/30)`}>
+                  <input
+                    value={draftUsername}
+                    maxLength={30}
+                    onChange={(e) => setDraftUsername(e.target.value.slice(0, 30))}
+                    placeholder="Ketik Username..."
+                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                  />
+                </Field>
+                <Field label={`Bio (${draftBio.length}/150)`}>
+                  <textarea
+                    value={draftBio}
+                    maxLength={150}
+                    onChange={(e) => setDraftBio(e.target.value.slice(0, 150))}
+                    rows={2}
+                    placeholder="Ketik Bio singkat..."
+                    className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                  />
+                </Field>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="viewing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3"
+              >
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-foreground">{activeProfile.username}</h2>
+                  {authProfile?.role === "admin" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Admin
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-medium text-muted-foreground">ID {activeProfile.accountId}</p>
+                {activeProfile.bio ? (
+                  <p className="mt-2 text-sm text-muted-foreground">{activeProfile.bio}</p>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -842,80 +859,103 @@ function AccountPage() {
           )}
         </div>
 
-        <div className="space-y-3">
-          {(Object.keys(PLATFORMS) as SocialPlatform[]).map((platform) => {
-            const meta = PLATFORMS[platform];
-            const Icon = meta.icon;
-            const link = getLinkForPlatform(platform);
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={editingSocial ? "social-edit" : "social-view"}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {(Object.keys(PLATFORMS) as SocialPlatform[]).map((platform) => {
+              const meta = PLATFORMS[platform];
+              const Icon = meta.icon;
+              const link = getLinkForPlatform(platform);
 
-            if (!editingSocial) {
-              // View mode
-              if (!link || !link.value.trim()) return null;
+              if (!editingSocial) {
+                // View mode
+                if (!link || !link.value.trim()) return null;
+                return (
+                  <motion.div
+                    key={platform}
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex items-center gap-3"
+                  >
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{link.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{meta.label}</p>
+                    </div>
+                    {/* Visibility badge */}
+                    {(() => {
+                      const vis = VISIBILITY_OPTS.find((v) => v.value === link.visibility);
+                      const VisIcon = vis?.icon ?? Globe;
+                      return (
+                        <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                          <VisIcon className="size-3" /> {vis?.label}
+                        </span>
+                      );
+                    })()}
+                  </motion.div>
+                );
+              }
+
+              // Edit mode
               return (
-                <div key={platform} className="flex items-center gap-3">
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{link.value}</p>
-                    <p className="text-[10px] text-muted-foreground">{meta.label}</p>
+                <motion.div
+                  key={platform}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="rounded-2xl border border-border/60 bg-secondary/30 p-3 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="text-xs font-bold text-foreground">{meta.label}</span>
                   </div>
-                  {/* Visibility badge */}
-                  {(() => {
-                    const vis = VISIBILITY_OPTS.find((v) => v.value === link.visibility);
-                    const VisIcon = vis?.icon ?? Globe;
-                    return (
-                      <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-                        <VisIcon className="size-3" /> {vis?.label}
-                      </span>
-                    );
-                  })()}
-                </div>
+                  <input
+                    value={link?.value ?? ""}
+                    onChange={(e) => setLinkValue(platform, e.target.value)}
+                    placeholder={meta.placeholder}
+                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {/* Visibility selector */}
+                  <div className="flex gap-1.5">
+                    {VISIBILITY_OPTS.map((opt) => {
+                      const VIcon = opt.icon;
+                      const active = (link?.visibility ?? "private") === opt.value;
+                      return (
+                        <motion.button
+                          type="button"
+                          key={opt.value}
+                          whileTap={{ scale: 0.95 }}
+                          whileHover={{ scale: 1.02 }}
+                          onClick={() => setLinkVisibility(platform, opt.value)}
+                          className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-bold transition-all cursor-pointer border ${
+                            active
+                              ? "bg-primary/15 border-primary/50 text-primary shadow-xs"
+                              : "bg-secondary border-border/50 text-muted-foreground hover:bg-secondary/70"
+                          }`}
+                        >
+                          <VIcon className="size-3" /> {opt.label}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
               );
-            }
+            })}
 
-            // Edit mode
-            return (
-              <div key={platform} className="rounded-2xl border border-border/60 bg-secondary/30 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="text-xs font-bold text-foreground">{meta.label}</span>
-                </div>
-                <input
-                  value={link?.value ?? ""}
-                  onChange={(e) => setLinkValue(platform, e.target.value)}
-                  placeholder={meta.placeholder}
-                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-                />
-                {/* Visibility selector */}
-                <div className="flex gap-1.5">
-                  {VISIBILITY_OPTS.map((opt) => {
-                    const VIcon = opt.icon;
-                    const active = (link?.visibility ?? "private") === opt.value;
-                    return (
-                      <button
-                        type="button"
-                        key={opt.value}
-                        onClick={() => setLinkVisibility(platform, opt.value)}
-                        className={`flex-1 flex items-center justify-center gap-1 rounded-xl py-1.5 text-[10px] font-bold transition-all cursor-pointer border ${
-                          active
-                            ? "bg-primary/15 border-primary/50 text-primary shadow-xs"
-                            : "bg-secondary border-border/50 text-muted-foreground hover:bg-secondary/70"
-                        }`}
-                      >
-                        <VIcon className="size-3" /> {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {!editingSocial && (activeProfile.socialLinks ?? []).filter((l) => l.value.trim()).length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              Belum ada sosial media yang ditambahkan.
-            </p>
-          )}
-        </div>
+            {!editingSocial && (activeProfile.socialLinks ?? []).filter((l) => l.value.trim()).length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">
+                Belum ada sosial media yang ditambahkan.
+              </p>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* ── Progress Pohon ── */}

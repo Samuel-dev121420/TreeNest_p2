@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Users, Search, UserPlus, UserCheck, Clock, X, Trash2, Star, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
@@ -51,14 +52,31 @@ export const Route = createFileRoute("/friend-club")({
 type Tab = "search" | "requests" | "list";
 
 function FriendClubPage() {
+  const location = useLocation();
   const { profile, refreshProfile } = useAuth();
   const uid = profile?.uid ?? "guest";
+
+  const initialTab = useMemo(() => {
+    const searchObj = location.search as { tab?: Tab };
+    return searchObj?.tab && ["search", "requests", "list"].includes(searchObj.tab)
+      ? searchObj.tab
+      : "search";
+  }, [location.search]);
+
+  const initialSearchQuery = useMemo(() => {
+    const searchObj = location.search as { q?: string };
+    if (searchObj?.q) return searchObj.q;
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("treenest_friend_search_q") || "";
+    }
+    return "";
+  }, [location.search]);
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sent, setSent] = useState<SentRequest[]>([]);
   const [featured, setFeatured] = useState<string[]>([]);
-  const [tab, setTab] = useState<Tab>("search");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -258,6 +276,11 @@ function FriendClubPage() {
 
   function handleSelectTab(t: Tab) {
     setTab(t);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", t);
+      window.history.replaceState({}, "", url.toString());
+    }
     if (t === "requests") {
       setViewedRequestsCount(pendingIn.length);
     } else if (t === "list") {
@@ -307,36 +330,47 @@ function FriendClubPage() {
         ))}
       </div>
 
-      {tab === "search" && (
-        <SearchPanel
-          friends={friends}
-          sent={sent}
-          onSend={handleSendRequest}
-          goList={() => setTab("list")}
-          onViewProfile={setViewingAccountId}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          {tab === "search" && (
+            <SearchPanel
+              friends={friends}
+              sent={sent}
+              onSend={handleSendRequest}
+              goList={() => handleSelectTab("list")}
+              onViewProfile={setViewingAccountId}
+              initialQuery={initialSearchQuery}
+            />
+          )}
 
-      {tab === "requests" && (
-        <RequestsPanel
-          pendingIn={pendingIn}
-          pendingOut={pendingOut}
-          onAccept={handleAcceptRequest}
-          onReject={handleRejectRequest}
-          onCancel={handleCancelSent}
-        />
-      )}
+          {tab === "requests" && (
+            <RequestsPanel
+              pendingIn={pendingIn}
+              pendingOut={pendingOut}
+              onAccept={handleAcceptRequest}
+              onReject={handleRejectRequest}
+              onCancel={handleCancelSent}
+            />
+          )}
 
-      {tab === "list" && (
-        <ListPanel
-          friends={friends}
-          featured={featured}
-          maxFeatured={MAX_FEATURED}
-          onToggleFeatured={handleRequestToggleFeatured}
-          onRemove={handleRequestRemoveFriend}
-          onViewProfile={setViewingAccountId}
-        />
-      )}
+          {tab === "list" && (
+            <ListPanel
+              friends={friends}
+              featured={featured}
+              maxFeatured={MAX_FEATURED}
+              onToggleFeatured={handleRequestToggleFeatured}
+              onRemove={handleRequestRemoveFriend}
+              onViewProfile={setViewingAccountId}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Modal Konfirmasi Hapus Teman */}
       {confirmDeleteFriend && (
@@ -460,17 +494,46 @@ function SearchPanel({
   onSend,
   goList,
   onViewProfile,
+  initialQuery = "",
 }: {
   friends: Friend[];
   sent: SentRequest[];
   onSend: (p: Person) => void;
   goList: () => void;
   onViewProfile: (accountId: string) => void;
+  initialQuery?: string;
 }) {
   const { profile } = useAuth();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => {
+    if (initialQuery) return initialQuery;
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("treenest_friend_search_q") || "";
+    }
+    return "";
+  });
   const [results, setResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (initialQuery && initialQuery !== query) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (val.trim()) {
+        url.searchParams.set("q", val);
+        sessionStorage.setItem("treenest_friend_search_q", val);
+      } else {
+        url.searchParams.delete("q");
+        sessionStorage.removeItem("treenest_friend_search_q");
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   useEffect(() => {
     const term = query.trim();
@@ -502,10 +565,20 @@ function SearchPanel({
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleQueryChange(e.target.value)}
           placeholder="Cari berdasarkan Nama atau ID Akun..."
-          className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-3 pl-10 pr-4 text-sm font-medium shadow-soft focus:border-primary focus:outline-none"
+          className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground py-3 pl-10 pr-10 text-sm font-medium shadow-soft focus:border-primary focus:outline-none"
         />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => handleQueryChange("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer transition-colors"
+            title="Hapus pencarian"
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : null}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
@@ -765,11 +838,11 @@ function ListPanel({
                 >
                   <p className="truncate text-sm font-bold text-foreground hover:underline">{f.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {f.accountId} · sejak{" "}
-                    {new Date(f.since).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {(() => {
+                      const diffMs = Math.max(0, Date.now() - (f.since || Date.now()));
+                      const diffDays = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+                      return `${f.accountId} · Sudah berteman ${diffDays} hari`;
+                    })()}
                   </p>
                 </button>
                 <button

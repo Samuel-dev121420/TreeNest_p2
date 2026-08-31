@@ -86,9 +86,16 @@ export function BottomNav() {
     return (
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pb-4 animate-in fade-in duration-200">
         <div className="pointer-events-auto relative flex items-center justify-center rounded-3xl border border-border/60 bg-card/85 px-6 pb-2 pt-2 shadow-float backdrop-blur-md">
-          <Link
-            to="/"
-            aria-label="Kembali ke Home"
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/friend-club";
+              }
+            }}
+            aria-label="Kembali ke Halaman Sebelumnya"
             className="group -mt-7 flex shrink-0 flex-col items-center gap-1 cursor-pointer"
           >
             <motion.span
@@ -100,7 +107,7 @@ export function BottomNav() {
               <ArrowLeft className="size-7" strokeWidth={2.5} />
             </motion.span>
             <span className="text-[11px] font-bold text-foreground">Kembali</span>
-          </Link>
+          </button>
         </div>
       </nav>
     );

@@ -574,8 +574,8 @@ function FlashcardPage() {
                     >
                       {/* Left: Sparkles Icon + Title */}
                       <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-                          <Sparkles className="size-4.5" />
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/100">
+                          <Sparkles className="size-4" />
                         </div>
                         <span className="text-sm font-bold text-foreground truncate min-w-0 break-words">
                           {c.title || c.front}

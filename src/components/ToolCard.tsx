@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, type LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function ToolCard({
   to,
@@ -61,9 +61,18 @@ export function ToolCard({
       className={`group relative flex flex-col justify-between rounded-3xl border ${style.card} p-5 sm:p-6 shadow-soft backdrop-blur-md transition-colors duration-300 hover:shadow-xl select-none`}
     >
       {/* Dynamic pulse / active badge */}
-      {showBadge && (
-        <span className="absolute right-3 top-3 size-3 rounded-full bg-destructive animate-ping" />
-      )}
+      <AnimatePresence>
+        {showBadge && (
+          <motion.span
+            key="badge"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+            className="absolute right-3 top-3 size-3.5 rounded-full bg-destructive ring-2 ring-card animate-pulse"
+          />
+        )}
+      </AnimatePresence>
 
       <div>
         {/* Header Tag & Icon */}
