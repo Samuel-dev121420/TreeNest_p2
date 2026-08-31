@@ -844,7 +844,12 @@ function TreeGalleryPage() {
             </div>
             {/* Tombol Pintasan ke Halaman Khusus Moderasi Admin (Styling solid persis halaman Account) */}
             <button
-              onClick={() => navigate({ to: "/admin" })}
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("treenest_admin_return_path", "/treegallery");
+                }
+                navigate({ to: "/admin", search: { from: "/treegallery" } });
+              }}
               className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
             >
               <ShieldCheck className="size-4" />

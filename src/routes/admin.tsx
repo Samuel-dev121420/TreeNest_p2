@@ -17,6 +17,9 @@ import { youtubeId, tiktokId, fetchTikTokThumbnail, timeAgo, type GalleryVideo }
 import { resolveVideoUrl } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/admin")({
+  validateSearch: (search: Record<string, unknown>): { from?: string | undefined } => ({
+    from: typeof search["from"] === "string" ? search["from"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Panel Admin — Moderasi TreeGallery" },
@@ -31,6 +34,14 @@ export const Route = createFileRoute("/admin")({
 
 function AdminDashboardPage() {
   const navigate = useNavigate();
+  const { from: searchFrom } = Route.useSearch();
+  const returnPath =
+    searchFrom ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("treenest_admin_return_path")
+      : null) ||
+    "/";
+
   const { profile, logout } = useAuth();
   const [videos, setVideos] = useState<GalleryVideo[]>([]);
   const [uploaderProfiles, setUploaderProfiles] = useState<Record<string, UserProfile>>({});
@@ -56,6 +67,13 @@ function AdminDashboardPage() {
       document.documentElement.classList.remove("dark");
     }
   }, [profile?.themePreference]);
+
+  function handleBack() {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("treenest_admin_return_path");
+    }
+    navigate({ to: returnPath });
+  }
 
   async function loadVideos(currentFilter = filter) {
     setLoading(true);
@@ -117,12 +135,12 @@ function AdminDashboardPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate({ to: "/" })}
+              onClick={handleBack}
               className="flex items-center gap-1.5 rounded-2xl border border-border/80 bg-card px-3.5 py-2 text-xs font-bold text-foreground shadow-soft transition-all hover:bg-secondary hover:border-primary/50 hover:text-primary active:scale-95 cursor-pointer dark:border-border/70 dark:bg-secondary/40 dark:text-foreground dark:hover:bg-secondary/90 dark:hover:border-primary/50 dark:hover:text-primary"
-              title="Kembali ke Beranda"
+              title={returnPath !== "/" ? "Kembali ke Halaman Sebelumnya" : "Kembali ke Beranda"}
             >
               <ArrowLeft className="size-4" />
-              <span>Keluar</span>
+              <span>Kembali</span>
             </button>
             <div className="flex items-center gap-2">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">

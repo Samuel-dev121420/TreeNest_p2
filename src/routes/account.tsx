@@ -1061,7 +1061,12 @@ function AccountPage() {
           </p>
           <button
             type="button"
-            onClick={() => navigate({ to: "/admin" })}
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("treenest_admin_return_path", "/account");
+              }
+              navigate({ to: "/admin", search: { from: "/account" } });
+            }}
             className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
           >
             <ShieldCheck className="size-4" /> <span>Buka Panel Moderasi Admin</span> <ArrowUpRight className="size-4" />

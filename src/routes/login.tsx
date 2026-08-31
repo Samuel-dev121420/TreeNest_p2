@@ -119,6 +119,9 @@ function LoginPage() {
       const res = await login(email.trim(), password);
       setLoading(false);
       if (res.success) {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("treenest_admin_return_path");
+        }
         if (res.profile?.role === "admin") {
           navigate({ to: "/admin" });
         } else {
@@ -140,6 +143,9 @@ function LoginPage() {
     const res = await completeVerification(pendingVerificationUser, username.trim());
     setLoading(false);
     if (res.success) {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("treenest_admin_return_path");
+      }
       if (res.profile?.role === "admin") {
         navigate({ to: "/admin" });
       } else {
@@ -588,7 +594,7 @@ function LoginPage() {
                     <input
                       type="email"
                       required
-                      placeholder="nama@domain.com"
+                      placeholder="Email"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       className="login-input w-full rounded-2xl border border-emerald-500/30 bg-emerald-950/70 py-2.5 pl-10 pr-4 text-xs font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-all duration-200"
