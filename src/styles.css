@@ -424,6 +424,33 @@
     d: path("M2 11 C 8 18, 14 18, 22 12 C 30 18, 36 18, 42 11");
   }
 }
+@keyframes bird-wing-near {
+  0%,
+  100% {
+    transform: rotate(-38deg) translateY(-2px) scaleY(1.05);
+  }
+  50% {
+    transform: rotate(34deg) translateY(4px) scaleY(0.7) scaleX(0.92);
+  }
+}
+@keyframes bird-wing-far {
+  0%,
+  100% {
+    transform: rotate(-42deg) translateY(-3px) scaleY(1.05);
+  }
+  50% {
+    transform: rotate(30deg) translateY(3px) scaleY(0.75) scaleX(0.92);
+  }
+}
+@keyframes bird-body-bob {
+  0%,
+  100% {
+    transform: translateY(1.5px) rotate(1.5deg);
+  }
+  50% {
+    transform: translateY(-2.5px) rotate(-2.5deg);
+  }
+}
 @keyframes moon-glow {
   0%,
   100% {
@@ -472,6 +499,18 @@
 @utility animate-flap {
   animation: flap 0.5s ease-in-out infinite;
   transform-origin: 50% 100%;
+}
+@utility animate-bird-wing-near {
+  animation: bird-wing-near 0.38s ease-in-out infinite;
+  transform-origin: 25px 14px;
+}
+@utility animate-bird-wing-far {
+  animation: bird-wing-far 0.38s ease-in-out infinite;
+  transform-origin: 22px 13px;
+}
+@utility animate-bird-body {
+  animation: bird-body-bob 0.38s ease-in-out infinite;
+  transform-origin: 25px 15px;
 }
 @utility animate-breeze-r {
   animation: breeze-r 5.1s ease-in-out infinite;

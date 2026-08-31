@@ -625,14 +625,33 @@ function Bird({
       className={`animate-fly-by pointer-events-none absolute left-0 ${className}`}
       style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
     >
-      <div className="animate-flap">
-        <svg viewBox="0 0 44 22" className="w-9 overflow-visible" aria-hidden="true">
+      <div className="animate-bird-body">
+        <svg
+          viewBox="0 0 52 36"
+          className="h-8 w-11 overflow-visible drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]"
+          aria-hidden="true"
+        >
+          {/* Sayap Belakang (Far Wing) — Putih Bayangan Halus untuk Kedalaman */}
           <path
-            d="M2 14 C 8 6, 14 6, 22 13 C 30 6, 36 6, 42 14"
-            fill="none"
-            stroke="oklch(0.35 0.05 150 / 0.85)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
+            className="animate-bird-wing-far"
+            d="M 22 13 C 19 4, 11 -2, 6 0 C 10 5, 15 9, 22 13 Z"
+            fill="oklch(0.90 0.015 220)"
+          />
+
+          {/* Tubuh, Kepala, Paruh Mengarah ke Kanan, dan Ekor Aerodinamis (Putih Bersih) */}
+          <path
+            d="M 47 15.5 L 41 13.5 C 38 10.5, 33 10.5, 29 12.5 C 22 12.5, 15 16, 2 22 C 7 22.5, 12 21.5, 15 20 C 18 24.5, 27 24, 34 19.5 C 38 17.5, 41 16.5, 47 15.5 Z"
+            fill="oklch(0.98 0.005 220)"
+          />
+
+          {/* Aksen Mata Burung (Hitam Tegas) */}
+          <circle cx="36" cy="13.5" r="0.9" fill="oklch(0.20 0.02 240)" />
+
+          {/* Sayap Depan (Near Wing) — Putih Bersih di Lapisan Terdepan */}
+          <path
+            className="animate-bird-wing-near"
+            d="M 25 14 C 22 3, 13 -4, 7 -2 C 12 4, 18 9, 25 14 Z"
+            fill="oklch(0.99 0.005 220)"
           />
         </svg>
       </div>
