@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
   LogOut,
-  Sparkles,
   Pencil,
   Check,
   X,
@@ -27,6 +26,9 @@ import {
   CheckCircle2,
   RotateCcw,
   Film,
+  Users,
+  TreePine,
+  Sparkles,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
@@ -85,7 +87,7 @@ const PLATFORMS: Record<SocialPlatform, PlatformMeta> = {
     placeholder: "@username",
     icon: ({ className }: { className?: string }) => (
       <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.79 1.52V6.7a4.85 4.85 0 01-1.02-.01z" />
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.79 1.52V6.7a4.85 4.85 0 01-1.02-.01z" />
       </svg>
     ),
   },
@@ -136,12 +138,12 @@ function ChangePasswordModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary mx-auto">
           <KeyRound className="size-6" />
         </div>
@@ -163,7 +165,7 @@ function ChangePasswordModal({
             <button
               type="button"
               onClick={onClose}
-              className="mt-4 w-full rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+              className="mt-4 w-full rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
             >
               Selesai
             </button>
@@ -188,7 +190,7 @@ function ChangePasswordModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
               >
                 Batal
               </button>
@@ -196,7 +198,7 @@ function ChangePasswordModal({
                 type="button"
                 disabled={loading || email === "—"}
                 onClick={handleSend}
-                className="flex-1 rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {loading ? "Mengirim..." : "Kirim Email Reset"}
               </button>
@@ -237,12 +239,12 @@ function DeleteAccountModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-3xl border-2 border-destructive/50 bg-card p-6 shadow-float animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-sm rounded-3xl border border-destructive/40 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
         {step === "warning" && (
           <>
             <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/15 mx-auto text-destructive ring-4 ring-destructive/10">
@@ -258,14 +260,14 @@ function DeleteAccountModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={() => setStep("phrase")}
-                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90"
+                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer"
               >
                 Lanjutkan
               </button>
@@ -294,7 +296,7 @@ function DeleteAccountModal({
               <button
                 type="button"
                 onClick={() => setStep("warning")}
-                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
               >
                 Kembali
               </button>
@@ -302,7 +304,7 @@ function DeleteAccountModal({
                 type="button"
                 disabled={phrase !== CONFIRM_PHRASE}
                 onClick={() => setStep("email")}
-                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
+                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Lanjut
               </button>
@@ -328,7 +330,7 @@ function DeleteAccountModal({
               <button
                 type="button"
                 onClick={() => setStep("phrase")}
-                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70"
+                className="flex-1 rounded-2xl border border-border/70 bg-secondary py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
               >
                 Kembali
               </button>
@@ -336,7 +338,7 @@ function DeleteAccountModal({
                 type="button"
                 disabled={emailInput.trim().toLowerCase() !== userEmail.trim().toLowerCase() || deleting}
                 onClick={handleDelete}
-                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
+                className="flex-1 rounded-2xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40 transition-colors cursor-pointer"
               >
                 {deleting ? "Menghapus..." : "Hapus Akun"}
               </button>
@@ -453,7 +455,6 @@ function AccountPage() {
     setRawImageSrc(objectUrl);
     setShowCropper(true);
 
-    // Reset input agar bisa pilih file yang sama jika diinginkan
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -552,7 +553,7 @@ function AccountPage() {
 
   return (
     <PageShell title="Account" description="Informasi dan Pengaturan Profil TreeNest Kamu.">
-      {/* ── Kartu Profil Utama ── */}
+      {/* ── 1. KARTU PROFIL UTAMA (DENGAN BANNER HIJAU TREENEST) ── */}
       <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-soft hover:shadow-float transition-all duration-300">
         <div className="h-20 bg-gradient-leaf" />
         <div className="px-5 pb-5">
@@ -569,7 +570,7 @@ function AccountPage() {
                       setShowSelfFullAvatar(true);
                     }
                   }}
-                  className="relative group rounded-full overflow-hidden focus:outline-none focus:ring-4 focus:ring-primary/30 transition-transform hover:scale-105 active:scale-95"
+                  className="relative group rounded-full overflow-hidden focus:outline-none focus:ring-4 focus:ring-primary/30 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                   title={editing ? "Klik untuk ganti & sesuaikan foto profil" : "Klik untuk melihat foto profil"}
                 >
                   {activeProfile.avatarUrl ? (
@@ -603,7 +604,7 @@ function AccountPage() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     title="Ganti foto profil"
-                    className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-card hover:scale-110 active:scale-95 transition-transform"
+                    className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-2 ring-card hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                   >
                     <Pencil className="size-3" />
                   </button>
@@ -634,21 +635,24 @@ function AccountPage() {
 
             {!editing ? (
               <button
+                type="button"
                 onClick={startEdit}
-                className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3.5 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
               >
                 <Pencil className="size-3.5" /> Edit Profil
               </button>
             ) : (
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={saveEdit}
                   disabled={saving}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-60"
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer shadow-xs disabled:opacity-60"
                 >
                   <Check className="size-3.5" /> {saving ? "Menyimpan..." : "Simpan"}
                 </button>
                 <button
+                  type="button"
                   onClick={cancelEdit}
                   aria-label="Batal edit"
                   className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 active:scale-95 cursor-pointer"
@@ -669,25 +673,41 @@ function AccountPage() {
                 transition={{ duration: 0.2 }}
                 className="mt-4 space-y-3"
               >
-                <Field label={`Username (${draftUsername.length}/30)`}>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Username
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {draftUsername.length}/30
+                    </span>
+                  </div>
                   <input
                     value={draftUsername}
                     maxLength={30}
                     onChange={(e) => setDraftUsername(e.target.value.slice(0, 30))}
                     placeholder="Ketik Username..."
-                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                   />
-                </Field>
-                <Field label={`Bio (${draftBio.length}/150)`}>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Bio Profil
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {draftBio.length}/150
+                    </span>
+                  </div>
                   <textarea
                     value={draftBio}
                     maxLength={150}
                     onChange={(e) => setDraftBio(e.target.value.slice(0, 150))}
                     rows={2}
                     placeholder="Ketik Bio singkat..."
-                    className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring font-medium"
+                    className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                   />
-                </Field>
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -702,13 +722,17 @@ function AccountPage() {
                   <h2 className="text-2xl font-bold text-foreground">{activeProfile.username}</h2>
                   {authProfile?.role === "admin" && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Admin
+                      <ShieldCheck className="size-3.5" /> Admin
                     </span>
                   )}
                 </div>
-                <p className="text-xs font-medium text-muted-foreground">ID {activeProfile.accountId}</p>
+                <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                  ID {activeProfile.accountId}
+                </p>
                 {activeProfile.bio ? (
-                  <p className="mt-2 text-sm text-muted-foreground">{activeProfile.bio}</p>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    {activeProfile.bio}
+                  </p>
                 ) : null}
               </motion.div>
             )}
@@ -716,24 +740,35 @@ function AccountPage() {
         </div>
       </div>
 
-      {/* ── Info Akun ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/40 transition-all duration-300 space-y-3">
+      {/* ── 2. INFORMASI AKUN & KEAMANAN ── */}
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300 space-y-3">
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Sparkles className="size-4 text-sun" /> Informasi Akun & Keamanan
         </h3>
 
         {/* Email */}
-        <InfoRow label="Email" value={activeProfile.email} />
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <Mail className="size-3.5 text-muted-foreground" /> Email
+          </p>
+          <p className="text-sm font-bold text-foreground truncate max-w-[200px] sm:max-w-xs">{activeProfile.email}</p>
+        </div>
 
         {/* Total Login Harian */}
-        <InfoRow
-          label="Total Login Harian"
-          value={`${activeProfile.totalLogins ?? 1} Hari`}
-          icon={<LogIn className="size-3.5 text-sky-deep" />}
-        />
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <LogIn className="size-3.5 text-sky-500" /> Total Login Harian
+          </p>
+          <p className="text-sm font-bold text-foreground">{activeProfile.totalLogins ?? 1} Hari</p>
+        </div>
 
         {/* Jumlah Teman */}
-        <InfoRow label="Jumlah Teman" value={`${realFriendCount} Teman`} />
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <Users className="size-3.5 text-emerald-500" /> Jumlah Teman
+          </p>
+          <p className="text-sm font-bold text-foreground">{realFriendCount} Teman</p>
+        </div>
 
         {/* Password Management */}
         <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
@@ -780,7 +815,7 @@ function AccountPage() {
         </div>
       </div>
 
-      {/* ── Pengaturan Privasi Video Rumah Pohon (Hanya Level 20 Max) ── */}
+      {/* ── 3. PENGATURAN PRIVASI VIDEO RUMAH POHON (HANYA LEVEL 20 MAX) ── */}
       {activeProfile.level >= 20 && (
         <div className="mt-4 rounded-3xl border border-amber-500/40 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300 space-y-3">
           <div className="flex items-center justify-between">
@@ -830,14 +865,15 @@ function AccountPage() {
         </div>
       )}
 
-      {/* ── Sosial Media ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/40 transition-all duration-300">
+      {/* ── 4. SOSIAL MEDIA ── */}
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300">
         <div className="flex items-center justify-between mb-4">
           <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <Globe className="size-4 text-sky-deep" /> Sosial Media
           </h3>
           {!editingSocial ? (
             <button
+              type="button"
               onClick={startEditSocial}
               className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer"
             >
@@ -846,6 +882,7 @@ function AccountPage() {
           ) : (
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={saveSocial}
                 disabled={savingSocial}
                 className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-60"
@@ -853,6 +890,7 @@ function AccountPage() {
                 <Check className="size-3.5" /> {savingSocial ? "Menyimpan..." : "Simpan"}
               </button>
               <button
+                type="button"
                 onClick={() => setEditingSocial(false)}
                 className="rounded-xl border border-border/60 bg-secondary px-3 py-2 text-xs font-bold text-secondary-foreground hover:bg-secondary/70 active:scale-95 cursor-pointer"
               >
@@ -961,7 +999,7 @@ function AccountPage() {
         </AnimatePresence>
       </div>
 
-      {/* ── Progress Pohon ── */}
+      {/* ── 5. PERTUMBUHAN POHON ── */}
       <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-leaf/50 transition-all duration-300">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -1011,7 +1049,7 @@ function AccountPage() {
         </div>
       </div>
 
-      {/* ── Mode Admin (Bold Visual Styling) ── */}
+      {/* ── 6. MODE ADMIN (KHUSUS ADMIN) ── */}
       {authProfile?.role === "admin" && (
         <div className="mt-6 rounded-3xl border-2 border-primary/60 bg-primary/15 p-6 shadow-soft hover:shadow-float transition-all duration-300">
           <div className="flex items-center gap-2 text-primary font-black tracking-wide uppercase text-sm">
@@ -1031,21 +1069,22 @@ function AccountPage() {
         </div>
       )}
 
-      {/* ── Sesi & Logout ── */}
-      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float hover:border-primary/30 transition-all duration-300">
+      {/* ── 7. SESI & LOGOUT ── */}
+      <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300">
         <p className="text-sm font-bold text-foreground">Sesi Pengguna</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Akun kamu tersambung dengan sistem autentikasi TreeNest.
         </p>
         <button
+          type="button"
           onClick={handleLogout}
-          className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 hover:scale-105 active:scale-95 cursor-pointer"
+          className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary px-5 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-secondary/70 hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
         >
           <LogOut className="size-4" /> Logout dari Akun
         </button>
       </div>
 
-      {/* ── Zona Bahaya (Bold Visual Styling) ── */}
+      {/* ── 8. ZONA BAHAYA (DEDICATED DANGER ZONE CARD) ── */}
       <div className="mt-6 rounded-3xl border-2 border-destructive/40 bg-destructive/10 p-6 shadow-soft hover:shadow-float hover:border-destructive/60 transition-all duration-300">
         <div className="flex items-center gap-2 text-destructive font-black tracking-wide uppercase text-sm">
           <AlertTriangle className="size-5 shrink-0" />
@@ -1096,7 +1135,7 @@ function AccountPage() {
         />
       )}
 
-      {/* ── MODAL FOTO PROFIL UKURAN BESAR (FULL-SIZE AVATAR LIGHTBOX) ── */}
+      {/* Lightbox Foto Profil Ukuran Penuh */}
       {showSelfFullAvatar && (
         <div
           onClick={() => setShowSelfFullAvatar(false)}
@@ -1107,6 +1146,7 @@ function AccountPage() {
             className="relative max-w-sm sm:max-w-md w-full flex flex-col items-center gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-float text-center animate-in zoom-in-95 duration-150"
           >
             <button
+              type="button"
               onClick={() => setShowSelfFullAvatar(false)}
               className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 cursor-pointer transition-colors"
             >
@@ -1125,11 +1165,11 @@ function AccountPage() {
                 <img
                   src={activeProfile.avatarUrl}
                   alt={activeProfile.username}
-                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-float"
                 />
               ) : (
                 <span
-                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-[0_0_32px_8px_rgba(var(--primary-rgb,74,222,128),0.35)] dark:shadow-[0_0_36px_10px_rgba(var(--primary-rgb,74,222,128),0.45)]"
+                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-float"
                   style={{
                     backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${activeProfile.hue}), oklch(0.66 0.13 ${activeProfile.hue + 25}))`,
                   }}
@@ -1140,6 +1180,7 @@ function AccountPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => setShowSelfFullAvatar(false)}
               className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft"
             >
@@ -1149,38 +1190,5 @@ function AccountPage() {
         </div>
       )}
     </PageShell>
-  );
-}
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function InfoRow({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-secondary/30 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-        {icon}
-        {label}
-      </p>
-      <p className="text-sm font-bold text-foreground">{value}</p>
-    </div>
   );
 }

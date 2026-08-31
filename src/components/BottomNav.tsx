@@ -7,10 +7,34 @@ import { hasUncheckedReminders } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
 
 const items = [
-  { to: "/treegallery", label: "TreeGallery", icon: Images },
-  { to: "/grow", label: "Grow", icon: Sprout },
-  { to: "/friend-club", label: "Friend Club", icon: Users },
-  { to: "/account", label: "Account", icon: User },
+  {
+    to: "/treegallery",
+    label: "TreeGallery",
+    icon: Images,
+    iconClass:
+      "group-hover:scale-115 group-hover:-rotate-6 group-hover:-translate-y-0.5",
+  },
+  {
+    to: "/grow",
+    label: "Grow",
+    icon: Sprout,
+    iconClass:
+      "group-hover:scale-120 group-hover:-translate-y-1 group-hover:rotate-6",
+  },
+  {
+    to: "/friend-club",
+    label: "Friend Club",
+    icon: Users,
+    iconClass:
+      "group-hover:scale-115 group-hover:-translate-y-0.5 group-hover:-rotate-3",
+  },
+  {
+    to: "/account",
+    label: "Account",
+    icon: User,
+    iconClass:
+      "group-hover:scale-115 group-hover:-translate-y-1",
+  },
 ] as const;
 
 export function BottomNav() {
@@ -134,18 +158,18 @@ export function BottomNav() {
         <Link
           to="/"
           aria-label="Home"
-          className="group -mt-8 flex shrink-0 flex-col items-center gap-1"
+          className="group -mt-8 flex shrink-0 flex-col items-center gap-1 cursor-pointer select-none"
           activeProps={{ "data-active": "true" }}
         >
-          <motion.span
-            whileTap={{ scale: 0.88 }}
-            whileHover={{ scale: 1.08 }}
-            transition={{ type: "spring", stiffness: 400, damping: 18 }}
-            className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card"
-          >
-            <Home className="size-7" strokeWidth={2.2} />
-          </motion.span>
-          <span className="text-[11px] font-semibold text-foreground">Home</span>
+          <span className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108 group-hover:shadow-[0_8px_25px_rgba(46,125,50,0.35)] group-active:scale-90">
+            <Home
+              className="size-7 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5 group-hover:scale-110"
+              strokeWidth={2.2}
+            />
+          </span>
+          <span className="text-[11px] font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
+            Home
+          </span>
         </Link>
 
         {items.slice(2).map((item) => (
@@ -164,26 +188,26 @@ function NavItem({
   to,
   label,
   icon: Icon,
+  iconClass,
   showBadge = false,
 }: {
   to: string;
   label: string;
-  icon: typeof Home;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  iconClass?: string;
   showBadge?: boolean;
 }) {
   return (
     <Link
       to={to}
-      className="group relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-muted-foreground transition-colors duration-200 hover:bg-primary/12 hover:text-primary dark:hover:bg-white/10 dark:hover:text-white"
+      className="group relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/12 hover:text-primary dark:hover:bg-white/10 dark:hover:text-white cursor-pointer select-none active:scale-95"
       activeProps={{ className: "text-primary bg-primary/15 font-bold shadow-xs dark:bg-primary/25 dark:text-emerald-300" }}
     >
-      <motion.div
-        whileTap={{ scale: 0.82 }}
-        whileHover={{ scale: 1.15 }}
-        transition={{ type: "spring", stiffness: 420, damping: 18 }}
-        className="relative"
-      >
-        <Icon className="size-5" strokeWidth={2.2} />
+      <div className="relative flex items-center justify-center">
+        <Icon
+          className={`size-5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${iconClass ?? "group-hover:scale-115 group-hover:-translate-y-0.5"}`}
+          strokeWidth={2.2}
+        />
         <AnimatePresence>
           {showBadge && (
             <motion.span
@@ -196,8 +220,10 @@ function NavItem({
             />
           )}
         </AnimatePresence>
-      </motion.div>
-      <span className="text-[10px] font-semibold leading-none">{label}</span>
+      </div>
+      <span className="text-[10px] font-semibold leading-none transition-colors duration-200">
+        {label}
+      </span>
     </Link>
   );
 }
