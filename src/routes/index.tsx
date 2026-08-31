@@ -90,6 +90,8 @@ function HomePage() {
 
   // Load visited user's profile when ?visit= param is present
   useEffect(() => {
+    setShowTreehouse(false);
+    setSelectedFriendAccountId(null);
     if (!visitAccountId) {
       setVisitedProfile(null);
       setVisitedFriends([]);
@@ -323,7 +325,7 @@ function HomePage() {
       </div>
 
       {/* Modal Rumah Pohon */}
-      {showTreehouse && (
+      {showTreehouse && isTreehouseReady && (
         <TreehouseModal
           uid={isVisiting && visitedProfile ? visitedProfile.uid : (authProfile?.uid || "guest")}
           username={isVisiting && visitedProfile ? visitedProfile.username : username}

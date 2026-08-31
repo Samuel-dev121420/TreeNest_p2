@@ -13,12 +13,23 @@ import {
   ChevronRight,
   Home,
   CheckCircle2,
-  TreePine,
   Lock,
+  Eye,
+  Clock,
 } from "lucide-react";
-import { getUserVideos, getFeaturedVideoId, getUserFriends, getFeaturedFriends, getUserProfile } from "@/lib/firestore-service";
+import {
+  getUserVideos,
+  getFeaturedVideoId,
+  getUserFriends,
+  getUserProfile,
+  getTreehouseVideoViewers,
+  recordTreehouseVideoView,
+  type TreehouseViewer,
+} from "@/lib/firestore-service";
 import { youtubeId, tiktokId, type GalleryVideo, type Friend } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
+import { useAuth } from "@/lib/auth-context";
+import { PublicProfileModal } from "@/components/PublicProfileModal";
 
 interface TreehouseModalProps {
   uid: string;
@@ -40,29 +51,35 @@ export function TreehouseModal({
   treehouseVideoPrivacy,
 }: TreehouseModalProps) {
   useScrollLock(true);
+  const { profile: authProfile } = useAuth();
   const [featuredVideo, setFeaturedVideo] = useState<GalleryVideo | null>(null);
   const [videoPlayUrl, setVideoPlayUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [friendsCount, setFriendsCount] = useState(0);
-  const [visitingFriends, setVisitingFriends] = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [viewers, setViewers] = useState<TreehouseViewer[]>([]);
 
-  const [profilePrivacy, setProfilePrivacy] = useState<"public" | "friends" | "private">(treehouseVideoPrivacy || "public");
+  const [profilePrivacy, setProfilePrivacy] = useState<"public" | "friends" | "private">(
+    treehouseVideoPrivacy || "public",
+  );
+
+  // Pop-up state
+  const [showAllViewersModal, setShowAllViewersModal] = useState(false);
+  const [selectedViewerAccountId, setSelectedViewerAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     async function loadTreehouseData() {
       setLoading(true);
       try {
-        const [videos, fid, friends, featIds, profile] = await Promise.all([
+        const [videos, fid, friendList, profile] = await Promise.all([
           getUserVideos(uid),
           getFeaturedVideoId(uid),
           getUserFriends(uid),
-          getFeaturedFriends(uid),
           getUserProfile(uid),
         ]);
 
         if (!active) return;
-        setFriendsCount(friends.length);
+        setFriends(friendList);
         if (profile?.treehouseVideoPrivacy) {
           setProfilePrivacy(profile.treehouseVideoPrivacy);
         }
@@ -77,11 +94,38 @@ export function TreehouseModal({
           if (active) setVideoPlayUrl(resolved);
         }
 
-        // Teman yang berkunjung (featured friends)
-        const visitors = friends
-          .filter((f) => featIds.includes(f.id) || featIds.includes(f.accountId))
-          .slice(0, 5);
-        setVisitingFriends(visitors);
+        // Ambil data penonton video rumah pohon
+        const viewerList = await getTreehouseVideoViewers(uid, feat ? feat.id : fid || null);
+        if (active) setViewers(viewerList);
+
+        // Catat view jika pengunjung adalah user lain dan video dapat ditonton
+        const effectivePriv = treehouseVideoPrivacy || profile?.treehouseVideoPrivacy || "public";
+        const isOwnerAccount = authProfile?.uid === uid;
+        const canView =
+          isOwnerAccount ||
+          effectivePriv === "public" ||
+          (effectivePriv === "friends" && isFriend);
+
+        if (
+          !isOwnerAccount &&
+          canView &&
+          feat &&
+          authProfile &&
+          authProfile.uid !== "guest"
+        ) {
+          await recordTreehouseVideoView(uid, feat.id, {
+            uid: authProfile.uid,
+            accountId: authProfile.accountId,
+            name: authProfile.username,
+            initials: authProfile.initials,
+            hue: authProfile.hue,
+            avatarUrl: authProfile.avatarUrl,
+          });
+
+          // Refresh daftar penonton setelah dicatat
+          const updatedViewers = await getTreehouseVideoViewers(uid, feat.id);
+          if (active) setViewers(updatedViewers);
+        }
       } catch (err) {
         console.error("Error loading treehouse data:", err);
       } finally {
@@ -93,9 +137,9 @@ export function TreehouseModal({
     return () => {
       active = false;
     };
-  }, [uid]);
+  }, [uid, authProfile, isFriend, treehouseVideoPrivacy]);
 
-  const isOwner = viewerUid ? viewerUid === uid : true;
+  const isOwner = viewerUid ? viewerUid === uid : (authProfile?.uid ? authProfile.uid === uid : true);
   const effectivePrivacy = treehouseVideoPrivacy || profilePrivacy;
   let canViewVideo = true;
   let privacyMsg = "";
@@ -115,210 +159,358 @@ export function TreehouseModal({
   const tt = isTikTok && featuredVideo ? tiktokId(featuredVideo.url) : null;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
-        {/* Header Rumah Pohon */}
-        <div className="relative flex items-center justify-between border-b border-border/70 bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-inner">
-              <Home className="size-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-foreground">Rumah Pohon {username}</h2>
-                <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black tracking-wide text-amber-700 dark:text-amber-300">
-                  <Sparkles className="size-3" /> LEVEL {level} MAX
-                </span>
+    <>
+      <div
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
+          {/* Header Rumah Pohon */}
+          <div className="relative flex items-center justify-between border-b border-border/70 bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-inner">
+                <Home className="size-6" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Sanctuary pribadi & pameran video kebanggaanmu di puncak pohon
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-foreground">Rumah Pohon {username}</h2>
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black tracking-wide text-amber-700 dark:text-amber-300">
+                    <Sparkles className="size-3" /> LEVEL {level} MAX
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sanctuary pribadi & pameran video kebanggaanmu di puncak pohon
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={onClose}
+              aria-label="Tutup"
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            aria-label="Tutup"
-            className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        {/* Isi Sanctuary (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {/* 1. Layar Proyektor Video Rumah Pohon */}
-          <div className="overflow-hidden rounded-3xl border-2 border-amber-600/30 bg-neutral-950 shadow-float">
-            <div className="flex items-center justify-between border-b border-amber-900/40 bg-neutral-900 px-4 py-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <Film className="size-4 text-amber-400 shrink-0" />
-                <span className="text-xs font-bold text-amber-200 truncate">
-                  {featuredVideo ? `Pameran Video: ${featuredVideo.title}` : "Layar Pameran Rumah Pohon"}
-                </span>
-              </div>
-              {featuredVideo && (
-                <span className="flex items-center gap-1 shrink-0 rounded-md bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
-                  <CheckCircle2 className="size-3" /> Featured {isTikTok ? "TikTok" : yt ? "YouTube" : "Video"}
-                </span>
-              )}
-            </div>
-
-            {loading ? (
-              <div className="flex aspect-video w-full items-center justify-center text-xs text-neutral-400">
-                Memuat Rumah Pohon...
-              </div>
-            ) : !canViewVideo ? (
-              <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-neutral-900 to-neutral-950">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
-                  <Lock className="size-7" />
+          {/* Isi Sanctuary (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+            {/* 1. Layar Proyektor Video Rumah Pohon */}
+            <div className="overflow-hidden rounded-3xl border-2 border-amber-600/30 bg-neutral-950 shadow-float">
+              <div className="flex items-center justify-between border-b border-amber-900/40 bg-neutral-900 px-4 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Film className="size-4 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-amber-200 truncate">
+                    {featuredVideo ? `Pameran Video: ${featuredVideo.title}` : "Layar Pameran Rumah Pohon"}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-neutral-200">Video Dilindungi Privasi</p>
-                  <p className="mt-1 max-w-sm text-xs text-neutral-400">
-                    {privacyMsg}
-                  </p>
-                </div>
-              </div>
-            ) : featuredVideo ? (
-              <div className="w-full bg-black">
-                {yt ? (
-                  <div className="aspect-video w-full">
-                    <iframe
-                      className="size-full rounded-2xl"
-                      src={`https://www.youtube.com/embed/${yt}?autoplay=0`}
-                      title={featuredVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                ) : isTikTok ? (
-                  <div className="w-full overflow-hidden" style={{ aspectRatio: '9/16', maxHeight: '60vh' }}>
-                    <iframe
-                      className="size-full border-0"
-                      src={
-                        tt
-                          ? `https://www.tiktok.com/player/v1/${tt}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
-                          : featuredVideo.url
-                      }
-                      title={featuredVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-video w-full">
-                    <video
-                      className="size-full object-contain rounded-2xl"
-                      src={videoPlayUrl || featuredVideo.url}
-                      controls
-                      controlsList="nodownload"
-                    />
-                  </div>
+                {featuredVideo && (
+                  <span className="flex items-center gap-1 shrink-0 rounded-md bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
+                    <CheckCircle2 className="size-3" /> Featured {isTikTok ? "TikTok" : yt ? "YouTube" : "Video"}
+                  </span>
                 )}
               </div>
-            ) : (
-              <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-neutral-900 to-neutral-950">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
-                  <Video className="size-7" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-neutral-200">Belum Ada Video Dipamerkan</p>
-                  <p className="mt-1 max-w-sm text-xs text-neutral-400">
-                    Unggah videomu di TreeGallery, tunggu persetujuan admin, lalu klik tombol bintang untuk memamerkannya di sini!
-                  </p>
-                </div>
-                <Link
-                  to="/treegallery"
-                  onClick={onClose}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-neutral-950 transition-all hover:bg-amber-400 active:scale-95"
-                >
-                  Buka TreeGallery <ExternalLink className="size-3.5" />
-                </Link>
-              </div>
-            )}
-          </div>
 
-          {/* 2. Suasana Sanctuary & Informasi Rumah Pohon */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Kartu Milestone Master Tree */}
-            <div className="rounded-2xl border border-border/80 bg-secondary/40 p-4">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                <Trophy className="size-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Milestone Tertinggi</h3>
-              </div>
-              <p className="mt-2 text-sm font-bold text-foreground">Master of TreeNest</p>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                Pohonmu telah mencapai evolusi penuh (House Tree). Selamat atas pencapaian dedikasi dan pertumbuhanmu!
-              </p>
-            </div>
-
-            {/* Tamu yang Berkunjung */}
-            <div className="rounded-2xl border border-border/80 bg-secondary/40 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary">
-                  <Users className="size-4" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider">Teman Berkunjung</h3>
+              {loading ? (
+                <div className="flex aspect-video w-full items-center justify-center text-xs text-neutral-400">
+                  Memuat Rumah Pohon...
                 </div>
-                <span className="text-xs font-bold text-muted-foreground">{friendsCount} Teman</span>
-              </div>
-              {visitingFriends.length > 0 ? (
-                <div className="mt-3 flex items-center gap-2">
-                  {visitingFriends.map((f, i) => (
-                    <div
-                      key={i}
-                      title={f.name}
-                      className="size-8 rounded-full overflow-hidden border-2 border-card ring-1 ring-primary/30 flex items-center justify-center font-bold text-white text-[10px]"
-                      style={{
-                        backgroundColor: `oklch(0.65 0.14 ${f.hue})`,
-                      }}
-                    >
-                      {f.avatarUrl ? (
-                        <img src={f.avatarUrl} alt={f.name} className="size-full object-cover" />
-                      ) : (
-                        f.initials
-                      )}
+              ) : !canViewVideo ? (
+                <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-neutral-900 to-neutral-950">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                    <Lock className="size-7" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-neutral-200">Video Dilindungi Privasi</p>
+                    <p className="mt-1 max-w-sm text-xs text-neutral-400">
+                      {privacyMsg}
+                    </p>
+                  </div>
+                </div>
+              ) : featuredVideo ? (
+                <div className="w-full bg-black">
+                  {yt ? (
+                    <div className="aspect-video w-full">
+                      <iframe
+                        className="size-full rounded-2xl"
+                        src={`https://www.youtube.com/embed/${yt}?autoplay=0`}
+                        title={featuredVideo.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
                     </div>
-                  ))}
+                  ) : isTikTok ? (
+                    <div className="w-full overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "60vh" }}>
+                      <iframe
+                        className="size-full border-0"
+                        src={
+                          tt
+                            ? `https://www.tiktok.com/player/v1/${tt}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`
+                            : featuredVideo.url
+                        }
+                        title={featuredVideo.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video w-full">
+                      <video
+                        className="size-full object-contain rounded-2xl"
+                        src={videoPlayUrl || featuredVideo.url}
+                        controls
+                        controlsList="nodownload"
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Pilih Teman Tampil di Friend Club agar mereka ikut berteduh di rumah pohonmu.
-                </p>
+                <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-neutral-900 to-neutral-950">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                    <Video className="size-7" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-neutral-200">Belum Ada Video Dipamerkan</p>
+                    <p className="mt-1 max-w-sm text-xs text-neutral-400">
+                      Unggah videomu di TreeGallery, tunggu persetujuan admin, lalu klik tombol bintang untuk memamerkannya di sini!
+                    </p>
+                  </div>
+                  <Link
+                    to="/treegallery"
+                    onClick={onClose}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-neutral-950 transition-all hover:bg-amber-400 active:scale-95"
+                  >
+                    Buka TreeGallery <ExternalLink className="size-3.5" />
+                  </Link>
+                </div>
               )}
+            </div>
+
+            {/* 2. Informasi Milestone & Penonton Video Rumah Pohon */}
+            <div className={`grid gap-4 ${isOwner ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+              {/* Kartu Milestone Master Tree */}
+              <div className="rounded-2xl border border-border/80 bg-secondary/40 p-4">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <Trophy className="size-4" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider">Milestone Tertinggi</h3>
+                </div>
+                <p className="mt-2 text-sm font-bold text-foreground">Master of TreeNest</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Pohon {username} telah mencapai evolusi penuh (House Tree). Selamat atas dedikasi dan pertumbuhan-Nya!
+                </p>
+              </div>
+
+              {/* Kartu Penonton Video Rumah Pohon (HANYA tampil untuk pemilik akun / isOwner) */}
+              {isOwner && (
+                <div className="rounded-2xl border border-border/80 bg-secondary/40 p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Eye className="size-4" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider">Penonton Video</h3>
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground">{viewers.length} User</span>
+                    </div>
+
+                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                      {viewers.length === 0
+                        ? "Video belum ditonton oleh user lain."
+                        : viewers.length === 1
+                        ? "Video sudah ditonton oleh 1 user"
+                        : `Video sudah ditonton oleh ${viewers.length} user`}
+                    </p>
+                  </div>
+
+                  {/* Lingkaran Profil Penonton */}
+                  {viewers.length > 0 ? (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      {viewers.slice(0, 5).map((v, i) => {
+                        const isShowMoreTrigger = i === 4 && viewers.length > 5;
+                        if (isShowMoreTrigger) {
+                          const remainingCount = viewers.length - 4;
+                          return (
+                            <button
+                              key="show-more-bubble"
+                              type="button"
+                              onClick={() => setShowAllViewersModal(true)}
+                              title={`Lihat ${remainingCount} penonton lainnya`}
+                              className="size-8.5 rounded-full border-2 border-card bg-primary/20 hover:bg-primary/30 text-primary font-black text-[11px] flex items-center justify-center ring-1 ring-primary/40 transition-all hover:scale-110 active:scale-95 cursor-pointer shadow-xs"
+                            >
+                              +{remainingCount}
+                            </button>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={v.accountId || v.uid || i}
+                            type="button"
+                            onClick={() => setSelectedViewerAccountId(v.accountId)}
+                            title={`${v.name} (@${v.accountId}) — Klik untuk lihat profil`}
+                            className="size-8.5 rounded-full overflow-hidden border-2 border-card ring-1 ring-primary/30 flex items-center justify-center font-bold text-white text-[11px] transition-all hover:scale-115 hover:ring-2 hover:ring-primary active:scale-95 cursor-pointer shadow-xs"
+                            style={{
+                              backgroundColor: `oklch(0.65 0.14 ${v.hue})`,
+                            }}
+                          >
+                            {v.avatarUrl ? (
+                              <img src={v.avatarUrl} alt={v.name} className="size-full object-cover" />
+                            ) : (
+                              v.initials
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
+                      <Users className="size-3.5" />
+                      <span>Belum ada user yang menonton</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quote Damai */}
+            <div className="rounded-2xl border border-leaf/30 bg-leaf/10 p-4 text-center">
+              <p className="text-xs font-medium italic text-leaf">
+                “Di puncak pohon tertinggi, kedamaian sejati berakar. Selamat menikmati ruang tenangmu di TreeNest.”
+              </p>
             </div>
           </div>
 
-          {/* Quote Damai */}
-          <div className="rounded-2xl border border-leaf/30 bg-leaf/10 p-4 text-center">
-            <p className="text-xs font-medium italic text-leaf">
-              “Di puncak pohon tertinggi, kedamaian sejati berakar. Selamat menikmati ruang tenangmu di TreeNest.”
-            </p>
+          {/* Footer Navigasi */}
+          <div className="flex items-center justify-between border-t border-border/70 bg-card px-5 py-3.5">
+            <Link
+              to="/treegallery"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              Kelola Video di TreeGallery <ChevronRight className="size-3.5" />
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl bg-secondary px-5 py-2 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+            >
+              Keluar ke Halaman Utama
+            </button>
           </div>
         </div>
-
-        {/* Footer Navigasi */}
-        <div className="flex items-center justify-between border-t border-border/70 bg-card px-5 py-3.5">
-          <Link
-            to="/treegallery"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-          >
-            Kelola Video di TreeGallery <ChevronRight className="size-3.5" />
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl bg-secondary px-5 py-2 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors"
-          >
-            Keluar ke Halaman Utama
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* Pop-up Semua Penonton Video */}
+      <AnimatePresence>
+        {showAllViewersModal && (
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAllViewersModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float"
+            >
+              {/* Header Modal */}
+              <div className="flex items-center justify-between border-b border-border/70 bg-secondary/30 px-5 py-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <Eye className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Penonton Video Rumah Pohon</h3>
+                    <p className="text-[11px] text-muted-foreground">{viewers.length} User telah menonton</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAllViewersModal(false)}
+                  aria-label="Tutup"
+                  className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              {/* Daftar Penonton (Scrollable) */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {viewers.map((viewer, index) => (
+                  <button
+                    key={viewer.accountId || viewer.uid || index}
+                    type="button"
+                    onClick={() => {
+                      setSelectedViewerAccountId(viewer.accountId);
+                    }}
+                    className="w-full flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-secondary/20 p-3 text-left transition-all hover:bg-secondary/60 hover:border-primary/40 active:scale-[0.99] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="size-10 shrink-0 rounded-full overflow-hidden border-2 border-card ring-1 ring-primary/30 flex items-center justify-center font-bold text-white text-xs shadow-xs"
+                        style={{
+                          backgroundColor: `oklch(0.65 0.14 ${viewer.hue})`,
+                        }}
+                      >
+                        {viewer.avatarUrl ? (
+                          <img
+                            src={viewer.avatarUrl}
+                            alt={viewer.name}
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          viewer.initials
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">{viewer.name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          @{viewer.accountId}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {viewer.viewedAt
+                          ? new Date(viewer.viewedAt).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            })
+                          : "Baru saja"}
+                      </span>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-border/70 bg-secondary/20 p-3 text-center">
+                <p className="text-[11px] text-muted-foreground">
+                  Klik pada profil penonton untuk melihat detail akun
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Public Profile Modal saat bola profil diklik */}
+      {selectedViewerAccountId && (
+        <PublicProfileModal
+          accountId={selectedViewerAccountId}
+          viewerUid={authProfile?.uid ?? ""}
+          viewerFriends={friends}
+          isFriend={friends.some((f) => f.accountId === selectedViewerAccountId)}
+          disableVisit={false}
+          onClose={() => setSelectedViewerAccountId(null)}
+        />
+      )}
+    </>
   );
 }

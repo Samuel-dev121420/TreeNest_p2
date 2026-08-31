@@ -1680,3 +1680,120 @@ export async function getFeaturedVideoId(uid: string): Promise<string | null> {
     return null;
   }
 }
+
+export interface TreehouseViewer {
+  uid: string;
+  accountId: string;
+  name: string;
+  initials: string;
+  hue: number;
+  avatarUrl?: string | undefined;
+  viewedAt: number;
+}
+
+const TREEHOUSE_VIEWERS_SUBCOLLECTION = "treehouse_viewers";
+
+/** Catat bahwa user tertentu telah menonton video yang dipamerkan di Rumah Pohon (terikat pada videoId spesifik) */
+export async function recordTreehouseVideoView(
+  ownerUid: string,
+  videoId: string,
+  viewer: {
+    uid: string;
+    accountId: string;
+    name: string;
+    initials: string;
+    hue: number;
+    avatarUrl?: string | undefined;
+  },
+): Promise<void> {
+  if (!ownerUid || !videoId || !viewer.uid || viewer.uid === "guest" || viewer.uid === ownerUid) return;
+
+  const now = Date.now();
+  const viewerData: TreehouseViewer = {
+    uid: viewer.uid,
+    accountId: viewer.accountId,
+    name: viewer.name,
+    initials: viewer.initials,
+    hue: viewer.hue,
+    avatarUrl: viewer.avatarUrl || undefined,
+    viewedAt: now,
+  };
+
+  // 1. Simpan di Local Storage KHUSUS untuk videoId ini
+  try {
+    const storageKey = `treenest_treehouse_viewers_${ownerUid}_${videoId}`;
+    const raw = localStorage.getItem(storageKey);
+    let list: TreehouseViewer[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex((v) => v.uid === viewer.uid || v.accountId === viewer.accountId);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...viewerData };
+    } else {
+      list.unshift(viewerData);
+    }
+    localStorage.setItem(storageKey, JSON.stringify(list));
+  } catch (err) {
+    console.warn("Local storage record treehouse viewer notice:", err);
+  }
+
+  if (!isFirebaseConfigured || !db) return;
+
+  // 2. Simpan di Firestore KHUSUS untuk videoId ini
+  try {
+    const docId = `${viewer.uid}_${videoId}`;
+    const viewerDocRef = doc(db, "users", ownerUid, TREEHOUSE_VIEWERS_SUBCOLLECTION, docId);
+    await setDoc(viewerDocRef, { ...viewerData, videoId }, { merge: true });
+  } catch (err) {
+    console.warn("Firestore record treehouse viewer notice:", err);
+  }
+}
+
+/** Ambil daftar user yang telah menonton video yang dipamerkan di Rumah Pohon (terikat pada videoId spesifik) */
+export async function getTreehouseVideoViewers(
+  ownerUid: string,
+  videoId?: string | null,
+): Promise<TreehouseViewer[]> {
+  if (!ownerUid || ownerUid === "guest" || !videoId) return [];
+
+  const viewersMap = new Map<string, TreehouseViewer>();
+
+  // 1. Ambil dari Local Storage KHUSUS untuk videoId ini
+  try {
+    const storageKey = `treenest_treehouse_viewers_${ownerUid}_${videoId}`;
+    const raw = localStorage.getItem(storageKey);
+    if (raw) {
+      const list: TreehouseViewer[] = JSON.parse(raw);
+      list.forEach((v) => viewersMap.set(v.accountId || v.uid, v));
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return Array.from(viewersMap.values()).sort((a, b) => b.viewedAt - a.viewedAt);
+  }
+
+  // 2. Ambil dari Firestore KHUSUS untuk videoId ini
+  try {
+    const q = query(
+      collection(db, "users", ownerUid, TREEHOUSE_VIEWERS_SUBCOLLECTION),
+      where("videoId", "==", videoId),
+    );
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      const data = d.data() as TreehouseViewer & { videoId?: string };
+      viewersMap.set(data.accountId || data.uid, {
+        uid: data.uid,
+        accountId: data.accountId,
+        name: data.name,
+        initials: data.initials,
+        hue: data.hue,
+        avatarUrl: data.avatarUrl || undefined,
+        viewedAt: data.viewedAt || 0,
+      });
+    });
+  } catch (err) {
+    console.warn("Firestore get treehouse viewers notice:", err);
+  }
+
+  return Array.from(viewersMap.values()).sort((a, b) => b.viewedAt - a.viewedAt);
+}
