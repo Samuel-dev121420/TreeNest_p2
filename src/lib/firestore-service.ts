@@ -958,6 +958,26 @@ export async function acceptFriendRequest(
     localStorage.setItem(`treenest_friends_${fromUid}`, JSON.stringify(sndFriends));
   }
 
+  // Kirim notifikasi konfirmasi pertemanan untuk pengirim request (fromUid) dan penerima (toUid)
+  try {
+    addNotification({
+      type: "friend_accepted",
+      title: "Permintaan Diterima!",
+      message: `${currentUser.name || "Seseorang"} telah menerima permintaan pertemananmu.`,
+      link: "/friend-club?tab=list",
+      targetUid: fromUid,
+    });
+    addNotification({
+      type: "friend_accepted",
+      title: "Teman Baru Terhubung!",
+      message: `${requestFrom.name || "Teman baru"} sekarang resmi menjadi temanmu.`,
+      link: "/friend-club?tab=list",
+      targetUid: toUid,
+    });
+  } catch {
+    // ignore
+  }
+
   if (!isFirebaseConfigured || !db) {
     return;
   }

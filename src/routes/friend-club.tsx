@@ -66,12 +66,20 @@ function FriendClubPage() {
 
   const initialSearchQuery = useMemo(() => {
     const searchObj = location.search as { q?: string };
-    if (searchObj?.q) return searchObj.q;
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("treenest_friend_search_q") || "";
-    }
-    return "";
+    return searchObj?.q || "";
   }, [location.search]);
+
+  // Clean up any residual search query storage on mount and unmount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("treenest_friend_search_q");
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("treenest_friend_search_q");
+      }
+    };
+  }, []);
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -200,7 +208,9 @@ function FriendClubPage() {
     }
 
     await loadSocialData();
-    setTab("list");
+    const updatedFriendsCount = friends.length + 1;
+    setViewedFriendsCount(updatedFriendsCount);
+    handleSelectTab("list");
   }
 
   async function handleRejectRequest(id: string) {
@@ -525,18 +535,12 @@ function SearchPanel({
   initialQuery?: string;
 }) {
   const { profile } = useAuth();
-  const [query, setQuery] = useState(() => {
-    if (initialQuery) return initialQuery;
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("treenest_friend_search_q") || "";
-    }
-    return "";
-  });
+  const [query, setQuery] = useState(initialQuery || "");
   const [results, setResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    if (initialQuery && initialQuery !== query) {
+    if (initialQuery !== undefined && initialQuery !== query) {
       setQuery(initialQuery);
     }
   }, [initialQuery]);
@@ -547,10 +551,8 @@ function SearchPanel({
       const url = new URL(window.location.href);
       if (val.trim()) {
         url.searchParams.set("q", val);
-        sessionStorage.setItem("treenest_friend_search_q", val);
       } else {
         url.searchParams.delete("q");
-        sessionStorage.removeItem("treenest_friend_search_q");
       }
       window.history.replaceState({}, "", url.toString());
     }
