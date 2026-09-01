@@ -11,6 +11,27 @@ interface ImageCropperModalProps {
 const CROP_BOX_SIZE = 280; // Ukuran kotak crop di layar (px)
 const OUTPUT_SIZE = 360; // Ukuran export gambar final (px)
 
+// Helper untuk membatasi geser/pan agar foto tidak pernah keluar batas crop area
+function getClampedOffset(
+  rawOffset: { x: number; y: number },
+  zoomVal: number,
+  rotVal: number,
+  dims: { baseWidth: number; baseHeight: number } | null,
+) {
+  if (!dims) return { x: 0, y: 0 };
+  const isRotated90 = rotVal % 180 !== 0;
+  const visualW = (isRotated90 ? dims.baseHeight : dims.baseWidth) * zoomVal;
+  const visualH = (isRotated90 ? dims.baseWidth : dims.baseHeight) * zoomVal;
+
+  const maxOffsetX = Math.max(0, (visualW - CROP_BOX_SIZE) / 2);
+  const maxOffsetY = Math.max(0, (visualH - CROP_BOX_SIZE) / 2);
+
+  return {
+    x: Math.min(maxOffsetX, Math.max(-maxOffsetX, rawOffset.x)),
+    y: Math.min(maxOffsetY, Math.max(-maxOffsetY, rawOffset.y)),
+  };
+}
+
 export function ImageCropperModal({
   imageSrc,
   onCropComplete,
@@ -31,7 +52,7 @@ export function ImageCropperModal({
 
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Hitung ukuran proporsional saat gambar dimuat
+  // Hitung ukuran proporsional saat gambar dimuat (cover area crop)
   const handleImageLoaded = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     const nw = img.naturalWidth || 500;
@@ -50,7 +71,13 @@ export function ImageCropperModal({
     setOffset({ x: 0, y: 0 });
   };
 
-  // Drag / Pan handler
+  const handleZoomChange = (newZoom: number) => {
+    const clampedZoom = Math.min(3, Math.max(1, Number(newZoom.toFixed(2))));
+    setZoom(clampedZoom);
+    setOffset((prev) => getClampedOffset(prev, clampedZoom, rotation, imgDimensions));
+  };
+
+  // Drag / Pan handler dengan batasan batas (bounded clamping)
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -59,10 +86,9 @@ export function ImageCropperModal({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    setOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
+    const rawX = e.clientX - dragStart.x;
+    const rawY = e.clientY - dragStart.y;
+    setOffset(getClampedOffset({ x: rawX, y: rawY }, zoom, rotation, imgDimensions));
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -77,11 +103,13 @@ export function ImageCropperModal({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setZoom((prev) => Math.min(3, Math.max(0.8, Number((prev + delta).toFixed(2)))));
+    handleZoomChange(zoom + delta);
   };
 
   const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
+    const nextRotation = (rotation + 90) % 360;
+    setRotation(nextRotation);
+    setOffset((prev) => getClampedOffset(prev, zoom, nextRotation, imgDimensions));
   };
 
   const handleResetCrop = () => {
@@ -112,11 +140,11 @@ export function ImageCropperModal({
     // Pindah ke titik pusat canvas output
     ctx.translate(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2);
 
+    // Geser offset pan yang diskalakan ke ukuran canvas (sesuai urutan CSS translate lalu rotate)
+    ctx.translate(offset.x * scaleFactor, offset.y * scaleFactor);
+
     // Rotasi dari titik pusat
     ctx.rotate((rotation * Math.PI) / 180);
-
-    // Geser offset pan yang diskalakan ke ukuran canvas
-    ctx.translate(offset.x * scaleFactor, offset.y * scaleFactor);
 
     // Ukuran gambar setelah zoom & scaling
     const drawW = imgDimensions.baseWidth * zoom * scaleFactor;
@@ -177,7 +205,9 @@ export function ImageCropperModal({
               alt="Foto yang akan di-crop"
               draggable={false}
               onLoad={handleImageLoaded}
-              className="pointer-events-none absolute max-w-none origin-center transition-transform duration-75"
+              className={`pointer-events-none absolute max-w-none origin-center ${
+                isDragging ? "transition-none" : "transition-transform duration-100"
+              }`}
               style={
                 imgDimensions
                   ? {
@@ -217,8 +247,8 @@ export function ImageCropperModal({
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.max(0.8, Number((z - 0.15).toFixed(2))))}
-                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors"
+                onClick={() => handleZoomChange(zoom - 0.15)}
+                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors cursor-pointer"
                 title="Perkecil"
               >
                 <ZoomOut className="size-3.5" />
@@ -227,11 +257,11 @@ export function ImageCropperModal({
               <div className="flex-1 flex items-center gap-2">
                 <input
                   type="range"
-                  min="0.8"
+                  min="1"
                   max="3"
                   step="0.05"
                   value={zoom}
-                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
                   className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
                 />
                 <span className="w-10 text-right font-mono text-xs font-bold text-foreground">
@@ -241,8 +271,8 @@ export function ImageCropperModal({
 
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.min(3, Number((z + 0.15).toFixed(2))))}
-                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors"
+                onClick={() => handleZoomChange(zoom + 0.15)}
+                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors cursor-pointer"
                 title="Perbesar"
               >
                 <ZoomIn className="size-3.5" />
@@ -251,7 +281,7 @@ export function ImageCropperModal({
               <button
                 type="button"
                 onClick={handleRotate}
-                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors"
+                className="flex size-8 items-center justify-center rounded-xl border border-border/70 bg-secondary/80 text-foreground hover:bg-secondary transition-colors cursor-pointer"
                 title="Putar 90°"
               >
                 <RotateCw className="size-3.5" />
@@ -260,7 +290,7 @@ export function ImageCropperModal({
               <button
                 type="button"
                 onClick={handleResetCrop}
-                className="flex items-center gap-1 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="flex items-center gap-1 rounded-xl border border-border/70 bg-secondary/80 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
                 title="Reset posisi foto dan zoom ke semula (tengah)"
               >
                 <RotateCcw className="size-3.5" />

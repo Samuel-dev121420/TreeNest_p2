@@ -399,14 +399,18 @@ function AccountPage() {
 
   useEffect(() => {
     if (authProfile) {
-      setDraftUsername(authProfile.username);
-      setDraftBio(authProfile.bio ?? "");
-      setDraftLinks(authProfile.socialLinks ?? []);
+      if (!editing) {
+        setDraftUsername(authProfile.username);
+        setDraftBio(authProfile.bio ?? "");
+      }
+      if (!editingSocial) {
+        setDraftLinks(authProfile.socialLinks ?? []);
+      }
       if (authProfile.treehouseVideoPrivacy) {
         setPrivacySetting(authProfile.treehouseVideoPrivacy);
       }
     }
-  }, [authProfile]);
+  }, [authProfile, editing, editingSocial]);
 
   // Delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1211,11 +1215,11 @@ function AccountPage() {
                 <img
                   src={activeProfile.avatarUrl}
                   alt={activeProfile.username}
-                  className="size-64 sm:size-72 rounded-full object-cover ring-2 ring-black/80 dark:ring-white/80 shadow-float"
+                  className="size-64 sm:size-72 rounded-full object-cover ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
                 />
               ) : (
                 <span
-                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-2 ring-black/80 dark:ring-white/80 shadow-float"
+                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
                   style={{
                     backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${activeProfile.hue}), oklch(0.66 0.13 ${activeProfile.hue + 25}))`,
                   }}
