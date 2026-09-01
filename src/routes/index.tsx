@@ -15,6 +15,7 @@ import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-servic
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { Sparkles, Home, ChevronRight, X, TreePine } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { visit?: string | undefined } => ({
@@ -164,7 +165,14 @@ function HomePage() {
 
       {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
       {!isVisiting && (
-        <div className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.03, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
+          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 hover:border-white cursor-pointer select-none"
+        >
           <div className="flex items-baseline justify-between">
             <p className="text-sm font-bold text-foreground">
               Halo, {username} <span className="text-muted-foreground">· {stage.label}</span>
@@ -172,22 +180,29 @@ function HomePage() {
             <p className="text-xs font-bold text-primary">Lv {level}</p>
           </div>
           <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 border border-white/90 shadow-xs dark:bg-secondary/80">
-            <div
-              className="h-full rounded-full bg-gradient-leaf transition-[width] duration-700 shadow-xs"
-              style={{ width: `${pct}%` }}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full rounded-full bg-gradient-leaf shadow-xs"
             />
           </div>
           <p className="mt-1.5 text-[11px] text-muted-foreground text-center font-bold">
             {exp} / {need} EXP · Rumah Pohon terbuka di Level {TREEHOUSE_LEVEL}
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* Banner Visiting Mode — tampil saat mengunjungi Home Page user lain */}
       {isVisiting && visitedProfile && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
           onClick={() => setSelectedFriendAccountId(visitedProfile.accountId)}
-          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-card dark:bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 animate-in fade-in duration-300 transition-all hover:scale-[1.02] cursor-pointer"
+          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-card dark:bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 hover:border-white cursor-pointer select-none"
           title={`Klik untuk melihat profil ${visitedProfile.username}`}
         >
           <div className="flex items-center gap-3">
@@ -217,7 +232,7 @@ function HomePage() {
           <p className="mt-2 text-[12px] text-muted-foreground/80 text-center font-bold">
             Kamu sedang mengunjungi Home Page milik "{visitedProfile.username}"
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* Tanah lurus — Permukaan rumput berada di bottom-[20%] di atas BottomNav */}
@@ -228,7 +243,10 @@ function HomePage() {
 
       {/* Pohon utama — Berdiri menancap di rumput (bottom-[20%]) di atas BottomNav tanpa bentrok */}
       <div className="absolute inset-x-0 bottom-[17%] flex h-[48%] items-end justify-center z-10">
-        <div
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 350, damping: 20 }}
           onClick={() => {
             if (isVisiting && isTreehouseReady) {
               setShowTreehouse(true);
@@ -237,7 +255,7 @@ function HomePage() {
             }
           }}
           title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${displayLevel}`}
-          className="group relative flex h-full items-end justify-center cursor-pointer select-none transition-transform duration-300 hover:scale-[1.02] active:scale-95"
+          className="group relative flex h-full items-end justify-center cursor-pointer select-none"
         >
           {/* Tombol Floating Masuk Rumah Pohon: 100% seragam dengan Notifikasi & EXP card */}
           {isTreehouseReady && (
@@ -248,19 +266,21 @@ function HomePage() {
                   : "opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
               }`}
             >
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowTreehouse(true);
                 }}
-                className="animate-bounce inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-primary/50 bg-gradient-soft px-4 py-2 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-all hover:scale-105 hover:border-white cursor-pointer select-none dark:border-primary/50 dark:bg-card dark:text-foreground dark:hover:border-primary"
+                className="animate-bounce inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-primary/50 bg-gradient-soft px-4 py-2 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-colors hover:border-white cursor-pointer select-none dark:border-primary/50 dark:bg-card dark:text-foreground dark:hover:border-primary"
               >
                 <Home className="size-4 text-primary shrink-0" />
                 <span className="whitespace-nowrap font-bold text-foreground">
                   {isVisiting ? `Rumah Pohon ${visitedProfile?.username || ""}` : "Masuk Rumah Pohon"}
                 </span>
-              </button>
+              </motion.button>
             </div>
           )}
 
@@ -272,7 +292,7 @@ function HomePage() {
             className="animate-grow-in relative origin-bottom object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.15)] group-hover:brightness-105 transition-all"
             style={{ height: `${stage.height}%` }}
           />
-        </div>
+        </motion.div>
       </div>
 
       {/* Semak & rumput — Tersebar rapi, berdempetan harmonis tanpa saling menabrak berat */}

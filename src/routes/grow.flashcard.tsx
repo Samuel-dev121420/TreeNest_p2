@@ -21,6 +21,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, type FlashDeck, type FlashCard } from "@/lib/grow-tools";
@@ -243,21 +244,44 @@ function FlashcardPage() {
           </div>
 
           {/* Flashcard 3D Card Display */}
-          <button
-            onClick={() => setFlipped((v) => !v)}
-            className={`relative flex min-h-[18rem] w-full flex-col items-center justify-center rounded-3xl border-2 p-8 text-center shadow-float transition-all active:scale-[0.99] cursor-pointer ${
-              flipped
-                ? "border-primary/50 bg-gradient-to-br from-primary/10 via-card to-card"
-                : "border-border/80 bg-card"
-            }`}
-          >
-            <span className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-secondary/80 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              <Sparkles className="size-3 text-primary" /> {flipped ? "Belakang (Jawaban)" : "Depan (Pertanyaan)"}
-            </span>
-            <p className="text-xl sm:text-2xl font-bold text-foreground break-words [word-break:break-word] overflow-wrap-anywhere max-w-full leading-relaxed">
-              {flipped ? currentCard.back : currentCard.front}
-            </p>
-          </button>
+          <div className="w-full [perspective:1000px]">
+            <motion.div
+              animate={{ rotateY: flipped ? 180 : 0 }}
+              transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+              style={{ transformStyle: "preserve-3d" }}
+              onClick={() => setFlipped((v) => !v)}
+              className="relative flex min-h-[18rem] w-full flex-col items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 text-center shadow-float cursor-pointer select-none"
+            >
+              {/* Front Face */}
+              <div
+                style={{ backfaceVisibility: "hidden" }}
+                className="flex flex-col items-center justify-center size-full"
+              >
+                <span className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-secondary/80 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  <Sparkles className="size-3 text-primary" /> Depan (Pertanyaan)
+                </span>
+                <p className="text-xl sm:text-2xl font-bold text-foreground break-words [word-break:break-word] overflow-wrap-anywhere max-w-full leading-relaxed">
+                  {currentCard.front}
+                </p>
+              </div>
+
+              {/* Back Face */}
+              <div
+                style={{
+                  backfaceVisibility: "hidden",
+                  transform: "rotateY(180deg)",
+                }}
+                className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-card to-card p-8 text-center"
+              >
+                <span className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-secondary/80 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  <Sparkles className="size-3 text-primary" /> Belakang (Jawaban)
+                </span>
+                <p className="text-xl sm:text-2xl font-bold text-foreground break-words [word-break:break-word] overflow-wrap-anywhere max-w-full leading-relaxed">
+                  {currentCard.back}
+                </p>
+              </div>
+            </motion.div>
+          </div>
 
           {/* Teks Instruksi Berada Di Luar Balok Kartu */}
           <p className="mt-3 text-xs font-semibold text-muted-foreground flex items-center gap-1">
@@ -265,26 +289,28 @@ function FlashcardPage() {
           </p>
 
           <div className="mt-6 flex w-full gap-3">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
               onClick={() => setFlipped((v) => !v)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3.5 text-sm font-bold text-foreground shadow-soft transition-all hover:bg-secondary active:scale-95 cursor-pointer"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3.5 text-sm font-bold text-foreground shadow-soft transition-colors hover:bg-secondary cursor-pointer select-none"
             >
               <RotateCcw className="size-4 text-primary" /> Balik Kartu
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
               onClick={nextCard}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 cursor-pointer select-none"
             >
               {studyIndex < deckCards.length - 1 ? (
                 <>
                   Kartu Berikutnya <ArrowRight className="size-4" />
                 </>
               ) : (
-                <>
-                  Selesai
-                </>
+                <>Selesai</>
               )}
-            </button>
+            </motion.button>
           </div>
         </div>
       </PageShell>

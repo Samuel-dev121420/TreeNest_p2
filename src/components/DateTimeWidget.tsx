@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { Calendar, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const BULAN = [
@@ -47,16 +48,30 @@ export function DateTimeWidget() {
   return (
     <>
       {/* Tanggal (Kiri Atas) */}
-      <div className="fixed left-4 top-4 z-40 flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs sm:text-sm font-bold text-foreground shadow-soft backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer select-none">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        className="fixed left-4 top-4 z-40 flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs sm:text-sm font-bold text-foreground shadow-soft backdrop-blur-md hover:border-white cursor-pointer select-none"
+      >
         <Calendar className="size-3.5 shrink-0 text-primary opacity-90" />
         <span>{tanggal || "Memuat..."}</span>
-      </div>
+      </motion.div>
 
       {/* Jam WIB (Kanan Atas) */}
-      <div className="fixed right-4 top-4 z-40 flex items-center gap-1.5 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs sm:text-sm font-bold text-foreground shadow-soft backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white cursor-pointer select-none">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        className="fixed right-4 top-4 z-40 flex items-center gap-1.5 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs sm:text-sm font-bold text-foreground shadow-soft backdrop-blur-md hover:border-white cursor-pointer select-none"
+      >
         <Clock className="size-3.5 shrink-0 text-primary opacity-90" />
         <span>{jam ? `${jam} WIB` : "Memuat..."}</span>
-      </div>
+      </motion.div>
     </>
   );
 }

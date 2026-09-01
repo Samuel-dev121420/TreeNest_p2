@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Clock, Play, Pause, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -108,7 +109,15 @@ function StudyPage() {
 
       <div className="mx-auto flex max-w-2xl flex-col items-center">
         {/* Timer ring */}
-        <div className="relative flex aspect-square w-full max-w-sm items-center justify-center rounded-3xl border border-border/70 bg-card p-8 shadow-soft">
+        <motion.div
+          animate={
+            running
+              ? { scale: [1, 1.015, 1], boxShadow: ["0 8px 30px rgba(16,185,129,0.12)", "0 12px 40px rgba(16,185,129,0.24)", "0 8px 30px rgba(16,185,129,0.12)"] }
+              : { scale: 1 }
+          }
+          transition={running ? { duration: 3, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+          className="relative flex aspect-square w-full max-w-sm items-center justify-center rounded-3xl border border-border/70 bg-card p-8 shadow-soft select-none"
+        >
           <svg className="absolute inset-0 size-full p-6" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="42" fill="none" stroke="var(--secondary)" strokeWidth="6" />
             <circle
@@ -133,29 +142,31 @@ function StudyPage() {
               </>
             ) : (
               <>
-                <p className="text-6xl font-bold tracking-tight text-foreground">
+                <p className="text-6xl font-bold tracking-tight text-foreground font-mono">
                   {formatTime(secondsLeft)}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">dari {selectedMinutes} menit</p>
               </>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Presets */}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {PRESETS.map((m) => (
-            <button
+            <motion.button
               key={m}
+              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.04 }}
               onClick={() => changeDuration(m)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors cursor-pointer ${
                 selectedMinutes === m && !finished
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-soft"
                   : "border border-border/70 bg-card text-foreground hover:bg-muted"
               }`}
             >
               {m} menit
-            </button>
+            </motion.button>
           ))}
           <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-3 py-2">
             <Clock className="size-4 text-muted-foreground" />
@@ -173,19 +184,23 @@ function StudyPage() {
 
         {/* Controls */}
         <div className="mt-6 flex gap-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
             onClick={handleStartPause}
-            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft"
+            className="flex items-center gap-2 rounded-2xl bg-primary px-7 py-3 text-base font-bold text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 cursor-pointer select-none"
           >
             {running ? <Pause className="size-5" /> : <Play className="size-5" />}
             {running ? "Jeda" : timerSnap.status === "paused" ? "Lanjutkan" : "Mulai"}
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
             onClick={handleReset}
-            className="flex items-center gap-2 rounded-xl border border-border/70 bg-card px-6 py-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
+            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-6 py-3 text-base font-bold text-foreground shadow-soft transition-colors hover:bg-muted cursor-pointer select-none"
           >
             <RotateCcw className="size-5" /> Reset
-          </button>
+          </motion.button>
         </div>
 
         {/* History */}
