@@ -202,7 +202,7 @@ function AllVideosPage() {
                   {/* Details */}
                   <div className="flex flex-1 flex-col p-3.5">
                     <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Masuk {timeAgo(v.approvedAt || v.submittedAt)}</p>
 
                     {/* Status Informasi Rumah Pohon */}
                     {isOwner ? (

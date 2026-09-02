@@ -160,13 +160,23 @@ export function TreehouseModal({
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.93, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.93, y: 12 }}
+          transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+          className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float"
+        >
           {/* Header Rumah Pohon */}
           <div className="relative flex items-center justify-between border-b border-border/70 bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent px-5 py-4">
             <div className="flex items-center gap-3">
@@ -398,22 +408,27 @@ export function TreehouseModal({
               Keluar ke Halaman Utama
             </button>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Pop-up Semua Penonton Video */}
       <AnimatePresence>
         {showAllViewersModal && (
-          <div
-            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowAllViewersModal(false);
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float"
             >
               {/* Header Modal */}
@@ -496,7 +511,7 @@ export function TreehouseModal({
                 </p>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

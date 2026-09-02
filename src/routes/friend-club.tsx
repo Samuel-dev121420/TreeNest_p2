@@ -404,97 +404,117 @@ function FriendClubPage() {
       </AnimatePresence>
 
       {/* Modal Konfirmasi Hapus Teman */}
-      {confirmDeleteFriend && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setConfirmDeleteFriend(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {confirmDeleteFriend && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteFriend(null)}
           >
-            <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
-              <Trash2 className="size-7" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">Hapus Hubungan Pertemanan?</h3>
-              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                Apakah kamu yakin ingin menghapus <strong>{confirmDeleteFriend.name}</strong> ({confirmDeleteFriend.accountId}) dari daftar temanmu?
-              </p>
-              <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
-                Tindakan ini akan menghapus pertemanan di kedua akun secara permanen.
-              </p>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteFriend(null)}
-                className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => executeRemoveFriend(confirmDeleteFriend)}
-                className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              className="w-full max-w-sm rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
+                <Trash2 className="size-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Hapus Hubungan Pertemanan?</h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Apakah kamu yakin ingin menghapus <strong>{confirmDeleteFriend.name}</strong> ({confirmDeleteFriend.accountId}) dari daftar temanmu?
+                </p>
+                <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
+                  Tindakan ini akan menghapus pertemanan di kedua akun secara permanen.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteFriend(null)}
+                  className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeRemoveFriend(confirmDeleteFriend)}
+                  className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft cursor-pointer"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Konfirmasi Teman Tampil */}
-      {confirmFeaturedAction && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setConfirmFeaturedAction(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl border border-leaf/30 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {confirmFeaturedAction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onClick={() => setConfirmFeaturedAction(null)}
           >
-            <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner">
-              <Star className="size-7 fill-current" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">
-                {confirmFeaturedAction.action === "add"
-                  ? "Jadikan Teman Tampil?"
-                  : "Keluarkan dari Teman Tampil?"}
-              </h3>
-              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                {confirmFeaturedAction.action === "add" ? (
-                  <>
-                    Tampilkan bola profil <strong>{confirmFeaturedAction.friend.name}</strong> untuk ikut berjalan-jalan di Home Page pohonmu? (Maksimal {MAX_FEATURED} teman tampil)
-                  </>
-                ) : (
-                  <>
-                    Keluarkan <strong>{confirmFeaturedAction.friend.name}</strong> dari daftar teman yang tampil di Home Page?
-                  </>
-                )}
-              </p>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmFeaturedAction(null)}
-                className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => executeToggleFeatured(confirmFeaturedAction.friend, confirmFeaturedAction.action)}
-                className="flex-1 rounded-2xl bg-leaf py-2.5 text-xs font-bold text-white hover:bg-leaf/90 transition-colors shadow-soft"
-              >
-                {confirmFeaturedAction.action === "add" ? "Ya, Tampilkan" : "Ya, Keluarkan"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              className="w-full max-w-sm rounded-3xl border border-leaf/30 bg-card p-6 shadow-float text-center space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner">
+                <Star className="size-7 fill-current" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  {confirmFeaturedAction.action === "add"
+                    ? "Jadikan Teman Tampil?"
+                    : "Keluarkan dari Teman Tampil?"}
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  {confirmFeaturedAction.action === "add" ? (
+                    <>
+                      Tampilkan bola profil <strong>{confirmFeaturedAction.friend.name}</strong> untuk ikut berjalan-jalan di Home Page pohonmu? (Maksimal {MAX_FEATURED} teman tampil)
+                    </>
+                  ) : (
+                    <>
+                      Keluarkan <strong>{confirmFeaturedAction.friend.name}</strong> dari daftar teman yang tampil di Home Page?
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmFeaturedAction(null)}
+                  className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeToggleFeatured(confirmFeaturedAction.friend, confirmFeaturedAction.action)}
+                  className="flex-1 rounded-2xl bg-leaf py-2.5 text-xs font-bold text-white hover:bg-leaf/90 transition-colors shadow-soft cursor-pointer"
+                >
+                  {confirmFeaturedAction.action === "add" ? "Ya, Tampilkan" : "Ya, Keluarkan"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {viewingAccountId && (
         <PublicProfileModal

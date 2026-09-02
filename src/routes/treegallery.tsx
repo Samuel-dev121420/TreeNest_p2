@@ -523,7 +523,7 @@ function TreeGalleryPage() {
                 value={title}
                 disabled={uploading}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ketik Judul Video Anda disini..."
+                placeholder="Judul Video"
                 className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -640,11 +640,11 @@ function TreeGalleryPage() {
                       value={url}
                       disabled={uploading}
                       onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://youtube.com/... atau https://tiktok.com/..."
+                      placeholder="URL Video / Tautan"
                       className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Mendukung: YouTube, TikTok, Instagram Reels, atau URL video langsung lainnya.
+                      Mendukung : YouTube dan TikTok.
                     </p>
                   </div>
                 )}
@@ -740,7 +740,7 @@ function TreeGalleryPage() {
                     </button>
                     <div className="flex flex-1 flex-col p-3">
                       <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
-                      <p className="text-xs text-muted-foreground">{timeAgo(v.submittedAt)}</p>
+                      <p className="text-xs text-muted-foreground">Masuk {timeAgo(v.approvedAt || v.submittedAt)}</p>
 
                       {/* Status Informasi Rumah Pohon */}
                       {isFeatured ? (
@@ -1108,14 +1108,11 @@ function TreeGalleryPage() {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float"
           >
-            <p className="mb-1 text-base font-bold text-foreground">Komentar Persetujuan (Opsional)</p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Tuliskan catatan positif untuk pemilik video (opsional). Kosongkan jika tidak diperlukan.
-            </p>
+            <p className="mb-5 text-base font-bold text-foreground text-center">Komentar Persetujuan (Opsional)</p>
             <textarea
               value={approvalComment}
               onChange={(e) => setApprovalComment(e.target.value)}
-              placeholder="Contoh: Keren banget videonya! Tetap semangat berkarya."
+              placeholder="Komentar Persetujuan"
               rows={3}
               className="w-full resize-none rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring"
             />
@@ -1193,10 +1190,10 @@ function TreeGalleryPage() {
             {/* Note Box — Full Kotak dengan Border & Teks Hitam (Light) / Putih (Dark) */}
             <div className={`rounded-xl border border-black dark:border-white p-4 text-left shadow-xs transition-all ${
               viewCommentVideo.status === "approved"
-                ? "bg-emerald-50/90 text-black dark:bg-emerald-950/40 dark:text-white"
+                ? "text-black dark:text-white"
                 : viewCommentVideo.status === "rejected"
-                ? "bg-rose-50/90 text-black dark:bg-rose-950/40 dark:text-white"
-                : "bg-amber-50/90 text-black dark:bg-amber-950/40 dark:text-white"
+                ? "text-black dark:text-white"
+                : "text-black dark:text-white"
             }`}>
               {viewCommentVideo.status === "approved" ? (
                 viewCommentVideo.approvalComment ? (

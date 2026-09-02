@@ -15,8 +15,8 @@ import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-servic
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { AmbientNatureEffects } from "@/components/AmbientNatureEffects";
-import { playTapPop, playWaterDrop, isSoundEnabled, setSoundEnabled } from "@/lib/sound-fx";
-import { Sparkles, Home, ChevronRight, X, TreePine, Droplet, Volume2, VolumeX, Heart, Info } from "lucide-react";
+import { playTapPop, playWaterDrop } from "@/lib/sound-fx";
+import { Sparkles, Home, ChevronRight, X, TreePine, Droplet, Heart, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
@@ -77,32 +77,12 @@ function HomePage() {
   const [selectedFriendAccountId, setSelectedFriendAccountId] = useState<string | null>(null);
 
   // Sound FX & Interactive Tree States
-  const [soundActive, setSoundActive] = useState(true);
   const [combo, setCombo] = useState(0);
   const [comboMessage, setComboMessage] = useState("");
   const [tapParticles, setTapParticles] = useState<TapParticle[]>([]);
   const [isWatering, setIsWatering] = useState(false);
   const [treeJiggle, setTreeJiggle] = useState(0);
   const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    setSoundActive(isSoundEnabled());
-    const handleSfxChange = (e: Event) => {
-      const customEvent = e as CustomEvent<{ enabled: boolean }>;
-      if (customEvent.detail) {
-        setSoundActive(customEvent.detail.enabled);
-      }
-    };
-    window.addEventListener("treenest_sfx_toggle", handleSfxChange);
-    return () => window.removeEventListener("treenest_sfx_toggle", handleSfxChange);
-  }, []);
-
-  const toggleSound = () => {
-    const next = !soundActive;
-    setSoundActive(next);
-    setSoundEnabled(next);
-    if (next) playTapPop(0);
-  };
 
   useScrollLock(Boolean(showTreehouse || selectedFriendAccountId || showTreeTip));
 
@@ -276,24 +256,6 @@ function HomePage() {
       {/* Burung */}
       <Bird className="top-[17%]" duration={40} delay={-7} />
       <Bird className="top-[28%] scale-75" duration={56} delay={-27} />
-
-      {/* Floating Sound FX Toggle Button — Sejajar rapi di bawah Widget Notifikasi (top-17) dan Tanggal (top-4) */}
-      <motion.button
-        type="button"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={toggleSound}
-        className="fixed left-4 top-30 z-40 flex items-center gap-1.5 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-colors hover:border-white cursor-pointer select-none"
-        title={soundActive ? "Nonaktifkan Efek Suara (Mute)" : "Aktifkan Efek Suara (Unmute)"}
-        aria-label="Toggle Sound FX"
-      >
-        {soundActive ? (
-          <Volume2 className="size-3.5 text-primary" />
-        ) : (
-          <VolumeX className="size-3.5 text-muted-foreground" />
-        )}
-        <span className="text-[11px]">{soundActive ? "Suara Aktif" : "Suara Senyap"}</span>
-      </motion.button>
 
       {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
       {!isVisiting && (
@@ -590,42 +552,52 @@ function HomePage() {
       )}
 
       {/* Tooltip Popup Pertumbuhan Pohon jika belum Level 20 */}
-      {!isVisiting && showTreeTip && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setShowTreeTip(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150 dark:border-emerald-500/30 dark:bg-emerald-950/95 dark:shadow-emerald-950/60"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {!isVisiting && showTreeTip && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={() => setShowTreeTip(false)}
           >
-            <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner dark:bg-emerald-500/20 dark:text-emerald-300">
-              <TreePine className="size-7" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground dark:text-emerald-100">
-                Pohonmu Sedang Bertumbuh
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed dark:text-emerald-300/80">
-                Pohonmu saat ini berada di <strong>Level {level} ({stage.label})</strong>.
-              </p>
-              <div className="mt-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground text-left space-y-1.5 dark:bg-emerald-900/50 dark:text-emerald-200/80">
-                <p className="font-bold text-foreground dark:text-emerald-100">Kunci Membuka Rumah Pohon:</p>
-                <p>• Capai <strong>Level {TREEHOUSE_LEVEL} (House Tree)</strong>.</p>
-                <p>• Selesaikan Daily Quest dan aktivitas produktif untuk mengumpulkan EXP.</p>
-                <p>• Setelah terbuka, kamu bisa masuk dan memamerkan videomu di sini!</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowTreeTip(false)}
-              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 dark:border-emerald-500/30 dark:bg-emerald-950/95 dark:shadow-emerald-950/60"
+              onClick={(e) => e.stopPropagation()}
             >
-              Semangat Menanam!
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner dark:bg-emerald-500/20 dark:text-emerald-300">
+                <TreePine className="size-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground dark:text-emerald-100">
+                  Pohonmu Sedang Bertumbuh
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed dark:text-emerald-300/80">
+                  Pohonmu saat ini berada di <strong>Level {level} ({stage.label})</strong>.
+                </p>
+                <div className="mt-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground text-left space-y-1.5 dark:bg-emerald-900/50 dark:text-emerald-200/80">
+                  <p className="font-bold text-foreground dark:text-emerald-100">Kunci Membuka Rumah Pohon:</p>
+                  <p>• Capai <strong>Level {TREEHOUSE_LEVEL} (House Tree)</strong>.</p>
+                  <p>• Selesaikan Daily Quest dan aktivitas produktif untuk mengumpulkan EXP.</p>
+                  <p>• Setelah terbuka, kamu bisa masuk dan memamerkan videomu di sini!</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTreeTip(false)}
+                className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white cursor-pointer"
+              >
+                Semangat Menanam!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

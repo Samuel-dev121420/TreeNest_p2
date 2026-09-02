@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, ZoomIn, ZoomOut, RotateCw, RotateCcw, Check, Move, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 
 interface ImageCropperModalProps {
@@ -161,13 +162,23 @@ export function ImageCropperModal({
   }, [offset, zoom, rotation, imgDimensions, onCropComplete]);
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-in fade-in duration-150"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-float animate-in zoom-in-95 duration-150">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.93, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.93, y: 12 }}
+        transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-float"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border/60">
           <div className="flex items-center gap-2">
@@ -318,7 +329,7 @@ export function ImageCropperModal({
             Gunakan Foto
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

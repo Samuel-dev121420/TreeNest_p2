@@ -69,6 +69,8 @@ export type GalleryVideo = {
   reason?: string | undefined;
   approvalComment?: string | undefined;
   submittedAt: number;
+  approvedAt?: number | undefined;
+  rejectedAt?: number | undefined;
   userDeleted?: boolean | undefined;
   userDeletedAt?: number | undefined;
 };

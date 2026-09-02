@@ -509,520 +509,581 @@ function FlashcardPage() {
         )}
       </div>
 
-      {/* SECTION 2: Active Deck Workspace */}
-      {!activeDeck ? (
-        <div className="rounded-3xl border border-border/70 bg-card p-8 text-center shadow-soft">
-          <EmptyState
-            icon={BookOpen}
-            title="Pilih Deck Untuk Memulai"
-            description="Silakan pilih salah satu deck di atas untuk menambah kartu baru atau mulai latihan."
-          />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Deck Header Workspace & Hero Action */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-border/70 bg-card p-6 shadow-soft">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
-                  Deck Aktif
-                </span>
-                <span className="text-xs text-muted-foreground font-semibold">
-                  {deckCards.length} Kartu Belajar
-                </span>
-              </div>
-              <h2 className="mt-1 text-xl sm:text-2xl font-extrabold text-foreground truncate break-words">
-                {activeDeck.name}
-              </h2>
-            </div>
-
-            <button
-              onClick={startStudy}
-              disabled={deckCards.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
-            >
-              <Play className="size-4 fill-current" /> Mulai Mode Belajar
-            </button>
-          </div>
-
-          {/* Form Tambah Kartu Baru */}
-          <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
-            <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-border/60 pb-3">
-              <Plus className="size-5 text-primary shrink-0" />
-              <h3 className="text-base font-bold text-foreground">Tambah Kartu Baru</h3>
-            </div>
-
-            <div className="space-y-3">
-              {/* Field 1: Judul Kartu */}
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  Judul Kartu :
-                </label>
-                <input
-                  maxLength={80}
-                  value={cardTitle}
-                  onChange={(e) => setCardTitle(e.target.value)}
-                  placeholder="Ketik Judul Kartu..."
-                  className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              {/* Field 2 & 3: Sisi Depan & Sisi Belakang */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    Sisi Depan (Pertanyaan / Kata) :
-                  </label>
-                  <input
-                    maxLength={250}
-                    value={front}
-                    onChange={(e) => setFront(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addCard()}
-                    placeholder="Ketik Pertanyaan/Kata..."
-                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    Sisi Belakang (Jawaban / Penjelasan) :
-                  </label>
-                  <input
-                    maxLength={500}
-                    value={back}
-                    onChange={(e) => setBack(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addCard()}
-                    placeholder="Ketik Jawaban/Penjelasan..."
-                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={addCard}
-              disabled={(!cardTitle.trim() && !front.trim()) || !back.trim()}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
-            >
-              <Plus className="size-4" /> Simpan Kartu Ke Deck
-            </button>
-          </div>
-
-          {/* Minimalist Cards Grid Section (2 cards per row) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-base font-bold text-foreground">
-                Daftar Kartu Belajar ({deckCards.length})
-              </h3>
-            </div>
-
-            {deckCards.length === 0 ? (
-              <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-6 text-center shadow-soft">
-                <EmptyState
-                  icon={Layers}
-                  title="Deck Masih Kosong"
-                  description="Isi form di atas untuk menambahkan kartu belajar pertama Anda ke deck ini."
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                  {(showAllCards ? deckCards : deckCards.slice(0, 10)).map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => setSelectedDetailCard(c)}
-                      className="group flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-300 dark:border-border/80 bg-card p-4 transition-all hover:border-primary/60 hover:shadow-soft active:scale-[0.99] min-w-0 shadow-xs"
-                    >
-                      {/* Left: Sparkles Icon + Title */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/100">
-                          <Sparkles className="size-4" />
-                        </div>
-                        <span className="text-sm font-bold text-foreground truncate min-w-0 break-words">
-                          {c.title || c.front}
-                        </span>
-                      </div>
-
-                      {/* Right: Edit & Delete Action Buttons */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditCard(c);
-                          }}
-                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
-                          title="Edit Kartu"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingCard(c);
-                          }}
-                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                          title="Hapus Kartu"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Show More / Show Less Button for Cards */}
-                {deckCards.length > 10 && (
-                  <button
-                    onClick={() => setShowAllCards((v) => !v)}
-                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-neutral-300 dark:border-border/80 bg-secondary/40 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-secondary active:scale-[0.99] cursor-pointer"
-                  >
-                    {showAllCards ? (
-                      <>
-                        Tampilkan Lebih Sedikit <ChevronUp className="size-4 text-primary" />
-                      </>
-                    ) : (
-                      <>
-                        Tampilkan Lebih Banyak ({deckCards.length - 10} kartu lainnya) <ChevronDown className="size-4 text-primary" />
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL POP-UP DETAIL KARTU (INFORMASI LANJUTAN) - max-w-2xl ── */}
-      {selectedDetailCard && (
-        <div
-          onClick={() => setSelectedDetailCard(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5 animate-in fade-in zoom-in-95 duration-150"
+      {/* SECTION 2: Active Deck Workspace with Smooth Spring Motion */}
+      <AnimatePresence mode="wait">
+        {!activeDeck ? (
+          <motion.div
+            key="empty-deck-prompt"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-3xl border border-border/70 bg-card p-8 text-center shadow-soft"
           >
-            {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-border/60 pb-4">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <Info className="size-5" />
+            <EmptyState
+              icon={BookOpen}
+              title="Pilih Deck Untuk Memulai"
+              description="Silakan pilih salah satu deck di atas untuk menambah kartu baru atau mulai latihan."
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={activeDeck.id}
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 360, damping: 26 }}
+            className="space-y-6"
+          >
+            {/* Deck Header Workspace & Hero Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-border/70 bg-card p-6 shadow-soft">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+                    Deck Aktif
+                  </span>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    {deckCards.length} Kartu Belajar
+                  </span>
                 </div>
-                <h3 className="text-lg font-bold text-foreground truncate">
-                  Informasi Lanjutan Kartu
+                <h2 className="mt-1 text-xl sm:text-2xl font-extrabold text-foreground truncate break-words">
+                  {activeDeck.name}
+                </h2>
+              </div>
+
+              <button
+                onClick={startStudy}
+                disabled={deckCards.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                <Play className="size-4 fill-current" /> Mulai Mode Belajar
+              </button>
+            </div>
+
+            {/* Form Tambah Kartu Baru */}
+            <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
+              <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-border/60 pb-3">
+                <Plus className="size-5 text-primary shrink-0" />
+                <h3 className="text-base font-bold text-foreground">Tambah Kartu Baru</h3>
+              </div>
+
+              <div className="space-y-3">
+                {/* Field 1: Judul Kartu */}
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                    Judul Kartu :
+                  </label>
+                  <input
+                    maxLength={80}
+                    value={cardTitle}
+                    onChange={(e) => setCardTitle(e.target.value)}
+                    placeholder="Ketik Judul Kartu..."
+                    className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+
+                {/* Field 2 & 3: Sisi Depan & Sisi Belakang */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                      Sisi Depan (Pertanyaan / Kata) :
+                    </label>
+                    <input
+                      maxLength={250}
+                      value={front}
+                      onChange={(e) => setFront(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addCard()}
+                      placeholder="Ketik Pertanyaan/Kata..."
+                      className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                      Sisi Belakang (Jawaban / Penjelasan) :
+                    </label>
+                    <input
+                      maxLength={500}
+                      value={back}
+                      onChange={(e) => setBack(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addCard()}
+                      placeholder="Ketik Jawaban/Penjelasan..."
+                      className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={addCard}
+                disabled={(!cardTitle.trim() && !front.trim()) || !back.trim()}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+              >
+                <Plus className="size-4" /> Simpan Kartu Ke Deck
+              </button>
+            </div>
+
+            {/* Minimalist Cards Grid Section (2 cards per row) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-base font-bold text-foreground">
+                  Daftar Kartu Belajar ({deckCards.length})
                 </h3>
               </div>
-              <button
-                onClick={() => setSelectedDetailCard(null)}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
 
-            {/* Body Info */}
-            <div className="space-y-4">
-              {/* Judul Kartu */}
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
-                  Judul Kartu:
-                </label>
-                <p className="text-lg font-extrabold text-foreground break-words overflow-wrap-anywhere">
-                  {selectedDetailCard.title || selectedDetailCard.front}
-                </p>
+              {deckCards.length === 0 ? (
+                <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-6 text-center shadow-soft">
+                  <p className="text-xs text-muted-foreground">Belum ada kartu di dalam deck ini.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2">
+                    {(showAllCards ? deckCards : deckCards.slice(0, 10)).map((c, i) => (
+                      <div
+                        key={c.id}
+                        onClick={() => setSelectedDetailCard(c)}
+                        className="group relative flex flex-col justify-between rounded-2xl border border-neutral-300 dark:border-border/80 bg-background dark:bg-secondary/40 p-4 shadow-xs transition-all hover:border-primary/50 hover:bg-muted/50 hover:shadow-soft cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="flex-1 font-bold text-xs text-foreground truncate min-w-0 text-center py-1">
+                            {c.title || c.front}
+                          </h4>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-border/60">
+                          <span className="text-[11px] font-bold text-primary group-hover:underline flex items-center gap-1">
+                            <Info className="size-3.5" /> Lihat Detail
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditCard(c);
+                              }}
+                              className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+                              title="Edit Kartu"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingCard(c);
+                              }}
+                              className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                              title="Hapus Kartu"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Toggle Show All Cards */}
+                  {deckCards.length > 10 && (
+                    <button
+                      onClick={() => setShowAllCards((v) => !v)}
+                      className="w-full rounded-2xl border border-border/80 bg-secondary/60 py-3 text-xs font-bold text-foreground shadow-xs transition-colors hover:bg-secondary active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {showAllCards ? (
+                        <>
+                          Tampilkan Lebih Sedikit <ChevronUp className="size-4 text-primary" />
+                        </>
+                      ) : (
+                        <>
+                          Tampilkan Lebih Banyak ({deckCards.length - 10} kartu lainnya) <ChevronDown className="size-4 text-primary" />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL POP-UP DETAIL KARTU (INFORMASI LANJUTAN) ── */}
+      <AnimatePresence>
+        {selectedDetailCard && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setSelectedDetailCard(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
+            >
+              {/* Header Modal */}
+              <div className="flex items-center justify-between border-b border-border/60 pb-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <Info className="size-5" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground truncate">
+                    Informasi Lanjutan Kartu
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedDetailCard(null)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
 
-              {/* Sisi Depan */}
-              <div className="rounded-2xl bg-primary/10 border border-primary/20 p-4 sm:p-5 space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
-                  Sisi Depan (Pertanyaan / Kata)
-                </span>
-                <p className="text-sm font-semibold text-foreground break-words overflow-wrap-anywhere leading-relaxed">
-                  {selectedDetailCard.front}
-                </p>
+              {/* Body Info */}
+              <div className="space-y-4">
+                {/* Judul Kartu */}
+                <div>
+                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+                    Judul Kartu:
+                  </label>
+                  <p className="text-lg font-extrabold text-foreground break-words overflow-wrap-anywhere">
+                    {selectedDetailCard.title || selectedDetailCard.front}
+                  </p>
+                </div>
+
+                {/* Sisi Depan */}
+                <div className="rounded-2xl bg-primary/10 border border-primary/20 p-4 sm:p-5 space-y-1.5">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                    Sisi Depan (Pertanyaan / Kata)
+                  </span>
+                  <p className="text-sm font-semibold text-foreground break-words overflow-wrap-anywhere leading-relaxed">
+                    {selectedDetailCard.front}
+                  </p>
+                </div>
+
+                {/* Sisi Belakang */}
+                <div className="rounded-2xl bg-secondary/70 border border-border/70 p-4 sm:p-5 space-y-1.5">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Sisi Belakang (Jawaban / Penjelasan)
+                  </span>
+                  <p className="text-sm font-medium text-foreground/90 break-words overflow-wrap-anywhere leading-relaxed">
+                    {selectedDetailCard.back}
+                  </p>
+                </div>
               </div>
 
-              {/* Sisi Belakang */}
-              <div className="rounded-2xl bg-secondary/70 border border-border/70 p-4 sm:p-5 space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-                  Sisi Belakang (Jawaban / Penjelasan)
-                </span>
-                <p className="text-sm font-medium text-foreground/90 break-words overflow-wrap-anywhere leading-relaxed">
-                  {selectedDetailCard.back}
-                </p>
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border/60">
+                <button
+                  onClick={() => {
+                    const c = selectedDetailCard;
+                    setSelectedDetailCard(null);
+                    openEditCard(c);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-border/80 bg-secondary px-4 py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/80 cursor-pointer"
+                >
+                  <Pencil className="size-4 text-primary" /> Edit Kartu
+                </button>
+
+                <button
+                  onClick={() => {
+                    const c = selectedDetailCard;
+                    setSelectedDetailCard(null);
+                    setDeletingCard(c);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs font-bold text-destructive transition-colors hover:bg-destructive hover:text-white cursor-pointer"
+                >
+                  <Trash2 className="size-4" /> Hapus Kartu
+                </button>
+
+                <button
+                  onClick={() => setSelectedDetailCard(null)}
+                  className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
+                >
+                  Tutup
+                </button>
               </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border/60">
-              <button
-                onClick={() => {
-                  const c = selectedDetailCard;
-                  setSelectedDetailCard(null);
-                  openEditCard(c);
-                }}
-                className="flex items-center gap-1.5 rounded-xl border border-border/80 bg-secondary px-4 py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/80 cursor-pointer"
-              >
-                <Pencil className="size-4 text-primary" /> Edit Kartu
-              </button>
-
-              <button
-                onClick={() => {
-                  const c = selectedDetailCard;
-                  setSelectedDetailCard(null);
-                  setDeletingCard(c);
-                }}
-                className="flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs font-bold text-destructive transition-colors hover:bg-destructive hover:text-white cursor-pointer"
-              >
-                <Trash2 className="size-4" /> Hapus Kartu
-              </button>
-
-              <button
-                onClick={() => setSelectedDetailCard(null)}
-                className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL EDIT DECK ── */}
-      {editingDeck && (
-        <div
-          onClick={() => setEditingDeck(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {editingDeck && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setEditingDeck(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <Pencil className="size-4 text-primary" />
-                <h3 className="text-base font-bold text-foreground">Edit Nama Deck</h3>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <Pencil className="size-4 text-primary" />
+                  <h3 className="text-base font-bold text-foreground">Edit Nama Deck</h3>
+                </div>
+                <button
+                  onClick={() => setEditingDeck(null)}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setEditingDeck(null)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                Nama Deck:
-              </label>
-              <input
-                maxLength={60}
-                value={editDeckName}
-                onChange={(e) => setEditDeckName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveEditDeck()}
-                placeholder="Ketik nama deck..."
-                className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setEditingDeck(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveEditDeck}
-                disabled={!editDeckName.trim()}
-                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL EDIT KARTU - max-w-2xl ── */}
-      {editingCard && (
-        <div
-          onClick={() => setEditingCard(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5 animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-center justify-between border-b border-border/60 pb-3.5">
-              <div className="flex items-center gap-2">
-                <Pencil className="size-5 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">Edit Kartu</h3>
-              </div>
-              <button
-                onClick={() => setEditingCard(null)}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  Judul Kartu :
+                  Nama Deck:
                 </label>
                 <input
-                  maxLength={80}
-                  value={editCardTitle}
-                  onChange={(e) => setEditCardTitle(e.target.value)}
-                  placeholder="Ketik Judul Kartu..."
-                  className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                  maxLength={60}
+                  value={editDeckName}
+                  onChange={(e) => setEditDeckName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveEditDeck()}
+                  placeholder="Ketik nama deck..."
+                  className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setEditingDeck(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveEditDeck}
+                  disabled={!editDeckName.trim()}
+                  className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL EDIT KARTU ── */}
+      <AnimatePresence>
+        {editingCard && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setEditingCard(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3.5">
+                <div className="flex items-center gap-2">
+                  <Pencil className="size-5 text-primary" />
+                  <h3 className="text-lg font-bold text-foreground">Edit Kartu</h3>
+                </div>
+                <button
+                  onClick={() => setEditingCard(null)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    Sisi Depan (Pertanyaan / Kata) :
+                    Judul Kartu :
                   </label>
                   <input
-                    maxLength={250}
-                    value={editCardFront}
-                    onChange={(e) => setEditCardFront(e.target.value)}
-                    placeholder="Ketik Pertanyaan/Kata..."
+                    maxLength={80}
+                    value={editCardTitle}
+                    onChange={(e) => setEditCardTitle(e.target.value)}
+                    placeholder="Ketik Judul Kartu..."
                     className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    Sisi Belakang (Jawaban / Penjelasan) :
-                  </label>
-                  <input
-                    maxLength={500}
-                    value={editCardBack}
-                    onChange={(e) => setEditCardBack(e.target.value)}
-                    placeholder="Ketik Jawaban/Penjelasan..."
-                    className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-                  />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                      Sisi Depan (Pertanyaan / Kata) :
+                    </label>
+                    <input
+                      maxLength={250}
+                      value={editCardFront}
+                      onChange={(e) => setEditCardFront(e.target.value)}
+                      placeholder="Ketik Pertanyaan/Kata..."
+                      className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                      Sisi Belakang (Jawaban / Penjelasan) :
+                    </label>
+                    <input
+                      maxLength={500}
+                      value={editCardBack}
+                      onChange={(e) => setEditCardBack(e.target.value)}
+                      placeholder="Ketik Jawaban/Penjelasan..."
+                      className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-2.5 pt-3 border-t border-border/60">
-              <button
-                onClick={() => setEditingCard(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveEditCard}
-                disabled={
-                  (!editCardTitle.trim() && !editCardFront.trim()) || !editCardBack.trim()
-                }
-                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex gap-2.5 pt-3 border-t border-border/60">
+                <button
+                  onClick={() => setEditingCard(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveEditCard}
+                  disabled={
+                    (!editCardTitle.trim() && !editCardFront.trim()) || !editCardBack.trim()
+                  }
+                  className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL KONFIRMASI HAPUS DECK ── */}
-      {deletingDeck && (
-        <div
-          onClick={() => setDeletingDeck(null)}
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {deletingDeck && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setDeletingDeck(null)}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center gap-3 border-b border-border/60 pb-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-                <AlertTriangle className="size-5" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Konfirmasi Hapus Deck</h3>
+                  <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">Konfirmasi Hapus Deck</h3>
-                <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                Apakah Anda yakin ingin menghapus deck <strong className="text-foreground">"{deletingDeck.name}"</strong>?
+                Semua kartu di dalamnya ({cards.filter((c) => c.deckId === deletingDeck.id).length} kartu) akan ikut terhapus secara permanen.
+              </p>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeletingDeck(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    deleteDeck(deletingDeck.id);
+                    setDeletingDeck(null);
+                  }}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
+                >
+                  Hapus Deck
+                </button>
               </div>
-            </div>
-
-            <p className="text-sm text-foreground/90 leading-relaxed">
-              Apakah Anda yakin ingin menghapus deck <strong className="text-foreground">"{deletingDeck.name}"</strong>?
-              Semua kartu di dalamnya ({cards.filter((c) => c.deckId === deletingDeck.id).length} kartu) akan ikut terhapus secara permanen.
-            </p>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                onClick={() => setDeletingDeck(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => {
-                  deleteDeck(deletingDeck.id);
-                  setDeletingDeck(null);
-                }}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
-              >
-                Hapus Deck
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL KONFIRMASI HAPUS KARTU ── */}
-      {deletingCard && (
-        <div
-          onClick={() => setDeletingCard(null)}
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {deletingCard && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setDeletingCard(null)}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center gap-3 border-b border-border/60 pb-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-                <AlertTriangle className="size-5" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Konfirmasi Hapus Kartu</h3>
+                  <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">Konfirmasi Hapus Kartu</h3>
-                <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                Apakah Anda yakin ingin menghapus kartu <strong className="text-foreground">"{deletingCard.title || deletingCard.front}"</strong>?
+              </p>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeletingCard(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    deleteCard(deletingCard.id);
+                    setDeletingCard(null);
+                  }}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
+                >
+                  Hapus Kartu
+                </button>
               </div>
-            </div>
-
-            <p className="text-sm text-foreground/90 leading-relaxed">
-              Apakah Anda yakin ingin menghapus kartu <strong className="text-foreground">"{deletingCard.title || deletingCard.front}"</strong>?
-            </p>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                onClick={() => setDeletingCard(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => {
-                  deleteCard(deletingCard.id);
-                  setDeletingCard(null);
-                }}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
-              >
-                Hapus Kartu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageShell>
   );
 }

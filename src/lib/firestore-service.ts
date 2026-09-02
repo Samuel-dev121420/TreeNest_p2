@@ -1361,6 +1361,13 @@ export async function updateFeaturedFriends(uid: string, featuredIds: string[]):
 const GALLERY_COLLECTION = "tree_gallery";
 const GALLERY_FEATURED_COLLECTION = "gallery_featured";
 
+/** Helper sort video berdasarkan waktu disetujui (untuk approved) atau submittedAt */
+function sortVideosByTime(a: GalleryVideo, b: GalleryVideo): number {
+  const timeA = (a.status === "approved" && a.approvedAt ? a.approvedAt : a.submittedAt) || 0;
+  const timeB = (b.status === "approved" && b.approvedAt ? b.approvedAt : b.submittedAt) || 0;
+  return timeB - timeA;
+}
+
 /** Ambil semua video milik user tertentu */
 export async function getUserVideos(uid: string): Promise<GalleryVideo[]> {
   if (!isFirebaseConfigured || !db) {
@@ -1368,7 +1375,7 @@ export async function getUserVideos(uid: string): Promise<GalleryVideo[]> {
     const local = localStorage.getItem(`treenest_gallery_videos_${uid}`);
     if (local) {
       const list: GalleryVideo[] = JSON.parse(local);
-      return list.filter((v) => !v.userDeleted).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+      return list.filter((v) => !v.userDeleted).sort(sortVideosByTime);
     }
     return [];
   }
@@ -1376,7 +1383,7 @@ export async function getUserVideos(uid: string): Promise<GalleryVideo[]> {
     const q = query(collection(db, GALLERY_COLLECTION), where("uid", "==", uid));
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
-    return list.filter((v) => !v.userDeleted).sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    return list.filter((v) => !v.userDeleted).sort(sortVideosByTime);
   } catch (err) {
     console.error("Error fetching user videos:", err);
     return [];
@@ -1426,7 +1433,7 @@ export async function getAllGalleryVideosAdmin(
     } else if (statusFilter !== "all") {
       list = list.filter((v) => v.status === statusFilter && !v.userDeleted);
     }
-    return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    return list.sort(sortVideosByTime);
   }
   try {
     let q;
@@ -1444,7 +1451,7 @@ export async function getAllGalleryVideosAdmin(
     } else if (statusFilter === "pending") {
       list = list.filter((v) => v.status === "pending" && !v.userDeleted);
     }
-    return list.sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    return list.sort(sortVideosByTime);
   } catch (err) {
     console.error("Error fetching admin gallery videos:", err);
     return [];
@@ -1547,12 +1554,18 @@ export async function moderateVideo(
   targetUid?: string,
   videoTitle?: string,
 ): Promise<void> {
+  const now = Date.now();
   if (isFirebaseConfigured && db) {
     try {
-      const updates: Record<string, unknown> = { status, moderatedAt: Date.now() };
+      const updates: Record<string, unknown> = {
+        status,
+        moderatedAt: now,
+      };
       if (status === "rejected") {
+        updates["rejectedAt"] = now;
         if (commentOrReason) updates["reason"] = commentOrReason;
       } else if (status === "approved") {
+        updates["approvedAt"] = now;
         if (commentOrReason) updates["approvalComment"] = commentOrReason;
       }
       await updateDoc(doc(db, GALLERY_COLLECTION, videoId), updates);
@@ -1576,6 +1589,8 @@ export async function moderateVideo(
               return {
                 ...v,
                 status,
+                approvedAt: status === "approved" ? now : v.approvedAt,
+                rejectedAt: status === "rejected" ? now : v.rejectedAt,
                 reason: status === "rejected" ? commentOrReason : v.reason,
                 approvalComment: status === "approved" ? commentOrReason : v.approvalComment,
               };

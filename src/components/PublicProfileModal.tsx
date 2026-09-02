@@ -151,19 +151,29 @@ export function PublicProfileModal({
   });
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-sm rounded-3xl border border-border/80 bg-card shadow-float animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.93, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.93, y: 12 }}
+        transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+        className="relative w-full max-w-sm rounded-3xl border border-border/80 bg-card shadow-float overflow-hidden"
+      >
         {/* Header banner */}
         <div className="h-16 bg-gradient-leaf" />
 
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 rounded-full bg-black/20 p-1.5 text-white backdrop-blur-sm hover:bg-black/30"
+          className="absolute right-3 top-3 rounded-full bg-black/20 p-1.5 text-white backdrop-blur-sm hover:bg-black/30 cursor-pointer transition-colors"
         >
           <X className="size-4" />
         </button>
@@ -207,7 +217,7 @@ export function PublicProfileModal({
                   {!isOwner && !isFriend && onAddFriend && !requestSent && (
                     <button
                       onClick={handleAddClick}
-                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft"
+                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft cursor-pointer"
                     >
                       <UserPlus className="size-3.5" /> Tambah
                     </button>
@@ -309,60 +319,70 @@ export function PublicProfileModal({
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* ── MODAL FOTO PROFIL UKURAN BESAR (FULL-SIZE AVATAR LIGHTBOX) ── */}
-      {showFullAvatar && targetProfile && (
-        <div
-          onClick={() => setShowFullAvatar(false)}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-w-sm sm:max-w-md w-full flex flex-col items-center gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-float text-center animate-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {showFullAvatar && targetProfile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowFullAvatar(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
           >
-            <button
-              onClick={() => setShowFullAvatar(false)}
-              className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 cursor-pointer transition-colors"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-sm sm:max-w-md w-full flex flex-col items-center gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-float text-center"
             >
-              <X className="size-5" />
-            </button>
+              <button
+                onClick={() => setShowFullAvatar(false)}
+                className="absolute right-4 top-4 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 cursor-pointer transition-colors"
+              >
+                <X className="size-5" />
+              </button>
 
-            <div>
-              <h3 className="text-base font-bold text-foreground">Foto Profil - {targetProfile.username}</h3>
-              <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                (ID: {targetProfile.accountId})
-              </p>
-            </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Foto Profil - {targetProfile.username}</h3>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                  (ID: {targetProfile.accountId})
+                </p>
+              </div>
 
-            <div className="relative flex items-center justify-center p-4">
-              {targetProfile.avatarUrl ? (
-                <img
-                  src={targetProfile.avatarUrl}
-                  alt={targetProfile.username}
-                  className="size-64 sm:size-72 rounded-full object-cover ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
-                />
-              ) : (
-                <span
-                  className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
-                  style={{
-                    backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
-                  }}
-                >
-                  {targetProfile.initials}
-                </span>
-              )}
-            </div>
+              <div className="relative flex items-center justify-center p-4">
+                {targetProfile.avatarUrl ? (
+                  <img
+                    src={targetProfile.avatarUrl}
+                    alt={targetProfile.username}
+                    className="size-64 sm:size-72 rounded-full object-cover ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
+                  />
+                ) : (
+                  <span
+                    className="flex size-64 sm:size-72 items-center justify-center rounded-full text-6xl font-extrabold text-primary-foreground ring-4 ring-black dark:ring-white shadow-google-glow transition-all duration-300"
+                    style={{
+                      backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
+                    }}
+                  >
+                    {targetProfile.initials}
+                  </span>
+                )}
+              </div>
 
-            <button
-              onClick={() => setShowFullAvatar(false)}
-              className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft"
-            >
-              Kembali
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              <button
+                onClick={() => setShowFullAvatar(false)}
+                className="w-full rounded-2xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer shadow-soft"
+              >
+                Kembali
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

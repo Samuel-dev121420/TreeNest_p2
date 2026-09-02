@@ -137,6 +137,7 @@ import { DailyQuestWidget } from "../components/DailyQuestWidget";
 import { DateTimeWidget } from "../components/DateTimeWidget";
 import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
 import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
+import { SoundToggleWidget } from "../components/SoundToggleWidget";
 
 function AppShell() {
   const { user, profile, loading } = useAuth();
@@ -177,6 +178,7 @@ function AppShell() {
     <>
       <GlobalStudyTimerBar />
       {!isVisiting && !isMinimalRoute && <NotificationCenterWidget />}
+      {!isVisiting && !isMinimalRoute && <SoundToggleWidget />}
       {/* Page Transition Motion Wrapper — EXCLUDE Home Page (instant render) */}
       {isHome ? (
         <Outlet />

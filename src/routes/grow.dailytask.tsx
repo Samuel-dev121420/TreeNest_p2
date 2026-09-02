@@ -498,121 +498,141 @@ function ReminderPage() {
       </div>
 
       {/* ── MODAL KALENDER / QUICK DATE PICKER ── */}
-      {showDatePickerModal && (
-        <div
-          onClick={() => setShowDatePickerModal(false)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {showDatePickerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowDatePickerModal(false)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="size-5 text-primary" />
-                <h3 className="text-base font-bold text-foreground">Pilih Tanggal</h3>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="size-5 text-primary" />
+                  <h3 className="text-base font-bold text-foreground">Pilih Tanggal</h3>
+                </div>
+                <button
+                  onClick={() => setShowDatePickerModal(false)}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowDatePickerModal(false)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-muted"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                Pilih Tanggal, Bulan, dan Tahun:
-              </label>
-              <input
-                type="date"
-                value={dateKey}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setDateKey(e.target.value);
-                  }
-                }}
-                className="w-full rounded-2xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                  Pilih Tanggal, Bulan, dan Tahun:
+                </label>
+                <input
+                  type="date"
+                  value={dateKey}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDateKey(e.target.value);
+                    }
+                  }}
+                  className="w-full rounded-2xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setDateKey(todayStr);
-                  setShowDatePickerModal(false);
-                }}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70"
-              >
-                Kembali ke Hari Ini
-              </button>
-              <button
-                onClick={() => setShowDatePickerModal(false)}
-                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setDateKey(todayStr);
+                    setShowDatePickerModal(false);
+                  }}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Kembali ke Hari Ini
+                </button>
+                <button
+                  onClick={() => setShowDatePickerModal(false)}
+                  className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
+                >
+                  Selesai
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL EDIT PENGINGAT ── */}
-      {editingTask && (
-        <div
-          onClick={() => setEditingTask(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {editingTask && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setEditingTask(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <Pencil className="size-4 text-primary" />
-                <h3 className="text-base font-bold text-foreground">Edit Pengingat</h3>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <Pencil className="size-4 text-primary" />
+                  <h3 className="text-base font-bold text-foreground">Edit Pengingat</h3>
+                </div>
+                <button
+                  onClick={() => setEditingTask(null)}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setEditingTask(null)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-muted cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                Teks Pengingat:
-              </label>
-              <input
-                autoFocus
-                maxLength={150}
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveEditTask()}
-                placeholder="Ketik teks pengingat..."
-                className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                  Teks Pengingat:
+                </label>
+                <input
+                  autoFocus
+                  maxLength={150}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveEditTask()}
+                  placeholder="Ketik teks pengingat..."
+                  className="w-full rounded-xl border border-input bg-white dark:bg-secondary/80 text-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setEditingTask(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveEditTask}
-                disabled={!editText.trim()}
-                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setEditingTask(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveEditTask}
+                  disabled={!editText.trim()}
+                  className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageShell>
   );
 }

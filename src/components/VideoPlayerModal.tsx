@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { youtubeId, tiktokId, timeAgo, type GalleryVideo, type GalleryVideoSource } from "@/lib/social";
 import { resolveVideoUrl } from "@/lib/video-storage";
 
@@ -128,13 +129,20 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
 
   /* ─── Modal Shell (Dynamic size: 9:16 for TikTok, 16:9 for YouTube/Upload/Link) ─── */
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md"
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
         onClick={(e) => e.stopPropagation()}
-        className={`flex w-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`flex w-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 ${
           isTikTok
             ? "max-w-[360px] sm:max-w-[390px]"
             : "max-w-xl sm:max-w-2xl"
@@ -177,7 +185,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
               </span>
             )}
             <span className="text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-              Diunggah {timeAgo(video.submittedAt)}
+              Masuk {timeAgo(video.approvedAt || video.submittedAt)}
             </span>
           </div>
 
@@ -218,9 +226,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
-
-

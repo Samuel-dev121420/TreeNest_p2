@@ -23,6 +23,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import {
@@ -542,240 +543,320 @@ export function PiNotePage() {
       </div>
 
       {/* Modal: Create Folder */}
-      {isCreatingFolder && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-lg">
-            <h3 className="text-base font-bold text-foreground">Buat Folder Baru</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Folder akan dibuat di dalam posisi explorer saat ini.
-            </p>
-            <input
-              autoFocus
-              maxLength={60}
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-              placeholder="Nama folder..."
-              className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setIsCreatingFolder(false);
-                  setNewFolderName("");
-                }}
-                className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleCreateFolder}
-                disabled={!newFolderName.trim()}
-                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                Buat Folder
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isCreatingFolder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => {
+              setIsCreatingFolder(false);
+              setNewFolderName("");
+            }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+            >
+              <h3 className="text-base font-bold text-foreground">Buat Folder Baru</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Folder akan dibuat di dalam posisi explorer saat ini.
+              </p>
+              <input
+                autoFocus
+                maxLength={60}
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                placeholder="Nama folder..."
+                className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setIsCreatingFolder(false);
+                    setNewFolderName("");
+                  }}
+                  className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  disabled={!newFolderName.trim()}
+                  className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                >
+                  Buat Folder
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal: Rename Item */}
-      {renamingItem && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-lg">
-            <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
-            <input
-              autoFocus
-              maxLength={60}
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
-              className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setRenamingItem(null)}
-                className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleRenameItem}
-                disabled={!renameValue.trim()}
-                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                Simpan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {renamingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setRenamingItem(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+            >
+              <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
+              <input
+                autoFocus
+                maxLength={60}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
+                className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setRenamingItem(null)}
+                  className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleRenameItem}
+                  disabled={!renameValue.trim()}
+                  className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+                >
+                  Simpan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal / Editor: Text Note Editor */}
-      {editingNoteItem && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="flex h-full max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="size-5 text-emerald-500" />
-                <span className="text-sm font-bold text-foreground">Catatan</span>
-              </div>
-              <button
-                onClick={() => {
-                  setEditingNoteItem(null);
-                  setIsNewNote(false);
-                }}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="mt-4 flex flex-1 flex-col gap-3">
-              <input
-                maxLength={80}
-                value={noteTitle}
-                onChange={(e) => setNoteTitle(e.target.value)}
-                placeholder="Judul Catatan"
-                className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
-              />
-              <textarea
-                value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="Tulis isi catatanmu di sini..."
-                className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-3">
-              <button
-                onClick={() => {
-                  setEditingNoteItem(null);
-                  setIsNewNote(false);
-                }}
-                className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveNote}
-                className="rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                Simpan Catatan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Media / Document Previewer */}
-      {previewItem && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
-          <div className="flex h-full max-h-[85vh] w-full max-w-3xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2 min-w-0">
-                {getItemIcon(previewItem)}
-                <span className="truncate text-sm font-bold text-foreground">
-                  {previewItem.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {previewItem.fileUrl && (
-                  <a
-                    href={previewItem.fileUrl}
-                    download={previewItem.name}
-                    className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
-                  >
-                    <Download className="size-3.5" /> Unduh
-                  </a>
-                )}
+      <AnimatePresence>
+        {editingNoteItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => {
+              setEditingNoteItem(null);
+              setIsNewNote(false);
+            }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-full max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-5 text-emerald-500" />
+                  <span className="text-sm font-bold text-foreground">Catatan</span>
+                </div>
                 <button
-                  onClick={() => setPreviewItem(null)}
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                  onClick={() => {
+                    setEditingNoteItem(null);
+                    setIsNewNote(false);
+                  }}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted cursor-pointer"
                 >
                   <X className="size-5" />
                 </button>
               </div>
-            </div>
+              <div className="mt-4 flex flex-1 flex-col gap-3">
+                <input
+                  maxLength={80}
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="Judul Catatan"
+                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
+                />
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Tulis isi catatanmu di sini..."
+                  className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-3">
+                <button
+                  onClick={() => {
+                    setEditingNoteItem(null);
+                    setIsNewNote(false);
+                  }}
+                  className="rounded-xl border border-border/70 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveNote}
+                  className="rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                >
+                  Simpan Catatan
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl bg-black/10 p-2">
-              {previewItem.fileType === "image" && previewItem.fileUrl ? (
-                <img
-                  src={previewItem.fileUrl}
-                  alt={previewItem.name}
-                  className="max-h-full max-w-full rounded-xl object-contain"
-                />
-              ) : previewItem.fileType === "video" && previewItem.fileUrl ? (
-                <video
-                  src={previewItem.fileUrl}
-                  controls
-                  className="max-h-full max-w-full rounded-xl"
-                />
-              ) : previewItem.fileType === "pdf" && previewItem.fileUrl ? (
-                <iframe
-                  src={previewItem.fileUrl}
-                  title={previewItem.name}
-                  className="h-full w-full rounded-xl border-none"
-                />
-              ) : (
-                <div className="p-8 text-center">
-                  <File className="mx-auto size-16 text-muted-foreground/60" />
-                  <p className="mt-3 text-sm font-semibold text-foreground">{previewItem.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Pratinjau langsung tidak tersedia untuk format file ini. Klik tombol unduh di
-                    atas untuk membuka file.
-                  </p>
+      {/* Modal: Media / Document Previewer */}
+      <AnimatePresence>
+        {previewItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setPreviewItem(null)}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-full max-h-[85vh] w-full max-w-3xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  {getItemIcon(previewItem)}
+                  <span className="truncate text-sm font-bold text-foreground">
+                    {previewItem.name}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="flex items-center gap-2">
+                  {previewItem.fileUrl && (
+                    <a
+                      href={previewItem.fileUrl}
+                      download={previewItem.name}
+                      className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                    >
+                      <Download className="size-3.5" /> Unduh
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setPreviewItem(null)}
+                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl bg-black/10 p-2">
+                {previewItem.fileType === "image" && previewItem.fileUrl ? (
+                  <img
+                    src={previewItem.fileUrl}
+                    alt={previewItem.name}
+                    className="max-h-full max-w-full rounded-xl object-contain"
+                  />
+                ) : previewItem.fileType === "video" && previewItem.fileUrl ? (
+                  <video
+                    src={previewItem.fileUrl}
+                    controls
+                    className="max-h-full max-w-full rounded-xl"
+                  />
+                ) : previewItem.fileType === "pdf" && previewItem.fileUrl ? (
+                  <iframe
+                    src={previewItem.fileUrl}
+                    title={previewItem.name}
+                    className="h-full w-full rounded-xl border-none"
+                  />
+                ) : (
+                  <div className="p-8 text-center">
+                    <File className="mx-auto size-16 text-muted-foreground/60" />
+                    <p className="mt-3 text-sm font-semibold text-foreground">{previewItem.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pratinjau langsung tidak tersedia untuk format file ini. Klik tombol unduh di
+                      atas untuk membuka file.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal: Custom Delete Confirmation */}
-      {deletingItem && (
-        <div
-          onClick={() => setDeletingItem(null)}
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      <AnimatePresence>
+        {deletingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setDeletingItem(null)}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           >
-            <div className="flex items-center gap-3 border-b border-border/60 pb-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-                <AlertTriangle className="size-5" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4"
+            >
+              <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Konfirmasi Hapus {deletingItem.type === "folder" ? "Folder" : deletingItem.type === "note" ? "Catatan" : "File"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">
-                  Konfirmasi Hapus {deletingItem.type === "folder" ? "Folder" : deletingItem.type === "note" ? "Catatan" : "File"}
-                </h3>
-                <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+
+              <p className="text-sm text-foreground/90 leading-relaxed break-words">
+                Apakah Anda yakin ingin menghapus{" "}
+                <strong className="text-foreground">"{deletingItem.name}"</strong>
+                {deletingItem.type === "folder" ? " dan seluruh isinya?" : "?"}
+              </p>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeletingItem(null)}
+                  className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmDeleteItem}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
+                >
+                  Hapus
+                </button>
               </div>
-            </div>
-
-            <p className="text-sm text-foreground/90 leading-relaxed break-words">
-              Apakah Anda yakin ingin menghapus{" "}
-              <strong className="text-foreground">"{deletingItem.name}"</strong>
-              {deletingItem.type === "folder" ? " dan seluruh isinya?" : "?"}
-            </p>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                onClick={() => setDeletingItem(null)}
-                className="flex-1 rounded-xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDeleteItem}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white shadow-soft transition-colors hover:bg-destructive/90 cursor-pointer"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageShell>
   );
 }
