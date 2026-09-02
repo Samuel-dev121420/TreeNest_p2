@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -119,14 +119,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileRef = useRef<UserProfile | null>(null);
+  profileRef.current = profile;
 
   async function loadProfileForUser(uid: string, fallbackEmail?: string, isNewLogin?: boolean) {
+    if (!uid) return;
+
     let p = await getUserProfile(uid);
+
+    // Cek fallback dari state memori jika fetch mengalami network hiccup
+    if (!p && profileRef.current?.uid === uid) {
+      p = profileRef.current;
+    }
+
+    // Cek fallback dari localStorage jika masih belum ada
     if (!p) {
-      // Auto create profile if missing
+      const local = localStorage.getItem(`treenest_user_${uid}`);
+      if (local) {
+        try {
+          p = JSON.parse(local);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Hanya panggil createUserProfile jika BENAR-BENAR belum ada profil di Firestore maupun cache lokal
+    if (!p) {
       const username = fallbackEmail?.split("@")[0] || "Pengguna TreeNest";
       p = await createUserProfile(uid, username, fallbackEmail || "user@treenest.com");
     }
+
+    if (!p) return;
 
     // Sync friendCount dari pertemanan resmi yang sudah accepted
     try {
@@ -136,35 +160,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore
     }
 
-    if (p && (p.role === "admin" || (fallbackEmail && isAdminEmail(fallbackEmail)))) {
+    if (p && (p.role === "admin" || (fallbackEmail && isAdminEmail(fallbackEmail)) || (p.email && isAdminEmail(p.email)))) {
       p.role = "admin";
       p.level = 20;
       p.exp = 50;
     }
+
     setProfile(p);
+    try {
+      localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(p));
+      localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(p));
+    } catch {
+      // ignore
+    }
+
     // Apply theme from profile
     if (p?.themePreference === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
+
     if (isNewLogin) {
       incrementTotalLogins(uid).catch(console.error);
     }
+
     awardActivityExp(uid, "daily_login").then(() => {
       getUserProfile(uid).then((updated) => {
         if (updated) {
           getUserFriends(uid).then((fr) => {
             updated.friendCount = fr.length;
-            if (updated.role === "admin") {
+            if (updated.role === "admin" || (updated.email && isAdminEmail(updated.email))) {
+              updated.role = "admin";
               updated.level = 20;
               updated.exp = 50;
             }
             setProfile(updated);
+            try {
+              localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(updated));
+              localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(updated));
+            } catch {}
           });
         }
       });
-    });
+    }).catch(() => {});
   }
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
@@ -52,6 +52,9 @@ export function TreehouseModal({
 }: TreehouseModalProps) {
   useScrollLock(true);
   const { profile: authProfile } = useAuth();
+  const authProfileRef = useRef(authProfile);
+  authProfileRef.current = authProfile;
+
   const [featuredVideo, setFeaturedVideo] = useState<GalleryVideo | null>(null);
   const [videoPlayUrl, setVideoPlayUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,6 @@ export function TreehouseModal({
   useEffect(() => {
     let active = true;
     async function loadTreehouseData() {
-      setLoading(true);
       try {
         const [videos, fid, friendList, profile] = await Promise.all([
           getUserVideos(uid),
@@ -87,12 +89,15 @@ export function TreehouseModal({
         // Cari video yang spesifik di-setting sebagai featured & approved
         const feat: GalleryVideo | null =
           videos.find((v) => v.id === fid && v.status === "approved") || null;
-        setFeaturedVideo(feat);
 
+        let resolved = "";
         if (feat) {
-          const resolved = await resolveVideoUrl(feat.url, feat.id);
-          if (active) setVideoPlayUrl(resolved);
+          resolved = await resolveVideoUrl(feat.url, feat.id);
         }
+
+        if (!active) return;
+        setFeaturedVideo(feat);
+        setVideoPlayUrl(resolved || feat?.url || "");
 
         // Ambil data penonton video rumah pohon
         const viewerList = await getTreehouseVideoViewers(uid, feat ? feat.id : fid || null);
@@ -100,7 +105,8 @@ export function TreehouseModal({
 
         // Catat view jika pengunjung adalah user lain dan video dapat ditonton
         const effectivePriv = treehouseVideoPrivacy || profile?.treehouseVideoPrivacy || "public";
-        const isOwnerAccount = authProfile?.uid === uid;
+        const currentAuth = authProfileRef.current;
+        const isOwnerAccount = currentAuth?.uid === uid;
         const canView =
           isOwnerAccount ||
           effectivePriv === "public" ||
@@ -110,16 +116,16 @@ export function TreehouseModal({
           !isOwnerAccount &&
           canView &&
           feat &&
-          authProfile &&
-          authProfile.uid !== "guest"
+          currentAuth &&
+          currentAuth.uid !== "guest"
         ) {
           await recordTreehouseVideoView(uid, feat.id, {
-            uid: authProfile.uid,
-            accountId: authProfile.accountId,
-            name: authProfile.username,
-            initials: authProfile.initials,
-            hue: authProfile.hue,
-            avatarUrl: authProfile.avatarUrl,
+            uid: currentAuth.uid,
+            accountId: currentAuth.accountId,
+            name: currentAuth.username,
+            initials: currentAuth.initials,
+            hue: currentAuth.hue,
+            avatarUrl: currentAuth.avatarUrl,
           });
 
           // Refresh daftar penonton setelah dicatat
@@ -137,7 +143,7 @@ export function TreehouseModal({
     return () => {
       active = false;
     };
-  }, [uid, authProfile, isFriend, treehouseVideoPrivacy]);
+  }, [uid, isFriend, treehouseVideoPrivacy]);
 
   const isOwner = viewerUid ? viewerUid === uid : (authProfile?.uid ? authProfile.uid === uid : true);
   const effectivePrivacy = treehouseVideoPrivacy || profilePrivacy;
@@ -160,23 +166,13 @@ export function TreehouseModal({
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
+      <div
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.93, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.93, y: 12 }}
-          transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-          className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float"
-        >
+        <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
           {/* Header Rumah Pohon */}
           <div className="relative flex items-center justify-between border-b border-border/70 bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent px-5 py-4">
             <div className="flex items-center gap-3">
@@ -271,6 +267,7 @@ export function TreehouseModal({
                         className="size-full object-contain rounded-2xl"
                         src={videoPlayUrl || featuredVideo.url}
                         controls
+                        playsInline
                         controlsList="nodownload"
                       />
                     </div>
@@ -408,29 +405,18 @@ export function TreehouseModal({
               Keluar ke Halaman Utama
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Pop-up Semua Penonton Video */}
-      <AnimatePresence>
-        {showAllViewersModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShowAllViewersModal(false);
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.93, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.93, y: 12 }}
-              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-              className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float"
-            >
+      {showAllViewersModal && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAllViewersModal(false);
+          }}
+        >
+          <div className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float animate-in zoom-in-95 duration-200">
               {/* Header Modal */}
               <div className="flex items-center justify-between border-b border-border/70 bg-secondary/30 px-5 py-4">
                 <div className="flex items-center gap-2.5">
@@ -510,10 +496,9 @@ export function TreehouseModal({
                   Klik pada profil penonton untuk melihat detail akun
                 </p>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Public Profile Modal saat bola profil diklik */}
       {selectedViewerAccountId && (

@@ -77,26 +77,39 @@ export async function deleteVideoBlob(id: string): Promise<void> {
   }
 }
 
+const blobUrlCache = new Map<string, string>();
+
 /** Resolve video URL yang aman: jika indexeddb://, ambil blob dan buat ObjectURL baru */
 export async function resolveVideoUrl(url: string, videoId?: string): Promise<string> {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
+  const effectiveId = (url.startsWith("indexeddb:") ? url.replace("indexeddb:", "") : "") || videoId;
+  if (effectiveId && blobUrlCache.has(effectiveId)) {
+    return blobUrlCache.get(effectiveId)!;
+  }
+
   if (url.startsWith("indexeddb:")) {
-    const id = url.replace("indexeddb:", "") || videoId;
-    if (id) {
-      const blob = await getVideoBlob(id);
+    if (effectiveId) {
+      const blob = await getVideoBlob(effectiveId);
       if (blob) {
-        return URL.createObjectURL(blob);
+        const objUrl = URL.createObjectURL(blob);
+        blobUrlCache.set(effectiveId, objUrl);
+        return objUrl;
       }
     }
   }
   // Jika URL blob lama yang sudah expired, coba cari di IndexedDB pakai videoId
   if (url.startsWith("blob:") && videoId) {
+    if (blobUrlCache.has(videoId)) {
+      return blobUrlCache.get(videoId)!;
+    }
     const blob = await getVideoBlob(videoId);
     if (blob) {
-      return URL.createObjectURL(blob);
+      const objUrl = URL.createObjectURL(blob);
+      blobUrlCache.set(videoId, objUrl);
+      return objUrl;
     }
   }
   return url;

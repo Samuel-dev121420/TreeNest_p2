@@ -62,7 +62,6 @@ export function GlobalStudyTimerBar() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-sun opacity-75" />
               <span className="relative inline-flex size-2.5 rounded-full bg-sun" />
             </span>
-            <Clock className="size-3.5 text-sun shrink-0" />
             <span>
               Sesi Belajar:{" "}
               <span className="font-mono text-primary font-extrabold">

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getStudyTimerSnapshot, subscribeStudyTimer } from "@/lib/study-timer-service";
 import { hasUncheckedReminders } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
+import { getIncomingFriendRequests, getUserFriends } from "@/lib/firestore-service";
 
 const items = [
   {
@@ -50,11 +51,15 @@ export function BottomNav() {
   const isVisiting = location.pathname === "/" && Boolean(searchObj?.visit);
 
   useEffect(() => {
-    const checkBadges = () => {
+    let isCancelled = false;
+
+    const checkBadges = async () => {
       const timerSnap = getStudyTimerSnapshot();
       const isTimerActive = timerSnap.status === "running" || timerSnap.status === "completed";
       const hasReminders = hasUncheckedReminders(uid);
-      setHasGrowBadge(isTimerActive || hasReminders);
+      if (!isCancelled) {
+        setHasGrowBadge(isTimerActive || hasReminders);
+      }
 
       // Check TreeGallery unread moderation results
       try {
@@ -66,55 +71,54 @@ export function BottomNav() {
           const unread = vids.some(
             (v) => (v.status === "approved" || v.status === "rejected") && !readMap[v.id],
           );
-          setHasGalleryBadge(unread);
+          if (!isCancelled) {
+            setHasGalleryBadge(unread);
+          }
         }
       } catch {
         // ignore
       }
 
-      // Check Friend Club unviewed requests/friends
-      try {
-        const reqViewed = Number(localStorage.getItem(`treenest.friend.viewed_requests.${uid}`) || 0);
-        const frViewed = Number(localStorage.getItem(`treenest.friend.viewed_friends.${uid}`) || 0);
-        const globalReqsRaw = localStorage.getItem("treenest_global_friend_requests");
-        const localFriendsRaw = localStorage.getItem(`treenest_friends_${uid}`);
-        const globalFriendsRaw = localStorage.getItem("treenest_global_friendships");
+      // Check Friend Club unviewed requests & new friends
+      if (uid && uid !== "guest") {
+        try {
+          const reqViewed = Number(
+            localStorage.getItem(`treenest.friend.viewed_requests.${uid}`) || 0,
+          );
+          const frViewed = Number(
+            localStorage.getItem(`treenest.friend.viewed_friends.${uid}`) || 0,
+          );
 
-        const globalReqs: any[] = globalReqsRaw ? JSON.parse(globalReqsRaw) : [];
-        const localFriends: any[] = localFriendsRaw ? JSON.parse(localFriendsRaw) : [];
-        const globalFriends: any[] = globalFriendsRaw ? JSON.parse(globalFriendsRaw) : [];
+          const [incoming, friendsList] = await Promise.all([
+            getIncomingFriendRequests(uid, profile?.accountId),
+            getUserFriends(uid, profile?.accountId),
+          ]);
 
-        const friendAccountIds = new Set([
-          ...localFriends.map((f: any) => f.accountId),
-          ...globalFriends
-            .filter((f: any) => f.users?.includes(uid))
-            .map((f: any) => (f.userA?.uid === uid ? f.userB?.accountId : f.userA?.accountId)),
-        ]);
+          const hasReq = incoming.length > reqViewed;
+          const hasFr = friendsList.length > frViewed;
 
-        const validIncoming = globalReqs.filter(
-          (r: any) =>
-            (r.toUid === uid || (profile?.accountId && r.toAccountId === profile.accountId)) &&
-            r.status === "pending" &&
-            !friendAccountIds.has(r.fromAccountId),
-        );
-
-        const totalFriendsCount = Math.max(localFriends.length, friendAccountIds.size);
-        const hasReq = validIncoming.length > reqViewed;
-        const hasFr = totalFriendsCount > frViewed;
-        setHasFriendBadge(hasReq || hasFr);
-      } catch {
-        // ignore
+          if (!isCancelled) {
+            setHasFriendBadge(hasReq || hasFr);
+          }
+        } catch {
+          // ignore
+        }
+      } else {
+        if (!isCancelled) {
+          setHasFriendBadge(false);
+        }
       }
     };
 
     checkBadges();
     const unsub = subscribeStudyTimer(checkBadges);
-    const interval = setInterval(checkBadges, 2000);
+    const interval = setInterval(checkBadges, 3000);
     return () => {
+      isCancelled = true;
       unsub();
       clearInterval(interval);
     };
-  }, [uid, location.pathname]);
+  }, [uid, profile?.accountId, location.pathname]);
 
   if (
     location.pathname === "/login" ||

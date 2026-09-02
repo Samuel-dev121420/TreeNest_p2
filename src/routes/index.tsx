@@ -239,7 +239,7 @@ function HomePage() {
       <h1 className="sr-only">TreeNest — Home</h1>
 
       {/* Ambient Nature Effects (Interactive Fireflies & Drifting Leaves) */}
-      <AmbientNatureEffects count={24} />
+      <AmbientNatureEffects count={24} paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip} />
 
       {/* Scene latar: langit gradien, bukit, treeline, awan, burung */}
       <SceneBackground />

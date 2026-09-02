@@ -387,6 +387,7 @@ function FriendClubPage() {
               onAccept={handleAcceptRequest}
               onReject={handleRejectRequest}
               onCancel={handleCancelSent}
+              onViewProfile={setViewingAccountId}
             />
           )}
 
@@ -711,12 +712,14 @@ function RequestsPanel({
   onAccept,
   onReject,
   onCancel,
+  onViewProfile,
 }: {
   pendingIn: FriendRequest[];
   pendingOut: SentRequest[];
   onAccept: (r: FriendRequest) => void;
   onReject: (id: string) => void;
   onCancel: (id: string) => void;
+  onViewProfile: (accountId: string) => void;
 }) {
   return (
     <div className="space-y-8">
@@ -737,30 +740,45 @@ function RequestsPanel({
             {pendingIn.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
+                onClick={() => onViewProfile(r.from.accountId)}
+                className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
               >
-                <Avatar
-                  initials={r.from.initials}
-                  hue={r.from.hue}
-                  avatarUrl={r.from.avatarUrl}
-                  size="md"
-                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewProfile(r.from.accountId);
+                  }}
+                  className="shrink-0 cursor-pointer"
+                  title="Lihat profil"
+                >
+                  <Avatar
+                    initials={r.from.initials}
+                    hue={r.from.hue}
+                    avatarUrl={r.from.avatarUrl}
+                    size="md"
+                  />
+                </button>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{r.from.name}</p>
+                  <p className="truncate text-sm font-bold text-foreground group-hover:underline">
+                    {r.from.name}
+                  </p>
                   <p className="text-xs text-muted-foreground">{r.from.accountId}</p>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <button
+                    type="button"
                     onClick={() => onAccept(r)}
                     aria-label="Terima permintaan"
-                    className="flex items-center gap-1 rounded-xl bg-leaf px-3 py-2 text-xs font-bold text-white shadow-soft transition-colors hover:bg-leaf/90"
+                    className="flex items-center gap-1 rounded-xl bg-leaf px-3 py-2 text-xs font-bold text-white shadow-soft transition-colors hover:bg-leaf/90 cursor-pointer active:scale-95"
                   >
                     <Check className="size-3.5" /> Terima
                   </button>
                   <button
+                    type="button"
                     onClick={() => onReject(r.id)}
                     aria-label="Tolak permintaan"
-                    className="flex items-center gap-1 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="flex items-center gap-1 rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer active:scale-95"
                   >
                     <X className="size-3.5" /> Tolak
                   </button>
@@ -788,19 +806,35 @@ function RequestsPanel({
             {pendingOut.map((s) => (
               <div
                 key={s.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
+                onClick={() => onViewProfile(s.to.accountId)}
+                className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
               >
-                <Avatar initials={s.to.initials} hue={s.to.hue} avatarUrl={s.to.avatarUrl} size="md" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewProfile(s.to.accountId);
+                  }}
+                  className="shrink-0 cursor-pointer"
+                  title="Lihat profil"
+                >
+                  <Avatar initials={s.to.initials} hue={s.to.hue} avatarUrl={s.to.avatarUrl} size="md" />
+                </button>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-foreground">{s.to.name}</p>
+                  <p className="truncate text-sm font-bold text-foreground group-hover:underline">
+                    {s.to.name}
+                  </p>
                   <p className="text-xs text-muted-foreground">{s.to.accountId} · Menunggu konfirmasi</p>
                 </div>
-                <button
-                  onClick={() => onCancel(s.id)}
-                  className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70"
-                >
-                  <X className="size-4" /> Batalkan
-                </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => onCancel(s.id)}
+                    className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70 cursor-pointer active:scale-95"
+                  >
+                    <X className="size-4" /> Batalkan
+                  </button>
+                </div>
               </div>
             ))}
           </div>

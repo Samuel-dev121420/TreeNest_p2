@@ -54,6 +54,8 @@ export function generateAccountId(): string {
 /* ------------------------------------------------------------------ */
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  if (!uid) return null;
+
   if (!isFirebaseConfigured || !db) {
     const local = localStorage.getItem(`treenest_user_${uid}`);
     if (local) {
@@ -90,11 +92,51 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
         data.level = 20;
         data.exp = 50;
       }
+      // Simpan salinan ke cache lokal agar tidak pernah hilang saat network blip / tab switch
+      try {
+        localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(data));
+      } catch {
+        // ignore
+      }
       return data;
+    }
+
+    // Jika document belum ada di Firestore, periksa cache lokal sebelum return null
+    const local = localStorage.getItem(`treenest_user_${uid}`);
+    if (local) {
+      try {
+        const cached = JSON.parse(local) as UserProfile;
+        if (cached.email && isAdminEmail(cached.email) && cached.role !== "admin") {
+          cached.role = "admin";
+        }
+        if (cached.role === "admin") {
+          cached.level = 20;
+          cached.exp = 50;
+        }
+        return cached;
+      } catch {
+        // ignore
+      }
     }
     return null;
   } catch (err) {
-    console.error("Error fetching user profile:", err);
+    console.warn("Network / Firestore issue fetching user profile, using local cache fallback:", err);
+    const local = localStorage.getItem(`treenest_user_${uid}`);
+    if (local) {
+      try {
+        const cached = JSON.parse(local) as UserProfile;
+        if (cached.email && isAdminEmail(cached.email) && cached.role !== "admin") {
+          cached.role = "admin";
+        }
+        if (cached.role === "admin") {
+          cached.level = 20;
+          cached.exp = 50;
+        }
+        return cached;
+      } catch {
+        // ignore
+      }
+    }
     return null;
   }
 }
@@ -113,9 +155,58 @@ export async function createUserProfile(
   email: string,
   role: UserRole = "user",
 ): Promise<UserProfile> {
-  // Auto-assign admin role berdasarkan VITE_ADMIN_EMAIL
   const resolvedRole: UserRole = isAdminEmail(email) ? "admin" : role;
-  const accountId = generateAccountId();
+
+  // 1. CEK DULU apakah profil untuk UID ini sudah ada di Firestore atau cache lokal!
+  // JANGAN PERNAH menimpa data pengguna yang sudah ada!
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        const existing = snap.data() as UserProfile;
+        if (isAdminEmail(existing.email || email) && existing.role !== "admin") {
+          existing.role = "admin";
+          existing.level = 20;
+          existing.exp = 50;
+          await updateDoc(userRef, { role: "admin", level: 20, exp: 50 }).catch(() => {});
+        }
+        try {
+          localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(existing));
+        } catch {}
+        return existing;
+      }
+    } catch (err) {
+      console.warn("Could not check existing profile during createUserProfile:", err);
+      const local = localStorage.getItem(`treenest_user_${uid}`);
+      if (local) {
+        try {
+          const cached = JSON.parse(local) as UserProfile;
+          return cached;
+        } catch {}
+      }
+    }
+  } else {
+    const local = localStorage.getItem(`treenest_user_${uid}`);
+    if (local) {
+      try {
+        const existing = JSON.parse(local) as UserProfile;
+        return existing;
+      } catch {}
+    }
+  }
+
+  // Cek apakah ada cache lokal sebelumnya yang menyimpan accountId asli user
+  let existingAccountId = "";
+  try {
+    const local = localStorage.getItem(`treenest_user_${uid}`);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (parsed.accountId) existingAccountId = parsed.accountId;
+    }
+  } catch {}
+
+  const accountId = existingAccountId || generateAccountId();
   const initials = username.slice(0, 2).toUpperCase();
   const hue = Math.floor(Math.random() * 360);
   const todayStr = getTodayDateString();
@@ -140,16 +231,17 @@ export async function createUserProfile(
     featuredFriends: [],
   };
 
-  if (!isFirebaseConfigured || !db) {
-    localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(profile));
-    return profile;
-  }
-
   try {
-    const userRef = doc(db, "users", uid);
-    await setDoc(userRef, { ...profile, createdAt: Date.now() });
-  } catch (err) {
-    console.error("Error creating user profile in Firestore:", err);
+    localStorage.setItem(`treenest_user_${uid}`, JSON.stringify(profile));
+  } catch {}
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", uid);
+      await setDoc(userRef, { ...profile, createdAt: Date.now() });
+    } catch (err) {
+      console.error("Error creating user profile in Firestore:", err);
+    }
   }
 
   return profile;
@@ -378,24 +470,27 @@ export async function searchUserByAccountId(accountId: string): Promise<UserProf
   if (!accountId) return null;
   const cleanId = accountId.trim();
 
-  if (!isFirebaseConfigured || !db) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("treenest_user_")) {
-        try {
-          const user: UserProfile = JSON.parse(localStorage.getItem(key) || "");
-          if (
-            user.accountId?.toUpperCase() === cleanId.toUpperCase() ||
-            user.uid === cleanId ||
-            user.username?.toUpperCase() === cleanId.toUpperCase()
-          ) {
-            return user;
-          }
-        } catch {
-          // ignore
+  // Cek cache lokal terlebih dahulu jika ada
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith("treenest_user_")) {
+      try {
+        const u: UserProfile = JSON.parse(localStorage.getItem(key) || "");
+        if (
+          u.accountId?.toUpperCase() === cleanId.toUpperCase() ||
+          u.uid === cleanId ||
+          u.username?.toUpperCase() === cleanId.toUpperCase() ||
+          (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+        ) {
+          if (!isFirebaseConfigured || !db) return u;
         }
+      } catch {
+        // ignore
       }
     }
+  }
+
+  if (!isFirebaseConfigured || !db) {
     return null;
   }
 
@@ -407,7 +502,11 @@ export async function searchUserByAccountId(accountId: string): Promise<UserProf
     );
     let snap = await getDocs(q);
     if (!snap.empty && snap.docs[0]) {
-      return snap.docs[0].data() as UserProfile;
+      const data = snap.docs[0].data() as UserProfile;
+      try {
+        localStorage.setItem(`treenest_user_${data.uid}`, JSON.stringify(data));
+      } catch {}
+      return data;
     }
 
     // 2. Cari berdasarkan accountId persis seperti input jika beda
@@ -415,21 +514,60 @@ export async function searchUserByAccountId(accountId: string): Promise<UserProf
       q = query(collection(db, "users"), where("accountId", "==", cleanId));
       snap = await getDocs(q);
       if (!snap.empty && snap.docs[0]) {
-        return snap.docs[0].data() as UserProfile;
+        const data = snap.docs[0].data() as UserProfile;
+        try {
+          localStorage.setItem(`treenest_user_${data.uid}`, JSON.stringify(data));
+        } catch {}
+        return data;
       }
     }
 
-    // 3. Fallback: Cari langsung menggunakan UID (getUserProfile)
+    // 3. Cari berdasarkan Email jika input berupa email
+    if (cleanId.includes("@")) {
+      q = query(collection(db, "users"), where("email", "==", cleanId.toLowerCase()));
+      snap = await getDocs(q);
+      if (!snap.empty && snap.docs[0]) {
+        const data = snap.docs[0].data() as UserProfile;
+        try {
+          localStorage.setItem(`treenest_user_${data.uid}`, JSON.stringify(data));
+        } catch {}
+        return data;
+      }
+    }
+
+    // 4. Fallback: Cari langsung menggunakan UID (getUserProfile)
     const profileByUid = await getUserProfile(cleanId);
     if (profileByUid) {
       return profileByUid;
     }
 
-    // 4. Fallback: Cari berdasarkan username
+    // 5. Fallback: Cari berdasarkan username
     q = query(collection(db, "users"), where("username", "==", cleanId));
     snap = await getDocs(q);
     if (!snap.empty && snap.docs[0]) {
-      return snap.docs[0].data() as UserProfile;
+      const data = snap.docs[0].data() as UserProfile;
+      try {
+        localStorage.setItem(`treenest_user_${data.uid}`, JSON.stringify(data));
+      } catch {}
+      return data;
+    }
+
+    // 6. Terakhir: periksa kembali seluruh data user di localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("treenest_user_")) {
+        try {
+          const u: UserProfile = JSON.parse(localStorage.getItem(key) || "");
+          if (
+            u.accountId?.toUpperCase() === cleanId.toUpperCase() ||
+            u.uid === cleanId ||
+            u.username?.toUpperCase() === cleanId.toUpperCase() ||
+            (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+          ) {
+            return u;
+          }
+        } catch {}
+      }
     }
 
     return null;
@@ -699,17 +837,16 @@ export async function getIncomingFriendRequests(
 
   // 2. Baca dari Firestore jika ada
   try {
-    const q = query(
+    const qUid = query(
       collection(db, FRIEND_REQUESTS_COLLECTION),
       where("toUid", "==", uid),
       where("status", "==", "pending"),
     );
-    const snap = await getDocs(q);
-    snap.docs.forEach((d) => {
+    const snapUid = await getDocs(qUid);
+    snapUid.docs.forEach((d) => {
       const data = d.data() as StoredFriendRequest;
       // Jangan masukkan jika sudah berteman resmi
       if (friendAccountIds.has(data.fromAccountId) || friendUids.has(data.fromUid)) {
-        // Hapus request usang di Firestore
         deleteDoc(d.ref).catch(() => {});
         return;
       }
@@ -728,6 +865,36 @@ export async function getIncomingFriendRequests(
         status: data.status,
       });
     });
+
+    if (accountId) {
+      const qAcc = query(
+        collection(db, FRIEND_REQUESTS_COLLECTION),
+        where("toAccountId", "==", accountId),
+        where("status", "==", "pending"),
+      );
+      const snapAcc = await getDocs(qAcc);
+      snapAcc.docs.forEach((d) => {
+        const data = d.data() as StoredFriendRequest;
+        if (friendAccountIds.has(data.fromAccountId) || friendUids.has(data.fromUid)) {
+          deleteDoc(d.ref).catch(() => {});
+          return;
+        }
+
+        map.set(d.id, {
+          id: d.id,
+          from: {
+            uid: data.fromUid,
+            accountId: data.fromAccountId,
+            name: data.fromName,
+            initials: data.fromInitials,
+            hue: data.fromHue,
+            avatarUrl: data.fromAvatarUrl || undefined,
+          },
+          createdAt: data.createdAt,
+          status: data.status,
+        });
+      });
+    }
   } catch (err) {
     console.warn("Firestore incoming requests check warning:", err);
   }

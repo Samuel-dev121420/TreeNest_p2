@@ -14,10 +14,12 @@ interface Particle {
   spinSpeed: number;
 }
 
-export function AmbientNatureEffects({ count = 22 }: { count?: number }) {
+export function AmbientNatureEffects({ count = 22, paused = false }: { count?: number; paused?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (paused) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 

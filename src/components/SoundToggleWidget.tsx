@@ -31,16 +31,16 @@ export function SoundToggleWidget() {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={toggleSound}
-      className="fixed left-4 top-30 z-40 flex items-center gap-1.5 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-colors hover:border-white cursor-pointer select-none"
+      className="fixed right-4 bottom-5 z-40 flex items-center gap-2 rounded-2xl border border-primary/40 bg-card/90 dark:bg-card/95 px-3.5 py-2 text-xs font-bold text-foreground shadow-float backdrop-blur-md transition-all hover:border-primary cursor-pointer select-none"
       title={soundActive ? "Nonaktifkan Efek Suara (Mute)" : "Aktifkan Efek Suara (Unmute)"}
       aria-label="Toggle Sound FX"
     >
       {soundActive ? (
-        <Volume2 className="size-3.5 text-primary" />
+        <Volume2 className="size-3.5 text-primary shrink-0" />
       ) : (
-        <VolumeX className="size-3.5 text-muted-foreground" />
+        <VolumeX className="size-3.5 text-muted-foreground shrink-0" />
       )}
-      <span className="text-[11px]">{soundActive ? "Suara Aktif" : "Suara Senyap"}</span>
+      <span className="text-[11px] font-bold">{soundActive ? "Suara Aktif" : "Suara Senyap"}</span>
     </motion.button>
   );
 }
