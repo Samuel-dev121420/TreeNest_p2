@@ -63,17 +63,16 @@ export function AmbientNatureEffects({ count = 22, paused = false }: { count?: n
     // Initialize particles
     const particles: Particle[] = [];
     for (let i = 0; i < count; i++) {
-      const isFirefly = Math.random() > 0.45;
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.6 + (isFirefly ? 0 : 0.4),
-        vy: (Math.random() - 0.5) * 0.5 + (isFirefly ? 0 : 0.3),
-        size: isFirefly ? Math.random() * 2.5 + 1.5 : Math.random() * 4 + 3,
+        vx: (Math.random() - 0.5) * 0.6 + 0.4,
+        vy: (Math.random() - 0.5) * 0.5 + 0.3,
+        size: Math.random() * 4 + 3,
         opacity: Math.random() * 0.7 + 0.2,
         fadeSpeed: (Math.random() * 0.01 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
-        hue: isFirefly ? Math.random() * 30 + 80 : Math.random() * 40 + 110, // gold/green
-        isFirefly,
+        hue: Math.random() * 40 + 110, // green
+        isFirefly: false,
         angle: Math.random() * Math.PI * 2,
         spinSpeed: (Math.random() - 0.5) * 0.03,
       });
@@ -117,22 +116,12 @@ export function AmbientNatureEffects({ count = 22, paused = false }: { count?: n
         ctx.translate(p.x, p.y);
         ctx.globalAlpha = Math.max(0, Math.min(1, p.opacity));
 
-        if (p.isFirefly) {
-          // Firefly with soft glowing aura
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = `hsl(${p.hue}, 95%, 70%)`;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = `hsl(${p.hue}, 100%, 65%)`;
-          ctx.fill();
-        } else {
-          // Drifting leaf petal
-          ctx.rotate(p.angle);
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.size * 1.6, p.size * 0.8, 0, 0, Math.PI * 2);
-          ctx.fillStyle = `hsl(${p.hue}, 60%, 65%)`;
-          ctx.fill();
-        }
+        // Drifting leaf petal
+        ctx.rotate(p.angle);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.size * 1.6, p.size * 0.8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = `hsl(${p.hue}, 60%, 65%)`;
+        ctx.fill();
 
         ctx.restore();
       });
@@ -149,7 +138,7 @@ export function AmbientNatureEffects({ count = 22, paused = false }: { count?: n
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("mouseleave", handlePointerLeave);
     };
-  }, [count]);
+  }, [count, paused]);
 
   return (
     <canvas

@@ -172,7 +172,7 @@ export function TreehouseModal({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
+        <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-amber-500/30 bg-card shadow-float animate-in zoom-in-95 duration-200">
           {/* Header Rumah Pohon */}
           <div className="relative flex items-center justify-between border-b border-border/70 bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent px-5 py-4">
             <div className="flex items-center gap-3">
@@ -207,14 +207,14 @@ export function TreehouseModal({
             <div className="overflow-hidden rounded-3xl border-2 border-amber-600/30 bg-neutral-950 shadow-float">
               <div className="flex items-center justify-between border-b border-amber-900/40 bg-neutral-900 px-4 py-2.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Film className="size-4 text-amber-400 shrink-0" />
+                  
                   <span className="text-xs font-bold text-amber-200 truncate">
-                    {featuredVideo ? `Pameran Video: ${featuredVideo.title}` : "Layar Pameran Rumah Pohon"}
+                    {featuredVideo ? `${featuredVideo.title}` : "Layar Pameran Rumah Pohon"}
                   </span>
                 </div>
                 {featuredVideo && (
                   <span className="flex items-center gap-1 shrink-0 rounded-md bg-leaf/20 px-2 py-0.5 text-[10px] font-semibold text-leaf">
-                    <CheckCircle2 className="size-3" /> Featured {isTikTok ? "TikTok" : yt ? "YouTube" : "Video"}
+                    Featured {isTikTok ? "TikTok" : yt ? "YouTube" : "Video"}
                   </span>
                 )}
               </div>
@@ -416,7 +416,7 @@ export function TreehouseModal({
             if (e.target === e.currentTarget) setShowAllViewersModal(false);
           }}
         >
-          <div className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float animate-in zoom-in-95 duration-200">
+          <div className="relative flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-float animate-in zoom-in-95 duration-200">
               {/* Header Modal */}
               <div className="flex items-center justify-between border-b border-border/70 bg-secondary/30 px-5 py-4">
                 <div className="flex items-center gap-2.5">

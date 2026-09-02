@@ -514,7 +514,7 @@ function ReminderPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -584,7 +584,7 @@ function ReminderPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">

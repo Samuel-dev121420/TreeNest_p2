@@ -1612,7 +1612,7 @@ export async function getAllGalleryVideosAdmin(
     const snap = await getDocs(q);
     let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GalleryVideo);
     if (statusFilter === "history") {
-      list = list.filter((v) => v.status === "approved" || v.status === "rejected");
+      list = list.filter((v) => (v.status === "approved" || v.status === "rejected") && !v.adminDeletedHistory);
     } else if (statusFilter === "approved") {
       list = list.filter((v) => v.status === "approved" && !v.userDeleted);
     } else if (statusFilter === "pending") {
@@ -1625,39 +1625,20 @@ export async function getAllGalleryVideosAdmin(
   }
 }
 
-/** Hapus video permanen oleh Admin (hard delete dari database dan storage) */
+/** Hapus riwayat video dari pandangan Admin (soft delete log) tanpa menghapus video asli pengguna */
 export async function deleteGalleryVideoAdmin(videoId: string): Promise<void> {
   if (isFirebaseConfigured && db) {
     try {
-      await deleteDoc(doc(db, GALLERY_COLLECTION, videoId));
+      await updateDoc(doc(db, GALLERY_COLLECTION, videoId), {
+        adminDeletedHistory: true
+      });
     } catch (err) {
-      console.error("Error hard deleting gallery video from Firestore by admin:", err);
+      console.error("Error soft deleting gallery video from admin history:", err);
     }
   }
 
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("treenest_gallery_videos_")) {
-        const local = localStorage.getItem(key);
-        if (local) {
-          const list: GalleryVideo[] = JSON.parse(local);
-          const filtered = list.filter((v) => v.id !== videoId);
-          if (filtered.length !== list.length) {
-            localStorage.setItem(key, JSON.stringify(filtered));
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Error clearing video from localStorage:", err);
-  }
-
-  try {
-    await deleteVideoBlob(videoId);
-  } catch (err) {
-    console.error("Error deleting video blob:", err);
-  }
+  // Jangan menghapus dari localStorage atau blob storage,
+  // karena video (jika statusnya 'approved') masih aktif dan dibutuhkan di TreeGallery pengguna.
 }
 
 /** Hapus SELURUH riwayat video (status: approved / rejected) oleh Admin */

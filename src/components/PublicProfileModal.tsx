@@ -166,7 +166,7 @@ export function PublicProfileModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 12 }}
         transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-        className="relative w-full max-w-sm rounded-3xl border border-border/80 bg-card shadow-float overflow-hidden"
+        className="relative w-full max-w-md rounded-3xl border border-border/80 bg-card shadow-float overflow-hidden"
       >
         {/* Header banner */}
         <div className="h-16 bg-gradient-leaf" />

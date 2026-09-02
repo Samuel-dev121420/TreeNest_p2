@@ -73,6 +73,7 @@ export type GalleryVideo = {
   rejectedAt?: number | undefined;
   userDeleted?: boolean | undefined;
   userDeletedAt?: number | undefined;
+  adminDeletedHistory?: boolean | undefined;
 };
 
 export const MAX_VIDEOS = 999999;

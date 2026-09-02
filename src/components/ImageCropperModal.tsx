@@ -177,7 +177,7 @@ export function ImageCropperModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 12 }}
         transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-float"
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-float"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border/60">

@@ -55,9 +55,10 @@ function AdminDashboardPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [previewVideo, setPreviewVideo] = useState<GalleryVideo | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
 
-  useScrollLock(Boolean(rejectingId || approvingId || previewVideo || showClearHistoryModal));
+  useScrollLock(Boolean(rejectingId || approvingId || previewVideo || showClearHistoryModal || deletingId));
 
   useEffect(() => {
     loadVideos(filter);
@@ -128,9 +129,10 @@ function AdminDashboardPage() {
     loadVideos();
   }
 
-  async function handleDelete(videoId: string) {
-    if (!confirm("Hapus video ini secara permanen dari server?")) return;
-    await deleteGalleryVideoAdmin(videoId);
+  async function confirmDelete() {
+    if (!deletingId) return;
+    await deleteGalleryVideoAdmin(deletingId);
+    setDeletingId(null);
     loadVideos();
   }
 
@@ -318,7 +320,7 @@ function AdminDashboardPage() {
 
                     {/* Tombol Aksi Moderasi - HANYA untuk status pending */}
                     <div className="flex items-center gap-2 self-end sm:self-center">
-                      {video.status === "pending" && (
+                      {video.status === "pending" ? (
                         <>
                           <button
                             onClick={() => {
@@ -341,14 +343,15 @@ function AdminDashboardPage() {
                             Tolak
                           </button>
                         </>
+                      ) : (
+                        <button
+                          onClick={() => setDeletingId(video.id)}
+                          title="Hapus Video dari Riwayat"
+                          className="inline-flex items-center justify-center rounded-2xl border border-border p-2 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       )}
-                      <button
-                        onClick={() => handleDelete(video.id)}
-                        title="Hapus Video"
-                        className="inline-flex items-center justify-center rounded-2xl border border-border p-2 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </div>
                   </div>
                 );
@@ -360,7 +363,7 @@ function AdminDashboardPage() {
         {/* Modal Dialog Approve (Opsional Comment) */}
         {approvingId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-xl">
+            <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 shadow-xl">
               <h3 className="text-lg font-bold text-foreground">Komentar Persetujuan (Opsional)</h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 Tuliskan catatan atau masukan positif untuk video yang disetujui (opsional).
@@ -399,7 +402,7 @@ function AdminDashboardPage() {
         {/* Modal Dialog Reject */}
         {rejectingId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-xl">
+            <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 shadow-xl">
               <h3 className="text-lg font-bold text-foreground">Alasan Penolakan Video</h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 Tuliskan alasan mengapa video ini ditolak agar pemilik video mengetahuinya.
@@ -456,7 +459,36 @@ function AdminDashboardPage() {
           />
         )}
 
-        {/* Modal Konfirmasi Hapus Semua Riwayat Video */}
+        {/* Modal Dialog Confirm Single Delete */}
+        {deletingId && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float text-center space-y-4">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                <Trash2 className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Hapus Riwayat Video?</h3>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground transition-colors hover:bg-destructive/90 cursor-pointer"
+                >
+                  Ya, Hapus
+                </button>
+                <button
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 rounded-xl bg-secondary py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary/70 cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Dialog Confirm Clear History */}
         {showClearHistoryModal && (
           <div
             onClick={() => setShowClearHistoryModal(false)}
@@ -464,16 +496,13 @@ function AdminDashboardPage() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
             >
               <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
                 <AlertTriangle className="size-6" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-foreground">Hapus Semua Riwayat Video?</h3>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Apakah Anda yakin ingin menghapus <strong>SELURUH riwayat video</strong> (disetujui & ditolak) secara permanen dari server? Tindakan ini tidak dapat dibatalkan.
-                </p>
               </div>
 
               <div className="flex gap-2 pt-2">

@@ -118,6 +118,7 @@ function TreeGalleryPage() {
   const [viewCommentVideo, setViewCommentVideo] = useState<GalleryVideo | null>(null);
   const [selectedUploaderAccountId, setSelectedUploaderAccountId] = useState<string | null>(null);
   const [deleteTargetVideo, setDeleteTargetVideo] = useState<GalleryVideo | null>(null);
+  const [adminDeletingId, setAdminDeletingId] = useState<string | null>(null);
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
 
   const isAnyModalOpen = Boolean(
@@ -128,6 +129,7 @@ function TreeGalleryPage() {
     viewCommentVideo ||
     selectedUploaderAccountId ||
     deleteTargetVideo ||
+    adminDeletingId ||
     showClearHistoryModal
   );
   useScrollLock(isAnyModalOpen);
@@ -418,11 +420,11 @@ function TreeGalleryPage() {
     await loadData();
   }
 
-  async function handleAdminDelete(videoId: string) {
-    if (confirm("Apakah Anda yakin ingin menghapus video ini dari galeri?")) {
-      await deleteGalleryVideoAdmin(videoId);
-      await loadData();
-    }
+  async function confirmAdminDelete() {
+    if (!adminDeletingId) return;
+    await deleteGalleryVideoAdmin(adminDeletingId);
+    setAdminDeletingId(null);
+    await loadData();
   }
 
   async function handleClearAllHistory() {
@@ -1016,9 +1018,9 @@ function TreeGalleryPage() {
                       )}
                     </div>
 
-                    {/* Tombol Aksi — HANYA tampil jika video masih pending */}
+                    {/* Tombol Aksi Moderasi */}
                     <div className="flex shrink-0 items-center gap-1.5">
-                      {v.status === "pending" && (
+                      {v.status === "pending" ? (
                         <>
                           <button
                             onClick={() => {
@@ -1039,14 +1041,15 @@ function TreeGalleryPage() {
                             <X className="size-3.5" /> Tolak
                           </button>
                         </>
+                      ) : (
+                        <button
+                          onClick={() => setAdminDeletingId(v.id)}
+                          title="Hapus Video dari Riwayat"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
                       )}
-                      <button
-                        onClick={() => handleAdminDelete(v.id)}
-                        title="Hapus dari Database"
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
                     </div>
                   </div>
                 );
@@ -1064,7 +1067,7 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float text-center space-y-4"
+            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float text-center space-y-4"
           >
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
               <AlertTriangle className="size-6" />
@@ -1106,7 +1109,7 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float"
+            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float"
           >
             <p className="mb-5 text-base font-bold text-foreground text-center">Komentar Persetujuan (Opsional)</p>
             <textarea
@@ -1142,7 +1145,7 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/70 bg-card p-6 shadow-float"
+            className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float"
           >
             <p className="mb-3 text-base font-bold text-foreground">Alasan Penolakan Video</p>
             <textarea
@@ -1178,7 +1181,7 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md sm:max-w-lg overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-lg sm:max-w-xl overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
           >
             <div>
               <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
@@ -1250,16 +1253,13 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
           >
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
               <Trash2 className="size-6" />
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">Hapus Semua Riwayat Video?</h3>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                Tindakan ini akan menghapus <strong>seluruh riwayat video</strong> (disetujui & ditolak) secara permanen dari database. Tindakan ini tidak dapat dibatalkan.
-              </p>
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -1280,6 +1280,41 @@ function TreeGalleryPage() {
         </div>
       )}
 
+      {/* ── MODAL KONFIRMASI HAPUS RIWAYAT VIDEO (Admin) ── */}
+      {adminDeletingId && (
+        <div
+          onClick={() => setAdminDeletingId(null)}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+              <Trash2 className="size-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Hapus Riwayat Video?</h3>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={confirmAdminDelete}
+                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
+              >
+                Ya, Hapus
+              </button>
+              <button
+                onClick={() => setAdminDeletingId(null)}
+                className="flex-1 rounded-xl border border-border/80 bg-secondary/80 text-secondary-foreground dark:bg-secondary dark:text-foreground py-2.5 text-xs font-bold transition-colors hover:bg-secondary/60 cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL KONFIRMASI HAPUS VIDEO CUSTOM (Light & Dark Mode) ── */}
       {deleteTargetVideo && (
         <div
@@ -1288,7 +1323,7 @@ function TreeGalleryPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
           >
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
               <Trash2 className="size-6" />

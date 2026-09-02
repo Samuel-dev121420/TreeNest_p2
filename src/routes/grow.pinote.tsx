@@ -562,7 +562,7 @@ export function PiNotePage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
               <h3 className="text-base font-bold text-foreground">Buat Folder Baru</h3>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -617,7 +617,7 @@ export function PiNotePage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
               <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
               <input
@@ -668,7 +668,7 @@ export function PiNotePage() {
               exit={{ opacity: 0, scale: 0.94, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="flex h-full max-h-[85vh] w-full max-w-2xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+              className="flex h-full max-h-[85vh] w-full max-w-4xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -739,7 +739,7 @@ export function PiNotePage() {
               exit={{ opacity: 0, scale: 0.94, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="flex h-full max-h-[85vh] w-full max-w-3xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
+              className="flex h-full max-h-[85vh] w-full max-w-4xl flex-col rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2 min-w-0">
@@ -819,7 +819,7 @@ export function PiNotePage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center gap-3 border-b border-border/60 pb-3">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">

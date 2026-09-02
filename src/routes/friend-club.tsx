@@ -420,7 +420,7 @@ function FriendClubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-              className="w-full max-w-sm rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4"
+              className="w-full max-w-md rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
@@ -472,7 +472,7 @@ function FriendClubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-              className="w-full max-w-sm rounded-3xl border border-leaf/30 bg-card p-6 shadow-float text-center space-y-4"
+              className="w-full max-w-md rounded-3xl border border-leaf/30 bg-card p-6 shadow-float text-center space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex size-14 items-center justify-center rounded-3xl bg-leaf/15 text-leaf mx-auto shadow-inner">

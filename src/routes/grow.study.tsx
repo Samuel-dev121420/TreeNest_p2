@@ -174,8 +174,8 @@ function StudyPage() {
             {finished ? (
               <>
                 <Sparkles className="mx-auto size-12 text-primary animate-bounce" />
-                <p className="mt-2 text-2xl font-extrabold text-foreground">Sesi Selesai! ✨</p>
-                <p className="mt-1 text-sm text-primary font-bold">+{selectedMinutes} menit fokus tercatat</p>
+                <p className="mt-2 text-2xl font-extrabold text-foreground">Sesi Selesai!</p>
+                <p className="mt-1 text-sm text-primary font-bold">{selectedMinutes} menit fokus tercatat</p>
               </>
             ) : (
               <>

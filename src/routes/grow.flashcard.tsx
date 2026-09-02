@@ -722,7 +722,7 @@ function FlashcardPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
+              className="w-full max-w-3xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
             >
               {/* Header Modal */}
               <div className="flex items-center justify-between border-b border-border/60 pb-4">
@@ -828,7 +828,7 @@ function FlashcardPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -894,7 +894,7 @@ function FlashcardPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
+              className="w-full max-w-3xl rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-float space-y-5"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-3.5">
                 <div className="flex items-center gap-2">
@@ -991,7 +991,7 @@ function FlashcardPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center gap-3 border-b border-border/60 pb-3">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
@@ -1047,7 +1047,7 @@ function FlashcardPage() {
               exit={{ opacity: 0, scale: 0.93, y: 12 }}
               transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-4"
             >
               <div className="flex items-center gap-3 border-b border-border/60 pb-3">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">

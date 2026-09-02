@@ -143,7 +143,7 @@ function ChangePasswordModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
+      <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary mx-auto">
           <KeyRound className="size-6" />
         </div>
@@ -244,7 +244,7 @@ function DeleteAccountModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-3xl border border-destructive/40 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
+      <div className="w-full max-w-md rounded-3xl border border-destructive/40 bg-card p-6 shadow-float animate-in zoom-in-95 duration-150">
         {step === "warning" && (
           <>
             <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/15 mx-auto text-destructive ring-4 ring-destructive/10">

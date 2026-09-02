@@ -278,7 +278,7 @@ function AllVideosPage() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md sm:max-w-lg overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+              className="w-full max-w-lg sm:max-w-xl overflow-hidden rounded-xl border border-border/80 bg-card p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
             >
               <div>
                 <h3 className="text-base font-bold text-foreground">Catatan Moderasi Admin</h3>
@@ -350,7 +350,7 @@ function AllVideosPage() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
+              className="w-full max-w-md rounded-3xl border border-border/80 bg-card text-card-foreground p-6 shadow-float text-center space-y-4 animate-in zoom-in-95 duration-150"
             >
               <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
                 <Trash2 className="size-6" />
