@@ -41,10 +41,10 @@ export function GlobalStudyTimerBar() {
   const isCompleted = timerSnap.status === "completed";
 
   return (
-    <div className="fixed top-3 inset-x-0 z-40 flex justify-center pointer-events-none px-4">
+    <div className="fixed bottom-5 left-4 z-40 flex items-center pointer-events-none">
       <Link
         to="/grow/study"
-        className={`pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2 text-xs font-bold shadow-float backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border animate-in slide-in-from-top-4 ${
+        className={`pointer-events-auto flex items-center gap-2.5 rounded-2xl px-4 py-2 text-xs font-bold shadow-float backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border animate-in slide-in-from-bottom-4 ${
           isCompleted
             ? "border-leaf/50 bg-leaf/90 text-white shadow-leaf/30 animate-bounce"
             : "border-sun/60 bg-card/90 text-foreground dark:bg-card/95 shadow-soft"
@@ -53,7 +53,7 @@ export function GlobalStudyTimerBar() {
         {isCompleted ? (
           <>
             <CheckCircle2 className="size-4 text-white shrink-0 animate-spin" />
-            <span>Timer Berakhir! Klik di sini untuk kembali ke Sesi Belajar</span>
+            <span>Timer Berakhir! Klik untuk ke Sesi Belajar</span>
             <ChevronRight className="size-4 shrink-0" />
           </>
         ) : (

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import tree1Img from "@/assets/tree-1.png";
@@ -14,7 +14,9 @@ import type { Friend } from "@/lib/social";
 import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-service";
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
-import { Sparkles, Home, ChevronRight, X, TreePine } from "lucide-react";
+import { AmbientNatureEffects } from "@/components/AmbientNatureEffects";
+import { playTapPop, playWaterDrop, isSoundEnabled, setSoundEnabled } from "@/lib/sound-fx";
+import { Sparkles, Home, ChevronRight, X, TreePine, Droplet, Volume2, VolumeX, Heart, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
@@ -40,6 +42,15 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+interface TapParticle {
+  id: number;
+  x: number;
+  y: number;
+  emoji: string;
+}
+
+const BURST_EMOJIS = ["🍃", "✨", "💖", "🌸", "🌱", "💧", "⭐", "🌿"];
+
 function HomePage() {
   const { profile: authProfile } = useAuth();
   const { visit: visitAccountId } = Route.useSearch();
@@ -64,6 +75,34 @@ function HomePage() {
   const [showTreeTip, setShowTreeTip] = useState(false);
   const [showTreeBadge, setShowTreeBadge] = useState(true);
   const [selectedFriendAccountId, setSelectedFriendAccountId] = useState<string | null>(null);
+
+  // Sound FX & Interactive Tree States
+  const [soundActive, setSoundActive] = useState(true);
+  const [combo, setCombo] = useState(0);
+  const [comboMessage, setComboMessage] = useState("");
+  const [tapParticles, setTapParticles] = useState<TapParticle[]>([]);
+  const [isWatering, setIsWatering] = useState(false);
+  const [treeJiggle, setTreeJiggle] = useState(0);
+  const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setSoundActive(isSoundEnabled());
+    const handleSfxChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ enabled: boolean }>;
+      if (customEvent.detail) {
+        setSoundActive(customEvent.detail.enabled);
+      }
+    };
+    window.addEventListener("treenest_sfx_toggle", handleSfxChange);
+    return () => window.removeEventListener("treenest_sfx_toggle", handleSfxChange);
+  }, []);
+
+  const toggleSound = () => {
+    const next = !soundActive;
+    setSoundActive(next);
+    setSoundEnabled(next);
+    if (next) playTapPop(0);
+  };
 
   useScrollLock(Boolean(showTreehouse || selectedFriendAccountId || showTreeTip));
 
@@ -133,19 +172,94 @@ function HomePage() {
   const pct = Math.min(100, Math.round((exp / need) * 100));
   const isTreehouseReady = displayLevel >= TREEHOUSE_LEVEL || stage.key === "house_tree";
 
-  // Durasi pop-up teks masuk rumah pohon: muncul 3 detik saat halaman dibuka, lalu fade out
+  // Durasi pop-up teks masuk rumah pohon
   useEffect(() => {
     if (!isTreehouseReady || isVisiting) return;
     setShowTreeBadge(true);
     const timer = setTimeout(() => {
       setShowTreeBadge(false);
-    }, 3000);
+    }, 4000);
     return () => clearTimeout(timer);
   }, [isTreehouseReady, isVisiting]);
+
+  // Handle Interactive Tree Tap
+  const handleTreeTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Trigger squash & stretch jiggle
+    setTreeJiggle((prev) => prev + 1);
+
+    // Audio Pop with scaling pitch
+    const nextCombo = combo + 1;
+    setCombo(nextCombo);
+    playTapPop(Math.min(12, nextCombo));
+
+    // Combo message reaction
+    if (nextCombo >= 20) {
+      setComboMessage("Pohon Penuh Kasih Sayang!");
+    } else if (nextCombo >= 10) {
+      setComboMessage("Pohon Bahagia!");
+    } else if (nextCombo >= 5) {
+      setComboMessage("Mantap!");
+    } else if (nextCombo >= 2) {
+      setComboMessage("Terimakasih!");
+    }
+
+    // Reset combo after 2.2s of inactivity
+    if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+    comboTimerRef.current = setTimeout(() => {
+      setCombo(0);
+      setComboMessage("");
+    }, 2200);
+
+    // Spawn 2 bursting particles at click position
+    const p1: TapParticle = {
+      id: Date.now() + Math.random(),
+      x: clickX + (Math.random() * 20 - 10),
+      y: clickY + (Math.random() * 20 - 10),
+      emoji: BURST_EMOJIS[Math.floor(Math.random() * BURST_EMOJIS.length)] || "🍃",
+    };
+    const p2: TapParticle = {
+      id: Date.now() + 1 + Math.random(),
+      x: clickX + (Math.random() * 30 - 15),
+      y: clickY + (Math.random() * 30 - 15),
+      emoji: BURST_EMOJIS[Math.floor(Math.random() * BURST_EMOJIS.length)] || "✨",
+    };
+
+    setTapParticles((prev) => [...prev.slice(-12), p1, p2]);
+
+    // Clean up particle after animation
+    setTimeout(() => {
+      setTapParticles((prev) => prev.filter((p) => p.id !== p1.id && p.id !== p2.id));
+    }, 900);
+  };
+
+  // Handle Watering Action
+  const handleWaterTree = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isWatering) return;
+    setIsWatering(true);
+    playWaterDrop();
+    setComboMessage("Pohon Terasa Sangat Segar! 💧");
+
+    if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+    comboTimerRef.current = setTimeout(() => {
+      setComboMessage("");
+    }, 3000);
+
+    setTimeout(() => {
+      setIsWatering(false);
+    }, 1800);
+  };
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
       <h1 className="sr-only">TreeNest — Home</h1>
+
+      {/* Ambient Nature Effects (Interactive Fireflies & Drifting Leaves) */}
+      <AmbientNatureEffects count={24} />
 
       {/* Scene latar: langit gradien, bukit, treeline, awan, burung */}
       <SceneBackground />
@@ -163,6 +277,24 @@ function HomePage() {
       <Bird className="top-[17%]" duration={40} delay={-7} />
       <Bird className="top-[28%] scale-75" duration={56} delay={-27} />
 
+      {/* Floating Sound FX Toggle Button — Sejajar rapi di bawah Widget Notifikasi (top-17) dan Tanggal (top-4) */}
+      <motion.button
+        type="button"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={toggleSound}
+        className="fixed left-4 top-30 z-40 flex items-center gap-1.5 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-colors hover:border-white cursor-pointer select-none"
+        title={soundActive ? "Nonaktifkan Efek Suara (Mute)" : "Aktifkan Efek Suara (Unmute)"}
+        aria-label="Toggle Sound FX"
+      >
+        {soundActive ? (
+          <Volume2 className="size-3.5 text-primary" />
+        ) : (
+          <VolumeX className="size-3.5 text-muted-foreground" />
+        )}
+        <span className="text-[11px]">{soundActive ? "Suara Aktif" : "Suara Senyap"}</span>
+      </motion.button>
+
       {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
       {!isVisiting && (
         <motion.div
@@ -170,6 +302,7 @@ function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.03, y: -2 }}
           whileTap={{ scale: 0.98 }}
+          onClick={() => setShowTreeTip(true)}
           transition={{ type: "spring", stiffness: 380, damping: 24 }}
           className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 hover:border-white cursor-pointer select-none"
         >
@@ -243,21 +376,29 @@ function HomePage() {
 
       {/* Pohon utama — Berdiri menancap di rumput (bottom-[20%]) di atas BottomNav tanpa bentrok */}
       <div className="absolute inset-x-0 bottom-[17%] flex h-[48%] items-end justify-center z-10">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
-          transition={{ type: "spring", stiffness: 350, damping: 20 }}
-          onClick={() => {
-            if (isVisiting && isTreehouseReady) {
-              setShowTreehouse(true);
-            } else if (!isVisiting) {
-              isTreehouseReady ? setShowTreehouse(true) : setShowTreeTip(true);
-            }
-          }}
-          title={isTreehouseReady ? "Klik untuk Masuk ke Rumah Pohon" : `Pohon Level ${displayLevel}`}
+        <div
+          onClick={handleTreeTap}
+          title="Ketuk untuk merawat pohon dan merasakan sentuhan kasih!"
           className="group relative flex h-full items-end justify-center cursor-pointer select-none"
         >
-          {/* Tombol Floating Masuk Rumah Pohon: 100% seragam dengan Notifikasi & EXP card */}
+          {/* Combo & Floating Reaction Badge */}
+          <AnimatePresence>
+            {comboMessage && (
+              <motion.div
+                key={comboMessage + combo}
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: -16, scale: 1 }}
+                exit={{ opacity: 0, y: -28, scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                className="absolute -top-14 left-1/2 -translate-x-1/2 z-30 pointer-events-none whitespace-nowrap rounded-full border border-primary/50 bg-card/90 px-3.5 py-1 text-xs font-bold text-primary shadow-float backdrop-blur-md dark:border-primary/60 dark:bg-emerald-950/90 dark:text-emerald-300"
+              >
+                {combo > 1 && <span className="mr-1 text-amber-500 font-extrabold">{combo}x</span>}
+                {comboMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Tombol Floating Masuk Rumah Pohon */}
           {isTreehouseReady && (
             <div
               className={`absolute -top-4 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${
@@ -284,15 +425,92 @@ function HomePage() {
             </div>
           )}
 
+          {/* Tombol Floating Siram Pohon / Care (Saat bukan visiting atau visiting teman) */}
+          {!isTreehouseReady && (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={handleWaterTree}
+              className="absolute -bottom-2 -right-12 z-20 flex size-9 items-center justify-center rounded-2xl border border-sky-400/60 bg-sky-500/20 text-sky-600 shadow-soft backdrop-blur-md transition-all hover:bg-sky-500 hover:text-white dark:border-sky-400/40 dark:bg-sky-950/80 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white"
+              title="Siram Pohon dengan Embun Segar"
+              aria-label="Siram Pohon"
+            >
+              <Droplet className={`size-4.5 ${isWatering ? "animate-bounce text-sky-400" : ""}`} />
+            </motion.button>
+          )}
+
+          {/* Animasi Efek Siram Air (Watering shower droplets) */}
+          {isWatering && (
+            <div className="pointer-events-none absolute inset-0 z-25 overflow-visible">
+              {[...Array(9)].map((_, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: -40, x: (i - 4) * 16 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    y: [ -40, 40, 120, 180 ],
+                    x: [(i - 4) * 16, (i - 4) * 18 + Math.sin(i) * 10],
+                  }}
+                  transition={{
+                    duration: 0.9,
+                    delay: i * 0.08,
+                    repeat: 1,
+                    ease: "easeIn",
+                  }}
+                  className="absolute left-1/2 top-4 text-sky-400 text-sm drop-shadow-md"
+                >
+                  💧
+                </motion.span>
+              ))}
+              {/* Soil water absorption ripple */}
+              <motion.div
+                initial={{ scale: 0.4, opacity: 0.9 }}
+                animate={{ scale: 1.6, opacity: 0 }}
+                transition={{ duration: 1.2, repeat: 1 }}
+                className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-6 w-32 rounded-full border-2 border-sky-400/60 bg-sky-400/20 blur-[1px]"
+              />
+            </div>
+          )}
+
+          {/* Tap Particle Bursts */}
+          {tapParticles.map((p) => (
+            <motion.span
+              key={p.id}
+              initial={{ opacity: 1, scale: 0.6, y: 0, x: 0 }}
+              animate={{
+                opacity: 0,
+                scale: 1.35,
+                y: -65,
+                x: (Math.random() - 0.5) * 45,
+              }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              style={{ left: p.x, top: p.y }}
+              className="pointer-events-none absolute z-40 text-base drop-shadow-sm select-none"
+            >
+              {p.emoji}
+            </motion.span>
+          ))}
+
           <span className="absolute -bottom-1 left-1/2 h-3 w-28 -translate-x-1/2 rounded-[100%] bg-[color-mix(in_oklab,var(--soil)_35%,transparent)] blur-[3px]" />
-          <img
-            key={stage.key}
+          
+          {/* Pohon dengan Squash & Stretch Jiggle Animation */}
+          <motion.img
+            key={stage.key + "-" + treeJiggle}
+            initial={treeJiggle > 0 ? { scaleX: 1.08, scaleY: 0.92 } : { scale: 0.97, opacity: 0 }}
+            animate={{ scaleX: 1, scaleY: 1, scale: 1, opacity: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 420,
+              damping: 14,
+              mass: 0.6,
+            }}
             src={stage.image}
             alt={`Pohon${isVisiting ? ` milik ${visitedProfile?.username || "user lain"}` : "mu saat ini"}: ${stage.label}`}
-            className="animate-grow-in relative origin-bottom object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.15)] group-hover:brightness-105 transition-all"
+            className="relative origin-bottom object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.15)] group-hover:brightness-105 transition-all"
             style={{ height: `${stage.height}%` }}
           />
-        </motion.div>
+        </div>
       </div>
 
       {/* Semak & rumput — Tersebar rapi, berdempetan harmonis tanpa saling menabrak berat */}

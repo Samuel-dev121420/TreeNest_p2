@@ -27,6 +27,7 @@ import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, type FlashDeck, type FlashCard } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
+import { playCardFlip, playLevelUpFanfare, playTapPop } from "@/lib/sound-fx";
 
 export const Route = createFileRoute("/grow/flashcard")({
   head: () => ({
@@ -103,15 +104,18 @@ function FlashcardPage() {
   );
 
   const deckCards = useMemo(() => {
-    const list = cards.filter((c) => c.deckId === activeDeckId);
+    if (!activeDeckId) return [];
+    let list = cards.filter((c) => c.deckId === activeDeckId);
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (c) =>
-        (c.title && c.title.toLowerCase().includes(q)) ||
-        c.front.toLowerCase().includes(q) ||
-        c.back.toLowerCase().includes(q),
-    );
+    if (q) {
+      list = list.filter(
+        (c) =>
+          (c.title && c.title.toLowerCase().includes(q)) ||
+          c.front.toLowerCase().includes(q) ||
+          c.back.toLowerCase().includes(q),
+      );
+    }
+    return list;
   }, [cards, activeDeckId, searchQuery]);
 
   const currentCard = deckCards[studyIndex] ?? null;
@@ -121,10 +125,21 @@ function FlashcardPage() {
     const name = newDeckName.trim();
     if (!name) return;
     const deck: FlashDeck = { id: generateId(), name, createdAt: Date.now() };
-    setDecks((prev) => [...prev, deck]);
+    setDecks((prev) => [deck, ...prev]);
     setNewDeckName("");
     setActiveDeckId(deck.id);
     setShowAddDeckForm(false);
+    playTapPop(1);
+  }
+
+  function handleToggleSelectDeck(deckId: string) {
+    if (activeDeckId === deckId) {
+      setActiveDeckId(null);
+    } else {
+      setActiveDeckId(deckId);
+      setShowAllCards(false);
+      playTapPop(0);
+    }
   }
 
   function openEditDeck(deck: FlashDeck) {
@@ -139,16 +154,13 @@ function FlashcardPage() {
     );
     setEditingDeck(null);
     setEditDeckName("");
+    playTapPop(0);
   }
 
   function deleteDeck(id: string) {
     setDecks((prev) => prev.filter((d) => d.id !== id));
     setCards((prev) => prev.filter((c) => c.deckId !== id));
     if (activeDeckId === id) setActiveDeckId(null);
-  }
-
-  function handleToggleSelectDeck(id: string) {
-    setActiveDeckId((prev) => (prev === id ? null : id));
   }
 
   // Card Actions
@@ -162,11 +174,11 @@ function FlashcardPage() {
       back: back.trim(),
       createdAt: Date.now(),
     };
-    setCards((prev) => [...prev, card]);
+    setCards((prev) => [card, ...prev]);
     setCardTitle("");
     setFront("");
     setBack("");
-    if (uid !== "guest") awardActivityExp(uid, "flashcard");
+    playTapPop(1);
   }
 
   function openEditCard(card: FlashCard) {
@@ -199,6 +211,7 @@ function FlashcardPage() {
     }
 
     setEditingCard(null);
+    playTapPop(0);
   }
 
   function deleteCard(id: string) {
@@ -213,13 +226,22 @@ function FlashcardPage() {
     setStudyIndex(0);
     setFlipped(false);
     setStudyMode(true);
+    playTapPop(1);
+  }
+
+  function handleFlipCard() {
+    setFlipped((v) => !v);
+    playCardFlip();
   }
 
   function nextCard() {
     if (studyIndex < deckCards.length - 1) {
+      playTapPop(1);
       setStudyIndex((i) => i + 1);
       setFlipped(false);
     } else {
+      playLevelUpFanfare();
+      awardActivityExp(uid, "flashcard");
       setStudyMode(false);
       setStudyIndex(0);
       setFlipped(false);
@@ -249,8 +271,10 @@ function FlashcardPage() {
               animate={{ rotateY: flipped ? 180 : 0 }}
               transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
               style={{ transformStyle: "preserve-3d" }}
-              onClick={() => setFlipped((v) => !v)}
-              className="relative flex min-h-[18rem] w-full flex-col items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 text-center shadow-float cursor-pointer select-none"
+              onClick={handleFlipCard}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
+              className="relative flex min-h-[19rem] w-full flex-col items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 text-center shadow-float cursor-pointer select-none"
             >
               {/* Front Face */}
               <div
@@ -292,7 +316,7 @@ function FlashcardPage() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               whileHover={{ scale: 1.02 }}
-              onClick={() => setFlipped((v) => !v)}
+              onClick={handleFlipCard}
               className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3.5 text-sm font-bold text-foreground shadow-soft transition-colors hover:bg-secondary cursor-pointer select-none"
             >
               <RotateCcw className="size-4 text-primary" /> Balik Kartu
@@ -308,7 +332,7 @@ function FlashcardPage() {
                   Kartu Berikutnya <ArrowRight className="size-4" />
                 </>
               ) : (
-                <>Selesai</>
+                <>Selesai Belajar</>
               )}
             </motion.button>
           </div>

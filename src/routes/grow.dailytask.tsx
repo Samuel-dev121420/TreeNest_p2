@@ -14,6 +14,7 @@ import {
   Bell,
   Pencil,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -22,6 +23,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { generateId, todayKey, formatDateLabel, type DailyTask } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
+import { playSuccessChime, playTapPop } from "@/lib/sound-fx";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/grow/dailytask")({
@@ -108,10 +110,24 @@ function ReminderPage() {
     };
     setTasks((prev) => [task, ...prev]);
     setNewTask("");
+    playTapPop(1);
   }
 
   function toggleTask(id: string) {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === id) {
+          const nextDone = !t.done;
+          if (nextDone) {
+            playSuccessChime();
+          } else {
+            playTapPop(0);
+          }
+          return { ...t, done: nextDone };
+        }
+        return t;
+      }),
+    );
   }
 
   function deleteTask(id: string) {
@@ -402,6 +418,19 @@ function ReminderPage() {
           </button>
         </div>
 
+        {/* 100% Completion Celebration Banner */}
+        {progress === 100 && dayTasks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-primary/50 bg-primary/15 p-3.5 text-center text-xs font-bold text-primary shadow-soft backdrop-blur-md"
+          >
+            <Sparkles className="size-4 text-primary animate-bounce" />
+            <span>Semua pengingat hari ini telah selesai! Kerja bagus! 🌿✨</span>
+          </motion.div>
+        )}
+
         {/* List */}
         <div className="space-y-2">
           {filteredDayTasks.length === 0 ? (
@@ -416,23 +445,32 @@ function ReminderPage() {
             />
           ) : (
             filteredDayTasks.map((t) => (
-              <div
+              <motion.div
                 key={t.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5 transition-colors hover:border-border min-w-0 shadow-xs"
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className={`flex items-center gap-3 rounded-2xl border p-3.5 transition-all min-w-0 shadow-xs ${
+                  t.done
+                    ? "border-primary/30 bg-card/60 dark:bg-card/40"
+                    : "border-border/70 bg-card hover:border-primary/40 hover:shadow-soft"
+                }`}
               >
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.85 }}
                   onClick={() => toggleTask(t.id)}
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-colors self-center cursor-pointer ${
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-all self-center cursor-pointer ${
                     t.done
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-muted-foreground/30 hover:border-primary/50"
+                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                      : "border-muted-foreground/30 hover:border-primary/60 hover:scale-105"
                   }`}
                 >
-                  {t.done ? <CheckSquare className="size-3.5" /> : null}
-                </button>
+                  {t.done ? <CheckSquare className="size-3.5 animate-in zoom-in-50 duration-150" /> : null}
+                </motion.button>
                 <span
-                  className={`min-w-0 flex-1 self-center py-0.5 text-sm font-medium leading-normal break-words [word-break:break-word] overflow-hidden ${
-                    t.done ? "text-muted-foreground line-through" : "text-foreground"
+                  className={`min-w-0 flex-1 self-center py-0.5 text-sm font-medium leading-normal break-words [word-break:break-word] overflow-hidden transition-colors ${
+                    t.done ? "text-muted-foreground line-through opacity-75" : "text-foreground"
                   }`}
                 >
                   {t.text}
@@ -440,20 +478,20 @@ function ReminderPage() {
                 <div className="flex items-center gap-1 shrink-0 self-center">
                   <button
                     onClick={() => openEditTask(t)}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer active:scale-95"
                     title="Edit Pengingat"
                   >
                     <Pencil className="size-4" />
                   </button>
                   <button
                     onClick={() => deleteTask(t.id)}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer active:scale-95"
                     title="Hapus Pengingat"
                   >
                     <Trash2 className="size-4" />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
         </div>
