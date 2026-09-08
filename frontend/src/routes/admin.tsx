@@ -283,7 +283,7 @@ function AdminDashboardPage() {
     setLoadingUserVideos(true);
     try {
       const allHist = await getAllGalleryVideosAdmin("history");
-      const userVids = allHist.filter((v) => v.uid === u.uid);
+      const userVids = allHist.filter((v: GalleryVideo) => v.uid === u.uid);
       setUserVideos(userVids);
     } catch {
       setUserVideos([]);
@@ -298,6 +298,7 @@ function AdminDashboardPage() {
     loadVideosData(newFilter);
   }
 
+  // TAG : TOMBOL MODERASI VIDEO ADMIN & LOGIKA EKSEKUSI APPROVE & REJECT
   async function handleApproveSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!approvingId) return;
@@ -787,9 +788,14 @@ function AdminDashboardPage() {
                           </div>
                         </div>
 
+                        {/* ========================================================================= */}
+                        {/* [TAG: TOMBOL_MODERASI_VIDEO_ADMIN]                                        */}
+                        {/* Tombol Persetujuan (Approve / Setujui) & Penolakan (Reject / Tolak)        */}
+                        {/* ========================================================================= */}
                         <div className="flex items-center gap-2 self-end sm:self-center">
                           {video.status === "pending" ? (
                             <>
+                              {/* Tombol Setujui */}
                               <button
                                 onClick={() => {
                                   setApprovingId(video.id);
@@ -800,6 +806,8 @@ function AdminDashboardPage() {
                                 <Check className="mr-1.5 h-3.5 w-3.5" />
                                 Setujui
                               </button>
+
+                              {/* Tombol Tolak */}
                               <button
                                 onClick={() => {
                                   setRejectingId(video.id);
@@ -1188,7 +1196,8 @@ function AdminDashboardPage() {
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* MODAL: MODERASI TREEGALLERY APPROVE / REJECT / ETC   */}
+        {/* [TAG: TOMBOL_MODERASI_VIDEO_ADMIN] MODAL PERSETUJUAN & PENOLAKAN */}
+        {/* Modal Konfirmasi Setujui Video (dengan Catatan Opsional) */}
         {/* ---------------------------------------------------- */}
         {approvingId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -1366,7 +1375,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
         if (active && u) setLocalUrl(u);
       });
     } else if (!yt && video.sourceType === "tiktok" && !video.thumbnail) {
-      fetchTikTokThumbnail(video.url).then((thumbUrl) => {
+      fetchTikTokThumbnail(video.url).then((thumbUrl: string | null) => {
         if (active && thumbUrl) setTiktokThumb(thumbUrl);
       });
     }

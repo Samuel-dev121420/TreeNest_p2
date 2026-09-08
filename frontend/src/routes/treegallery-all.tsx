@@ -404,7 +404,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
         if (active && u) setLocalUrl(u);
       });
     } else if (!yt && video.sourceType === "tiktok" && !video.thumbnail) {
-      fetchTikTokThumbnail(video.url).then((thumbUrl) => {
+      fetchTikTokThumbnail(video.url).then((thumbUrl: string | null) => {
         if (active && thumbUrl) setTiktokThumb(thumbUrl);
       });
     }
