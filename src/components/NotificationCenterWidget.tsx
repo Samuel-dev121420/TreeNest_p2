@@ -14,6 +14,7 @@ import {
   UserCheck,
   ShieldCheck,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,6 +35,7 @@ const ICON_MAP: Record<NotificationType, React.ComponentType<{ className?: strin
   reminder_due: CheckSquare,
   friend_request_received: UserPlus,
   friend_accepted: UserCheck,
+  chat_received: MessageSquare,
   admin_video_pending: ShieldCheck,
 };
 

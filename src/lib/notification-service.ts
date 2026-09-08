@@ -5,6 +5,7 @@ export type NotificationType =
   | "reminder_due"
   | "friend_request_received"
   | "friend_accepted"
+  | "chat_received"
   | "admin_video_pending";
 
 export type AppNotification = {

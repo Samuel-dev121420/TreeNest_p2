@@ -146,7 +146,9 @@ function AppShell() {
 
   const searchObj = location.search as { visit?: string };
   const isVisiting = location.pathname === "/" && Boolean(searchObj?.visit);
-  const isMinimalRoute = location.pathname === "/login" || location.pathname === "/admin";
+  const isChatRoute = location.pathname.startsWith("/chat");
+  const isMinimalRoute =
+    location.pathname === "/login" || location.pathname === "/admin" || isChatRoute;
 
   useEffect(() => {
     if (!loading) {
@@ -167,6 +169,65 @@ function AppShell() {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
   }, [location.pathname]);
+
+  // Online Presence Tracking & Heartbeat, and Incoming Message Delivery Sync
+  useEffect(() => {
+    if (!user || !profile) return;
+
+    let heartbeatTimer: NodeJS.Timeout | null = null;
+
+    Promise.all([
+      import("../lib/firestore-service"),
+      import("../lib/chat-service"),
+    ]).then(([{ updateOnlineStatus, pingPresence }, { markAllIncomingAsDelivered }]) => {
+      // Set online when app loads and sync incoming delivered messages
+      updateOnlineStatus(user.uid, true);
+      markAllIncomingAsDelivered(user.uid);
+
+      // Heartbeat ping every 25 seconds to keep presence fresh even in background tabs
+      heartbeatTimer = setInterval(() => {
+        pingPresence(user.uid);
+        markAllIncomingAsDelivered(user.uid);
+      }, 25000);
+
+      const handleOnline = () => {
+        updateOnlineStatus(user.uid, true);
+        markAllIncomingAsDelivered(user.uid);
+      };
+
+      const handleVisibilityChange = () => {
+        // Refresh ping immediately when tab becomes visible again
+        if (document.visibilityState === "visible") {
+          pingPresence(user.uid);
+          markAllIncomingAsDelivered(user.uid);
+        }
+        // NOTE: Sengaja TIDAK mengubah status menjadi offline saat tab hidden / background!
+        // User yang membuka TreeNest di tab background atau aplikasi lain tetap berstatus online.
+      };
+
+      const handleUnload = () => {
+        updateOnlineStatus(user.uid, false);
+      };
+
+      window.addEventListener("online", handleOnline);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("beforeunload", handleUnload);
+      window.addEventListener("pagehide", handleUnload);
+
+      return () => {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        window.removeEventListener("online", handleOnline);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("beforeunload", handleUnload);
+        window.removeEventListener("pagehide", handleUnload);
+        updateOnlineStatus(user.uid, false);
+      };
+    });
+
+    return () => {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+    };
+  }, [user, profile]);
 
   if (loading) {
     return <LoadingScreen message="Menghubungkan ke TreeNest..." />;

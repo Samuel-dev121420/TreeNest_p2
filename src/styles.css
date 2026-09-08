@@ -112,6 +112,7 @@
   --shadow-soft: 0 8px 24px -12px oklch(0.28 0.05 150 / 0.28);
   --shadow-float: 0 16px 40px -18px oklch(0.28 0.05 150 / 0.38);
   --google-glow: 0 0 20px rgba(0, 0, 0, 0.22), 0 0 45px rgba(0, 0, 0, 0.35), 0 0 80px rgba(0, 0, 0, 0.18);
+
 }
 
 .dark {
@@ -538,4 +539,150 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* --- TreeNest Chat Custom Scrollbars (WhatsApp Desktop style) --- */
+.chat-scroll-area {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chat-scroll-area::-webkit-scrollbar {
+  width: 18px;
+  height: 18px;
+}
+
+.chat-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll-area::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.chat-scroll-area::-webkit-scrollbar:disabled,
+.chat-scroll-area::-webkit-scrollbar-thumb:disabled {
+  display: none !important;
+  background-color: transparent !important;
+}
+
+.chat-scroll-area::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+  /* Shift thumb 10px to the left away from right edge */
+  border-right: 10px solid transparent;
+  border-left: 2px solid transparent;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.25s ease;
+}
+
+.chat-scroll-area.is-scrolling::-webkit-scrollbar-thumb,
+.chat-scroll-area:hover::-webkit-scrollbar-thumb {
+  background-color: oklch(0.26 0.04 150 / 0.24);
+}
+
+.chat-scroll-area::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.26 0.04 150 / 0.45) !important;
+}
+
+.chat-scroll-area::-webkit-scrollbar-thumb:active {
+  background-color: oklch(0.26 0.04 150 / 0.65) !important;
+}
+
+.dark .chat-scroll-area.is-scrolling::-webkit-scrollbar-thumb,
+.dark .chat-scroll-area:hover::-webkit-scrollbar-thumb {
+  background-color: oklch(0.96 0.01 150 / 0.24);
+}
+
+.dark .chat-scroll-area::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.96 0.01 150 / 0.48) !important;
+}
+
+.dark .chat-scroll-area::-webkit-scrollbar-thumb:active {
+  background-color: oklch(0.96 0.01 150 / 0.7) !important;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .chat-scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.26 0.04 150 / 0.25) transparent;
+  }
+  .dark .chat-scroll-area {
+    scrollbar-color: oklch(0.96 0.01 150 / 0.25) transparent;
+  }
+}
+
+/* Chat Input Textarea Scrollbar */
+.chat-input-scrollbar::-webkit-scrollbar {
+  width: 14px;
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.26 0.04 150 / 0.32);
+  border-radius: 9999px;
+  /* Shift thumb 8px to the left away from the right edge, inset 2px top/bottom */
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+.chat-input-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: oklch(0.26 0.04 150 / 0.55);
+}
+
+.dark .chat-input-scrollbar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.96 0.01 150 / 0.38);
+}
+
+.dark .chat-input-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: oklch(0.96 0.01 150 / 0.65);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .chat-input-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.26 0.04 150 / 0.25) transparent;
+  }
+  .dark .chat-input-scrollbar {
+    scrollbar-color: oklch(0.96 0.01 150 / 0.3) transparent;
+  }
+}
+
+/* TreeNest Chat Bubbles: Borderless, clean & non-glaring */
+.chat-bubble-mine,
+.chat-bubble-theirs,
+.chat-bubble-custom {
+  background-color: #ffffff;
+  color: #09090b;
+  border: none !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+
+.dark .chat-bubble-mine,
+.dark .chat-bubble-theirs,
+.dark .chat-bubble-custom {
+  background-color: #065f46;
+  background-image: linear-gradient(145deg, #065f46 0%, #047857 55%, #059669 100%);
+  color: #f0fdf4;
+  border: none !important;
+  box-shadow: 0 2px 10px -2px rgba(6, 95, 70, 0.35);
 }

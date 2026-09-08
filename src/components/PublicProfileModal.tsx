@@ -16,6 +16,7 @@ import {
   Github,
   Twitter,
   Home,
+  MessageCircle,
 } from "lucide-react";
 import { stageForLevel, expNeeded } from "@/lib/treenest";
 import { getUserProfile, type UserProfile } from "@/lib/firestore-service";
@@ -30,6 +31,7 @@ type Props = {
   isFriend?: boolean | undefined;
   isRequestSent?: boolean | undefined;
   disableVisit?: boolean | undefined;
+  hideChatButton?: boolean | undefined;
 };
 
 const PLATFORM_META: Record<
@@ -93,6 +95,7 @@ export function PublicProfileModal({
   isFriend = false,
   isRequestSent = false,
   disableVisit = false,
+  hideChatButton = false,
 }: Props) {
   const navigate = useNavigate();
   const [targetProfile, setTargetProfile] = useState<UserProfile | null>(null);
@@ -119,7 +122,44 @@ export function PublicProfileModal({
       .catch(() => setLoading(false));
   }, [accountId]);
 
-  const handleAddClick = () => {
+  useEffect(() => {
+    setRequestSent(isRequestSent);
+  }, [isRequestSent]);
+
+  // Cek apakah user viewer sudah pernah mengirim permintaan ke akun ini
+  useEffect(() => {
+    if (!viewerUid || requestSent) return;
+
+    let isCancelled = false;
+    import("@/lib/firestore-service").then(async ({ getSentFriendRequests }) => {
+      try {
+        const sent = await getSentFriendRequests(viewerUid);
+        if (isCancelled) return;
+        const cleanTargetAcc = accountId.toUpperCase();
+        const foundSent = sent.some(
+          (s) =>
+            s.status === "pending" &&
+            (s.to.accountId?.toUpperCase() === cleanTargetAcc ||
+              (targetProfile && (s.to.accountId === targetProfile.accountId || s.to.uid === targetProfile.uid)))
+        );
+        if (foundSent) {
+          setRequestSent(true);
+        }
+      } catch {
+        // silent check error
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [viewerUid, accountId, targetProfile, requestSent]);
+
+  const isEffectiveFriend =
+    isFriend ||
+    viewerFriends.some((f) => f.accountId === targetProfile?.accountId || f.uid === targetProfile?.uid);
+
+  const handleAddClick = async () => {
     if (!targetProfile || requestSent) return;
     setRequestSent(true);
     if (onAddFriend) {
@@ -131,6 +171,33 @@ export function PublicProfileModal({
         hue: targetProfile.hue,
         avatarUrl: targetProfile.avatarUrl,
       });
+    } else if (viewerUid) {
+      try {
+        const { getUserProfile, sendFriendRequest } = await import("@/lib/firestore-service");
+        const viewer = await getUserProfile(viewerUid);
+        if (viewer) {
+          await sendFriendRequest(
+            {
+              uid: viewer.uid,
+              accountId: viewer.accountId,
+              name: viewer.username,
+              initials: viewer.initials || viewer.username.slice(0, 2).toUpperCase(),
+              hue: viewer.hue,
+              avatarUrl: viewer.avatarUrl,
+            },
+            {
+              uid: targetProfile.uid,
+              accountId: targetProfile.accountId,
+              name: targetProfile.username,
+              initials: targetProfile.initials || targetProfile.username.slice(0, 2).toUpperCase(),
+              hue: targetProfile.hue,
+              avatarUrl: targetProfile.avatarUrl,
+            }
+          );
+        }
+      } catch (err) {
+        console.warn("Failed to send friend request:", err);
+      }
     }
   };
 
@@ -145,7 +212,7 @@ export function PublicProfileModal({
     if (isOwner) return true;
     if (link.visibility === "public") return true;
     if (link.visibility === "friends_only") {
-      return isFriend || viewerFriends.some((f) => f.accountId === targetProfile?.accountId);
+      return isEffectiveFriend;
     }
     return false;
   });
@@ -187,23 +254,23 @@ export function PublicProfileModal({
             </div>
           ) : (
             <>
-              {/* Avatar + basic info */}
-              <div className="-mt-10 flex items-end justify-between">
+              {/* Avatar - Centered */}
+              <div className="-mt-10 flex justify-center">
                 <button
                   type="button"
                   onClick={() => setShowFullAvatar(true)}
                   title="Klik untuk melihat foto profil ukuran besar"
-                  className="group relative cursor-pointer outline-none transition-transform hover:scale-105 active:scale-95 text-left"
+                  className="group relative cursor-pointer outline-none transition-transform hover:scale-105 active:scale-95 text-center"
                 >
                   {targetProfile.avatarUrl ? (
                     <img
                       src={targetProfile.avatarUrl}
                       alt={targetProfile.username}
-                      className="size-20 rounded-full object-cover shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all"
+                      className="size-20 rounded-full object-cover shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all mx-auto"
                     />
                   ) : (
                     <span
-                      className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all"
+                      className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-primary-foreground shadow-float ring-4 ring-card group-hover:ring-primary/60 transition-all mx-auto"
                       style={{
                         backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${targetProfile.hue}), oklch(0.66 0.13 ${targetProfile.hue + 25}))`,
                       }}
@@ -212,57 +279,36 @@ export function PublicProfileModal({
                     </span>
                   )}
                 </button>
-
-                <div className="flex gap-2 pt-10 pb-1">
-                  {!isOwner && !isFriend && onAddFriend && !requestSent && (
-                    <button
-                      onClick={handleAddClick}
-                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft cursor-pointer"
-                    >
-                      <UserPlus className="size-3.5" /> Tambah
-                    </button>
-                  )}
-                  {!isOwner && !isFriend && requestSent && (
-                    <span className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground opacity-80 shadow-xs cursor-default">
-                      <Check className="size-3.5 text-primary" /> Terkirim
-                    </span>
-                  )}
-                  {!isOwner && isFriend && (
-                    <span className="flex items-center gap-1.5 rounded-xl bg-leaf/10 px-3 py-2 text-xs font-bold text-leaf">
-                      <UserCheck className="size-3.5" /> Teman
-                    </span>
-                  )}
-                </div>
               </div>
 
-              {/* Tombol Mengunjungi Home Page User Lain */}
-              {!isOwner && (
-                <button
-                  type="button"
-                  disabled={disableVisit}
-                  onClick={() => {
-                    if (disableVisit) return;
-                    onClose();
-                    navigate({ to: "/", search: { visit: targetProfile.accountId } });
-                  }}
-                  className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/15 px-4 py-2.5 text-xs font-bold text-primary transition-all shadow-xs ${
-                    disableVisit
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-primary/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
-                  }`}
-                  title={disableVisit ? "Kamu sedang berada di mode berkunjung" : undefined}
-                >
-                  <Home className="size-4 shrink-0" /> Kunjungi Home Page
-                </button>
-              )}
-
-              <div className="mt-3">
+              {/* Info & Bio */}
+              <div className="mt-3 text-center">
                 <h2 className="text-xl font-bold text-foreground">{targetProfile.username}</h2>
                 <p className="text-xs text-muted-foreground">ID {targetProfile.accountId}</p>
                 {targetProfile.bio && (
                   <p className="mt-1.5 text-sm text-muted-foreground">{targetProfile.bio}</p>
                 )}
               </div>
+
+              {/* Social links - Below Bio */}
+              {visibleSocialLinks.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Globe className="size-3" /> Sosial Media
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {visibleSocialLinks.map((link) => (
+                      <SocialLinkBadge key={link.platform} link={link} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {visibleSocialLinks.length === 0 && !isOwner && (
+                <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground text-center">
+                  <Lock className="size-3" /> Sosial media disembunyikan atau tidak ada.
+                </div>
+              )}
 
               {/* Stats row */}
               <div className="mt-4 grid grid-cols-3 gap-2">
@@ -284,7 +330,7 @@ export function PublicProfileModal({
               </div>
 
               {/* EXP bar */}
-              <div className="mt-3">
+              <div className="mt-4">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
                   <span>EXP</span>
                   <span>{targetProfile.exp || 0} / {need}</span>
@@ -297,25 +343,62 @@ export function PublicProfileModal({
                 </div>
               </div>
 
-              {/* Social links */}
-              {visibleSocialLinks.length > 0 && (
-                <div className="mt-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <Globe className="size-3" /> Sosial Media
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {visibleSocialLinks.map((link) => (
-                      <SocialLinkBadge key={link.platform} link={link} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {visibleSocialLinks.length === 0 && !isOwner && (
-                <div className="mt-4 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <Lock className="size-3" /> Sosial media disembunyikan atau tidak ada.
-                </div>
-              )}
+              {/* Actions - Below EXP */}
+              <div className="mt-5 flex flex-col gap-2">
+                {!isOwner && !isEffectiveFriend && !requestSent && (
+                  <button
+                    onClick={handleAddClick}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-soft cursor-pointer"
+                  >
+                    Tambah Teman
+                  </button>
+                )}
+                {!isOwner && !isEffectiveFriend && requestSent && (
+                  <span className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-secondary px-4 py-2.5 text-xs font-bold text-muted-foreground opacity-80 shadow-xs cursor-default">
+                    Terkirim
+                  </span>
+                )}
+                {!isOwner && isEffectiveFriend && (
+                  <span className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-leaf/10 px-4 py-2.5 text-xs font-bold text-leaf">
+                    Teman
+                  </span>
+                )}
+                {!isOwner && !hideChatButton && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      navigate({ to: `/chat/${targetProfile.accountId}` });
+                    }}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors shadow-soft cursor-pointer ${
+                      isEffectiveFriend
+                        ? "bg-sky-deep text-white hover:bg-sky-deep/90"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    Chat
+                  </button>
+                )}
+                {!isOwner && (
+                  <button
+                    type="button"
+                    disabled={disableVisit}
+                    onClick={() => {
+                      if (disableVisit) return;
+                      onClose();
+                      navigate({ to: "/", search: { visit: targetProfile.accountId } });
+                    }}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-4 py-2.5 text-xs font-bold text-primary transition-all shadow-xs ${
+                      disableVisit
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-primary/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
+                    }`}
+                    title={disableVisit ? "Kamu sedang berada di mode berkunjung" : undefined}
+                  >
+                   Kunjungi
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>

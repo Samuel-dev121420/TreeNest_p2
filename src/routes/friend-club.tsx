@@ -1,6 +1,19 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Users, Search, UserPlus, UserCheck, Clock, X, Trash2, Star, Check } from "lucide-react";
+import {
+  Users,
+  Search,
+  UserPlus,
+  UserCheck,
+  Clock,
+  X,
+  Trash2,
+  Star,
+  Check,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/EmptyState";
@@ -19,6 +32,9 @@ import {
   sendFriendRequest,
   getIncomingFriendRequests,
   getSentFriendRequests,
+  subscribeToIncomingFriendRequests,
+  subscribeToSentFriendRequests,
+  subscribeToUserFriends,
   acceptFriendRequest,
   rejectFriendRequest,
   cancelFriendRequest,
@@ -28,6 +44,12 @@ import {
   updateFeaturedFriends,
   type UserProfile,
 } from "@/lib/firestore-service";
+import {
+  getIncomingContacts,
+  deleteChatConversation,
+  deleteAllIncomingContacts,
+  type IncomingContact,
+} from "@/lib/chat-service";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
 
@@ -50,7 +72,7 @@ export const Route = createFileRoute("/friend-club")({
   component: FriendClubPage,
 });
 
-type Tab = "search" | "requests" | "list";
+type Tab = "search" | "requests" | "incoming_contacts" | "list";
 
 function FriendClubPage() {
   const location = useLocation();
@@ -59,7 +81,8 @@ function FriendClubPage() {
 
   const initialTab = useMemo(() => {
     const searchObj = location.search as { tab?: Tab };
-    return searchObj?.tab && ["search", "requests", "list"].includes(searchObj.tab)
+    return searchObj?.tab &&
+      ["search", "requests", "incoming_contacts", "list"].includes(searchObj.tab)
       ? searchObj.tab
       : "search";
   }, [location.search]);
@@ -84,6 +107,7 @@ function FriendClubPage() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sent, setSent] = useState<SentRequest[]>([]);
+  const [incomingContacts, setIncomingContacts] = useState<IncomingContact[]>([]);
   const [featured, setFeatured] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
@@ -95,8 +119,18 @@ function FriendClubPage() {
     friend: Friend;
     action: "add" | "remove";
   } | null>(null);
+  const [confirmDeleteContact, setConfirmDeleteContact] = useState<IncomingContact | null>(null);
+  const [confirmDeleteAllContacts, setConfirmDeleteAllContacts] = useState(false);
 
-  useScrollLock(Boolean(viewingAccountId || confirmDeleteFriend || confirmFeaturedAction));
+  useScrollLock(
+    Boolean(
+      viewingAccountId ||
+        confirmDeleteFriend ||
+        confirmFeaturedAction ||
+        confirmDeleteContact ||
+        confirmDeleteAllContacts,
+    ),
+  );
 
   // Load all social data from Firestore / storage for this specific user
   const loadSocialData = useCallback(async () => {
@@ -106,13 +140,18 @@ function FriendClubPage() {
     }
     try {
       const fList = await getUserFriends(uid, profile?.accountId);
-      const [inReqs, outReqs, featList] = await Promise.all([
-        getIncomingFriendRequests(uid, profile?.accountId),
-        getSentFriendRequests(uid, profile?.accountId),
+      const friendKeys = new Set<string>(
+        fList.flatMap((f) => [f.accountId?.toUpperCase(), f.id, f.uid].filter(Boolean) as string[])
+      );
+
+      const [inReqs, outReqs, featList, inContacts] = await Promise.all([
+        getIncomingFriendRequests(uid, profile?.accountId, fList),
+        getSentFriendRequests(uid, profile?.accountId, fList),
         getFeaturedFriends(uid),
+        getIncomingContacts(uid, friendKeys),
       ]);
       const validFeat = featList.filter((fid) =>
-        fList.some((f) => f.id === fid || f.accountId === fid),
+        fList.some((f) => f.id === fid || f.accountId?.toUpperCase() === fid?.toUpperCase()),
       );
       if (validFeat.length !== featList.length) {
         updateFeaturedFriends(uid, validFeat).catch(() => {});
@@ -123,7 +162,7 @@ function FriendClubPage() {
         (r) =>
           !fList.some(
             (f) =>
-              f.accountId === r.from.accountId ||
+              f.accountId?.toUpperCase() === r.from.accountId?.toUpperCase() ||
               (r.from.uid && f.uid === r.from.uid),
           ),
       );
@@ -131,7 +170,7 @@ function FriendClubPage() {
         (s) =>
           !fList.some(
             (f) =>
-              f.accountId === s.to.accountId ||
+              f.accountId?.toUpperCase() === s.to.accountId?.toUpperCase() ||
               (s.to.uid && f.uid === s.to.uid),
           ),
       );
@@ -139,6 +178,7 @@ function FriendClubPage() {
       setFriends(fList);
       setRequests(cleanInReqs);
       setSent(cleanOutReqs);
+      setIncomingContacts(inContacts);
       setFeatured(validFeat);
     } catch (err) {
       console.error("Error loading social data:", err);
@@ -148,11 +188,57 @@ function FriendClubPage() {
   }, [uid, profile?.accountId]);
 
   useEffect(() => {
-    loadSocialData();
-  }, [loadSocialData]);
+    if (!uid || uid === "guest") {
+      setLoading(false);
+      return;
+    }
 
-  const pendingIn = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
-  const pendingOut = useMemo(() => sent.filter((s) => s.status === "pending"), [sent]);
+    // Subscribe realtime to friends list
+    const unsubFriends = subscribeToUserFriends(uid, profile?.accountId, (fList) => {
+      setFriends(fList);
+      setLoading(false);
+    });
+
+    // Subscribe realtime to incoming friend requests
+    const unsubIncoming = subscribeToIncomingFriendRequests(uid, profile?.accountId, (inReqs) => {
+      setRequests(inReqs);
+    });
+
+    // Subscribe realtime to sent friend requests
+    const unsubSent = subscribeToSentFriendRequests(uid, profile?.accountId, (outReqs) => {
+      setSent(outReqs);
+    });
+
+    loadSocialData();
+
+    return () => {
+      unsubFriends();
+      unsubIncoming();
+      unsubSent();
+    };
+  }, [uid, profile?.accountId, loadSocialData]);
+
+  const pendingIn = useMemo(() => {
+    const friendAccountIds = new Set(friends.map((f) => f.accountId?.toUpperCase()));
+    const friendUids = new Set(friends.map((f) => f.uid));
+    return requests.filter(
+      (r) =>
+        r.status === "pending" &&
+        !friendAccountIds.has(r.from?.accountId?.toUpperCase()) &&
+        !friendUids.has(r.from?.uid),
+    );
+  }, [requests, friends]);
+
+  const pendingOut = useMemo(() => {
+    const friendAccountIds = new Set(friends.map((f) => f.accountId?.toUpperCase()));
+    const friendUids = new Set(friends.map((f) => f.uid));
+    return sent.filter(
+      (s) =>
+        s.status === "pending" &&
+        !friendAccountIds.has(s.to?.accountId?.toUpperCase()) &&
+        !friendUids.has(s.to?.uid),
+    );
+  }, [sent, friends]);
 
   async function handleSendRequest(person: Person) {
     if (!profile) return;
@@ -266,15 +352,21 @@ function FriendClubPage() {
     `treenest.friend.viewed_requests.${uid}`,
     0,
   );
+  const [viewedContactsCount, setViewedContactsCount] = useLocalStorage<number>(
+    `treenest.friend.viewed_contacts.${uid}`,
+    0,
+  );
   const [viewedFriendsCount, setViewedFriendsCount] = useLocalStorage<number>(
     `treenest.friend.viewed_friends.${uid}`,
     0,
   );
 
   const hasNewRequests = pendingIn.length > 0 && pendingIn.length > viewedRequestsCount;
+  const hasNewContacts =
+    incomingContacts.length > 0 && incomingContacts.length > viewedContactsCount;
   const hasNewFriends = friends.length > 0 && friends.length > viewedFriendsCount;
 
-  // Trigger global notifications for incoming requests & new friends
+  // Trigger global notifications for incoming requests, contacts & new friends
   useEffect(() => {
     if (pendingIn.length > 0) {
       pendingIn.forEach((req) => {
@@ -290,6 +382,20 @@ function FriendClubPage() {
       });
     }
   }, [pendingIn, uid]);
+
+  useEffect(() => {
+    if (hasNewContacts) {
+      import("@/lib/notification-service").then(({ addNotification }) => {
+        addNotification({
+          type: "chat_received",
+          title: "Kontak Masuk Baru",
+          message: "Kamu menerima pesan percakapan baru di Kontak Masuk.",
+          link: "/friend-club?tab=incoming_contacts",
+          targetUid: uid,
+        });
+      });
+    }
+  }, [hasNewContacts, uid]);
 
   useEffect(() => {
     if (hasNewFriends) {
@@ -314,6 +420,8 @@ function FriendClubPage() {
     }
     if (t === "requests") {
       setViewedRequestsCount(pendingIn.length);
+    } else if (t === "incoming_contacts") {
+      setViewedContactsCount(incomingContacts.length);
     } else if (t === "list") {
       setViewedFriendsCount(friends.length);
     }
@@ -321,31 +429,37 @@ function FriendClubPage() {
 
   const tabs: { key: Tab; label: string; badge?: number; showRedDot?: boolean }[] = [
     { key: "search", label: "Cari Teman" },
-    { key: "requests", label: "Permintaan", badge: pendingIn.length, showRedDot: hasNewRequests },
+    { key: "requests", label: "Informasi Lanjut", badge: pendingIn.length, showRedDot: hasNewRequests },
+    {
+      key: "incoming_contacts",
+      label: "Kontak Masuk",
+      badge: incomingContacts.length,
+      showRedDot: hasNewContacts,
+    },
     { key: "list", label: "Daftar Teman", showRedDot: hasNewFriends },
   ];
 
   return (
     <PageShell
       title="Friend Club"
-      description="Cari Teman, Kelola Permintaan, dan Atur Teman."
+      description="Cari Teman, Kelola Permintaan, Kontak Masuk, dan Atur Teman."
     >
       {/* Tab Selector */}
-      <div className="mb-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft transition-all duration-300">
+      <div className="mb-6 flex gap-1.5 sm:gap-2 rounded-3xl border border-border/70 bg-card p-1.5 shadow-soft transition-all duration-300">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => handleSelectTab(t.key)}
-            className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`relative flex flex-1 items-center justify-center gap-1 sm:gap-1.5 rounded-2xl px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
               tab === t.key
                 ? "bg-primary text-primary-foreground shadow-soft scale-[1.02]"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            {t.label}
+            <span className="truncate">{t.label}</span>
             {t.badge ? (
               <span
-                className={`flex size-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                className={`flex size-4 sm:size-5 shrink-0 items-center justify-center rounded-full text-[9px] sm:text-[10px] font-bold ${
                   tab === t.key
                     ? "bg-primary-foreground/20 text-primary-foreground"
                     : "bg-primary/15 text-primary"
@@ -355,7 +469,7 @@ function FriendClubPage() {
               </span>
             ) : null}
             {t.showRedDot && (
-              <span className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-card animate-pulse" />
             )}
           </button>
         ))}
@@ -391,6 +505,15 @@ function FriendClubPage() {
             />
           )}
 
+          {tab === "incoming_contacts" && (
+            <IncomingContactsPanel
+              contacts={incomingContacts}
+              onDelete={(c) => setConfirmDeleteContact(c)}
+              onDeleteAll={() => setConfirmDeleteAllContacts(true)}
+              onViewProfile={setViewingAccountId}
+            />
+          )}
+
           {tab === "list" && (
             <ListPanel
               friends={friends}
@@ -402,6 +525,123 @@ function FriendClubPage() {
             />
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Modal Konfirmasi Hapus 1 Kontak Masuk */}
+      <AnimatePresence>
+        {confirmDeleteContact && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteContact(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              className="w-full max-w-md rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
+                <Trash2 className="size-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  Hapus Riwayat Kontak Masuk?
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Apakah kamu yakin ingin menghapus riwayat kontak masuk dari{" "}
+                  <strong>{confirmDeleteContact.user.username}</strong> (
+                  {confirmDeleteContact.user.accountId})?
+                </p>
+                <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
+                  Riwayat pesan dengan akun ini akan dibersihkan.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteContact(null)}
+                  className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const c = confirmDeleteContact;
+                    setConfirmDeleteContact(null);
+                    await deleteChatConversation(c.roomId);
+                    await loadSocialData();
+                  }}
+                  className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft cursor-pointer"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Konfirmasi Hapus Semua Kontak Masuk */}
+      <AnimatePresence>
+        {confirmDeleteAllContacts && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteAllContacts(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              className="w-full max-w-md rounded-3xl border border-destructive/30 bg-card p-6 shadow-float text-center space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-destructive/15 text-destructive mx-auto shadow-inner">
+                <Trash2 className="size-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Hapus Semua Kontak Masuk?</h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Apakah kamu yakin ingin menghapus seluruh ({incomingContacts.length}) riwayat kontak masuk dari akun yang belum berteman?
+                </p>
+                <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
+                  Tindakan ini akan menghapus semua pesan percakapan non-teman secara permanen.
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteAllContacts(false)}
+                  className="flex-1 rounded-2xl border border-border/80 bg-secondary py-2.5 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setConfirmDeleteAllContacts(false);
+                    await deleteAllIncomingContacts(incomingContacts.map((c) => c.roomId));
+                    await loadSocialData();
+                  }}
+                  className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft cursor-pointer"
+                >
+                  Ya, Hapus Semua
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Modal Konfirmasi Hapus Teman */}
@@ -840,6 +1080,129 @@ function RequestsPanel({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/* -------------------- Kontak Masuk ------------------------- */
+
+function IncomingContactsPanel({
+  contacts,
+  onDelete,
+  onDeleteAll,
+  onViewProfile,
+}: {
+  contacts: IncomingContact[];
+  onDelete: (contact: IncomingContact) => void;
+  onDeleteAll: () => void;
+  onViewProfile: (accountId: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visibleContacts = showAll ? contacts : contacts.slice(0, 5);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+          Kontak Masuk ({contacts.length})
+        </h2>
+        {contacts.length > 0 && (
+          <button
+            type="button"
+            onClick={onDeleteAll}
+            className="flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive transition-all hover:bg-destructive hover:text-white cursor-pointer active:scale-95 shadow-xs"
+            title="Hapus semua riwayat kontak masuk"
+          >
+            <Trash2 className="size-3.5" />
+            <span>Hapus Semua</span>
+          </button>
+        )}
+      </div>
+
+      {contacts.length === 0 ? (
+        <EmptyState
+          icon={MessageSquare}
+          title="Belum ada kontak masuk"
+          description="Pesan masuk dari pengguna yang belum berteman resmi akan tampil di sini."
+        />
+      ) : (
+        <div className="space-y-2">
+          {visibleContacts.map((c) => (
+            <div
+              key={c.roomId}
+              onClick={() => onViewProfile(c.user.accountId)}
+              className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft transition-all hover:border-primary/50 hover:shadow-md cursor-pointer select-none"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewProfile(c.user.accountId);
+                }}
+                className="relative shrink-0 cursor-pointer"
+                title="Lihat profil"
+              >
+                <Avatar
+                  initials={c.user.initials || c.user.username.slice(0, 2).toUpperCase()}
+                  hue={c.user.hue}
+                  avatarUrl={c.user.avatarUrl}
+                  size="md"
+                />
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-bold text-foreground group-hover:underline">
+                    {c.user.username}
+                  </p>
+                  <span className="text-[10px] font-semibold text-muted-foreground/80">
+                    {c.user.accountId}
+                  </span>
+                </div>
+                <p className="truncate text-xs text-muted-foreground mt-0.5">
+                  <span className="font-semibold text-foreground/80">{c.user.username}</span>{" "}
+                  mengirim <span className="font-bold text-primary">{c.totalMessages}</span> pesan
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => onDelete(c)}
+                  title="Hapus riwayat kontak"
+                  aria-label="Hapus riwayat kontak"
+                  className="rounded-xl p-2.5 text-muted-foreground transition-all hover:bg-destructive/15 hover:text-destructive active:scale-90 cursor-pointer"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Tombol Show More jika lebih dari 5 kontak */}
+          {contacts.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAll((prev) => !prev)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-border/80 bg-secondary/60 py-2.5 text-xs font-bold text-foreground hover:bg-secondary hover:border-primary/40 transition-all shadow-xs cursor-pointer active:scale-98"
+            >
+              {showAll ? (
+                <>
+                  <ChevronUp className="size-4 text-primary" />
+                  <span>Sembunyikan</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="size-4 text-primary" />
+                  <span>
+                    Tampilkan Lebih Banyak ({contacts.length - 5} kontak lainnya)
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

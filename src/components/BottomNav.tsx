@@ -85,6 +85,9 @@ export function BottomNav() {
           const reqViewed = Number(
             localStorage.getItem(`treenest.friend.viewed_requests.${uid}`) || 0,
           );
+          const contactsViewed = Number(
+            localStorage.getItem(`treenest.friend.viewed_contacts.${uid}`) || 0,
+          );
           const frViewed = Number(
             localStorage.getItem(`treenest.friend.viewed_friends.${uid}`) || 0,
           );
@@ -94,11 +97,19 @@ export function BottomNav() {
             getUserFriends(uid, profile?.accountId),
           ]);
 
+          const friendKeys = new Set<string>(
+            friendsList.flatMap((f) => [f.accountId, f.id, f.uid].filter(Boolean) as string[])
+          );
+
+          const { getIncomingContacts } = await import("@/lib/chat-service");
+          const inContacts = await getIncomingContacts(uid, friendKeys);
+
           const hasReq = incoming.length > reqViewed;
           const hasFr = friendsList.length > frViewed;
+          const hasContacts = inContacts.length > contactsViewed;
 
           if (!isCancelled) {
-            setHasFriendBadge(hasReq || hasFr);
+            setHasFriendBadge(hasReq || hasFr || hasContacts);
           }
         } catch {
           // ignore

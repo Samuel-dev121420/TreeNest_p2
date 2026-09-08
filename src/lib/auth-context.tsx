@@ -468,6 +468,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    if (user?.uid) {
+      try {
+        const { updateOnlineStatus } = await import("./firestore-service");
+        await updateOnlineStatus(user.uid, false);
+      } catch (err) {
+        console.warn("Could not update online status on logout:", err);
+      }
+    }
     if (isFirebaseConfigured && auth) {
       await signOut(auth);
     }
