@@ -1,4 +1,4 @@
-import { createFileRoute, useLocation } from "@tanstack/react-router";
+import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Users,
@@ -13,6 +13,7 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageShell } from "@/components/PageShell";
@@ -46,8 +47,9 @@ import {
 } from "@/lib/firestore-service";
 import {
   getIncomingContacts,
-  deleteChatConversation,
-  deleteAllIncomingContacts,
+  subscribeToIncomingContacts,
+  dismissIncomingContact,
+  dismissAllIncomingContacts,
   type IncomingContact,
 } from "@/lib/chat-service";
 import { useAuth } from "@/lib/auth-context";
@@ -121,6 +123,7 @@ function FriendClubPage() {
   } | null>(null);
   const [confirmDeleteContact, setConfirmDeleteContact] = useState<IncomingContact | null>(null);
   const [confirmDeleteAllContacts, setConfirmDeleteAllContacts] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useScrollLock(
     Boolean(
@@ -209,35 +212,57 @@ function FriendClubPage() {
       setSent(outReqs);
     });
 
+    // Subscribe realtime to incoming contacts
+    const unsubContacts = subscribeToIncomingContacts(
+      uid,
+      () => new Set(friends.flatMap((f) => [f.accountId?.toUpperCase(), f.id, f.uid].filter(Boolean) as string[])),
+      (inContacts) => {
+        setIncomingContacts(inContacts);
+      }
+    );
+
     loadSocialData();
 
     return () => {
       unsubFriends();
       unsubIncoming();
       unsubSent();
+      unsubContacts();
     };
   }, [uid, profile?.accountId, loadSocialData]);
 
   const pendingIn = useMemo(() => {
     const friendAccountIds = new Set(friends.map((f) => f.accountId?.toUpperCase()));
     const friendUids = new Set(friends.map((f) => f.uid));
-    return requests.filter(
-      (r) =>
-        r.status === "pending" &&
-        !friendAccountIds.has(r.from?.accountId?.toUpperCase()) &&
-        !friendUids.has(r.from?.uid),
-    );
+    const seen = new Set<string>();
+    return requests.filter((r) => {
+      if (r.status !== "pending") return false;
+      const key = (r.from?.accountId || r.from?.uid || "").toUpperCase();
+      if (!key) return false;
+      if (friendAccountIds.has(r.from?.accountId?.toUpperCase()) || friendUids.has(r.from?.uid)) {
+        return false;
+      }
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [requests, friends]);
 
   const pendingOut = useMemo(() => {
     const friendAccountIds = new Set(friends.map((f) => f.accountId?.toUpperCase()));
     const friendUids = new Set(friends.map((f) => f.uid));
-    return sent.filter(
-      (s) =>
-        s.status === "pending" &&
-        !friendAccountIds.has(s.to?.accountId?.toUpperCase()) &&
-        !friendUids.has(s.to?.uid),
-    );
+    const seen = new Set<string>();
+    return sent.filter((s) => {
+      if (s.status !== "pending") return false;
+      const key = (s.to?.accountId || s.to?.uid || "").toUpperCase();
+      if (!key) return false;
+      if (friendAccountIds.has(s.to?.accountId?.toUpperCase()) || friendUids.has(s.to?.uid)) {
+        return false;
+      }
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [sent, friends]);
 
   async function handleSendRequest(person: Person) {
@@ -254,9 +279,14 @@ function FriendClubPage() {
       avatarUrl: profile.avatarUrl,
     };
 
-    const res = await sendFriendRequest(fromUser, person);
-    if (res.success) {
-      await loadSocialData();
+    try {
+      setIsProcessing(true);
+      const res = await sendFriendRequest(fromUser, person);
+      if (res.success) {
+        await loadSocialData();
+      }
+    } finally {
+      setIsProcessing(false);
     }
   }
 
@@ -271,42 +301,57 @@ function FriendClubPage() {
       avatarUrl: profile.avatarUrl,
     };
 
-    await acceptFriendRequest(req.id, currentUser, req.from);
-    if (uid !== "guest") {
-      await awardActivityExp(uid, "add_friend", req.from.accountId);
-      await refreshProfile();
-    }
-
-    // Auto-feature teman baru jika kuota teman tampil masih ada (< 5)
     try {
-      const currentFeat = await getFeaturedFriends(uid);
-      const friendKey = req.from.uid || req.from.accountId;
-      if (
-        currentFeat.length < MAX_FEATURED &&
-        !currentFeat.includes(friendKey) &&
-        !currentFeat.includes(req.from.accountId)
-      ) {
-        const nextFeat = [...currentFeat, friendKey];
-        await updateFeaturedFriends(uid, nextFeat);
+      setIsProcessing(true);
+      await acceptFriendRequest(req.id, currentUser, req.from);
+      if (uid !== "guest") {
+        await awardActivityExp(uid, "add_friend", req.from.accountId);
+        await refreshProfile();
       }
-    } catch {
-      // ignore
-    }
 
-    await loadSocialData();
-    const updatedFriendsCount = friends.length + 1;
-    setViewedFriendsCount(updatedFriendsCount);
-    handleSelectTab("list");
+      // Auto-feature teman baru jika kuota teman tampil masih ada (< 5)
+      try {
+        const currentFeat = await getFeaturedFriends(uid);
+        const friendKey = req.from.uid || req.from.accountId;
+        if (
+          currentFeat.length < MAX_FEATURED &&
+          !currentFeat.includes(friendKey) &&
+          !currentFeat.includes(req.from.accountId)
+        ) {
+          const nextFeat = [...currentFeat, friendKey];
+          await updateFeaturedFriends(uid, nextFeat);
+        }
+      } catch {
+        // ignore
+      }
+
+      await loadSocialData();
+      const updatedFriendsCount = friends.length + 1;
+      setViewedFriendsCount(updatedFriendsCount);
+      handleSelectTab("list");
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function handleRejectRequest(id: string) {
-    await rejectFriendRequest(id);
-    await loadSocialData();
+    try {
+      setIsProcessing(true);
+      await rejectFriendRequest(id);
+      await loadSocialData();
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function handleCancelSent(id: string) {
-    await cancelFriendRequest(id);
-    await loadSocialData();
+    try {
+      setIsProcessing(true);
+      await cancelFriendRequest(id);
+      await loadSocialData();
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   function handleRequestRemoveFriend(friend: Friend) {
@@ -315,12 +360,17 @@ function FriendClubPage() {
 
   async function executeRemoveFriend(friend: Friend) {
     setConfirmDeleteFriend(null);
-    await removeFriendship(uid, friend.accountId, friend.uid);
-    const updatedFeat = featured.filter((fid) => fid !== friend.id && fid !== friend.accountId);
-    setFeatured(updatedFeat);
-    await updateFeaturedFriends(uid, updatedFeat);
-    await loadSocialData();
-    await refreshProfile();
+    try {
+      setIsProcessing(true);
+      await removeFriendship(uid, friend.accountId, friend.uid);
+      const updatedFeat = featured.filter((fid) => fid !== friend.id && fid !== friend.accountId);
+      setFeatured(updatedFeat);
+      await updateFeaturedFriends(uid, updatedFeat);
+      await loadSocialData();
+      await refreshProfile();
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   function handleRequestToggleFeatured(friend: Friend) {
@@ -344,7 +394,12 @@ function FriendClubPage() {
       updated = [...featured, friendKey];
     }
     setFeatured(updated);
-    await updateFeaturedFriends(uid, updated);
+    try {
+      setIsProcessing(true);
+      await updateFeaturedFriends(uid, updated);
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   // Track viewed states for red dot notifications
@@ -475,57 +530,68 @@ function FriendClubPage() {
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -12 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-        >
-          {tab === "search" && (
-            <SearchPanel
-              friends={friends}
-              sent={sent}
-              onSend={handleSendRequest}
-              goList={() => handleSelectTab("list")}
-              onViewProfile={setViewingAccountId}
-              initialQuery={initialSearchQuery}
-            />
-          )}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {tab === "search" && (
+              <SearchPanel
+                friends={friends}
+                sent={sent}
+                onSend={handleSendRequest}
+                goList={() => handleSelectTab("list")}
+                onViewProfile={setViewingAccountId}
+                initialQuery={initialSearchQuery}
+              />
+            )}
 
-          {tab === "requests" && (
-            <RequestsPanel
-              pendingIn={pendingIn}
-              pendingOut={pendingOut}
-              onAccept={handleAcceptRequest}
-              onReject={handleRejectRequest}
-              onCancel={handleCancelSent}
-              onViewProfile={setViewingAccountId}
-            />
-          )}
+            {tab === "requests" && (
+              <RequestsPanel
+                pendingIn={pendingIn}
+                pendingOut={pendingOut}
+                onAccept={handleAcceptRequest}
+                onReject={handleRejectRequest}
+                onCancel={handleCancelSent}
+                onViewProfile={setViewingAccountId}
+                isProcessing={isProcessing}
+              />
+            )}
 
-          {tab === "incoming_contacts" && (
-            <IncomingContactsPanel
-              contacts={incomingContacts}
-              onDelete={(c) => setConfirmDeleteContact(c)}
-              onDeleteAll={() => setConfirmDeleteAllContacts(true)}
-              onViewProfile={setViewingAccountId}
-            />
-          )}
+            {tab === "incoming_contacts" && (
+              <IncomingContactsPanel
+                contacts={incomingContacts}
+                friends={friends}
+                onDelete={(c) => setConfirmDeleteContact(c)}
+                onDeleteAll={() => setConfirmDeleteAllContacts(true)}
+                onViewProfile={setViewingAccountId}
+                goList={() => handleSelectTab("list")}
+                isProcessing={isProcessing}
+              />
+            )}
 
-          {tab === "list" && (
-            <ListPanel
-              friends={friends}
-              featured={featured}
-              maxFeatured={MAX_FEATURED}
-              onToggleFeatured={handleRequestToggleFeatured}
-              onRemove={handleRequestRemoveFriend}
-              onViewProfile={setViewingAccountId}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
+            {tab === "list" && (
+              <ListPanel
+                friends={friends}
+                featured={featured}
+                maxFeatured={MAX_FEATURED}
+                onToggleFeatured={handleRequestToggleFeatured}
+                onRemove={handleRequestRemoveFriend}
+                onViewProfile={setViewingAccountId}
+                isProcessing={isProcessing}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      )}
 
       {/* Modal Konfirmasi Hapus 1 Kontak Masuk */}
       <AnimatePresence>
@@ -551,16 +617,8 @@ function FriendClubPage() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-foreground">
-                  Hapus Riwayat Kontak Masuk?
+                  Hapus Kartu Kontak Masuk?
                 </h3>
-                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                  Apakah kamu yakin ingin menghapus riwayat kontak masuk dari{" "}
-                  <strong>{confirmDeleteContact.user.username}</strong> (
-                  {confirmDeleteContact.user.accountId})?
-                </p>
-                <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
-                  Riwayat pesan dengan akun ini akan dibersihkan.
-                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <button
@@ -575,8 +633,13 @@ function FriendClubPage() {
                   onClick={async () => {
                     const c = confirmDeleteContact;
                     setConfirmDeleteContact(null);
-                    await deleteChatConversation(c.roomId);
-                    await loadSocialData();
+                    try {
+                      setIsProcessing(true);
+                      await dismissIncomingContact(c.roomId, uid);
+                      await loadSocialData();
+                    } finally {
+                      setIsProcessing(false);
+                    }
                   }}
                   className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft cursor-pointer"
                 >
@@ -613,10 +676,7 @@ function FriendClubPage() {
               <div>
                 <h3 className="text-base font-bold text-foreground">Hapus Semua Kontak Masuk?</h3>
                 <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                  Apakah kamu yakin ingin menghapus seluruh ({incomingContacts.length}) riwayat kontak masuk dari akun yang belum berteman?
-                </p>
-                <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
-                  Tindakan ini akan menghapus semua pesan percakapan non-teman secara permanen.
+                  Apakah kamu yakin ingin menghapus seluruh ({incomingContacts.length}) kartu kontak masuk?
                 </p>
               </div>
               <div className="flex gap-2 pt-2">
@@ -631,8 +691,13 @@ function FriendClubPage() {
                   type="button"
                   onClick={async () => {
                     setConfirmDeleteAllContacts(false);
-                    await deleteAllIncomingContacts(incomingContacts.map((c) => c.roomId));
-                    await loadSocialData();
+                    try {
+                      setIsProcessing(true);
+                      await dismissAllIncomingContacts(incomingContacts.map((c) => c.roomId), uid);
+                      await loadSocialData();
+                    } finally {
+                      setIsProcessing(false);
+                    }
                   }}
                   className="flex-1 rounded-2xl bg-destructive py-2.5 text-xs font-bold text-white hover:bg-destructive/90 transition-colors shadow-soft cursor-pointer"
                 >
@@ -667,12 +732,13 @@ function FriendClubPage() {
                 <Trash2 className="size-7" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">Hapus Hubungan Pertemanan?</h3>
+                <h3 className="text-base font-bold text-foreground">Hapus Pertemanan?</h3>
                 <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                  Apakah kamu yakin ingin menghapus <strong>{confirmDeleteFriend.name}</strong> ({confirmDeleteFriend.accountId}) dari daftar temanmu?
+                  Apakah kamu yakin ingin menghapus <strong>{confirmDeleteFriend.name}</strong> (
+                  {confirmDeleteFriend.accountId}) dari daftar temanmu?
                 </p>
                 <p className="mt-2 text-[11px] text-destructive font-medium bg-destructive/10 rounded-xl py-1.5 px-2">
-                  Tindakan ini akan menghapus pertemanan di kedua akun secara permanen.
+                  Kamu tidak akan terhubung lagi sebagai teman resmi.
                 </p>
               </div>
               <div className="flex gap-2 pt-2">
@@ -696,7 +762,7 @@ function FriendClubPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal Konfirmasi Teman Tampil */}
+      {/* Modal Konfirmasi Tambah/Hapus Featured Friends (Teman Tampil) */}
       <AnimatePresence>
         {confirmFeaturedAction && (
           <motion.div
@@ -767,6 +833,10 @@ function FriendClubPage() {
             (s) => s.status === "pending" && (s.to.accountId === viewingAccountId || s.to.uid === viewingAccountId)
           )}
           onClose={() => setViewingAccountId(null)}
+          onGoToList={() => {
+            setViewingAccountId(null);
+            handleSelectTab("list");
+          }}
           onAddFriend={(person) => {
             if (person) {
               handleSendRequest(person);
@@ -875,8 +945,9 @@ function SearchPanel({
             />
           </div>
         ) : isSearching ? (
-          <div className="sm:col-span-2 text-center py-8 text-xs text-muted-foreground font-semibold">
-            Mencari teman...
+          <div className="sm:col-span-2 flex flex-col items-center justify-center py-12 text-xs text-muted-foreground font-semibold gap-2">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <span>Mencari teman...</span>
           </div>
         ) : results.length === 0 ? (
           <div className="sm:col-span-2">
@@ -953,6 +1024,7 @@ function RequestsPanel({
   onReject,
   onCancel,
   onViewProfile,
+  isProcessing,
 }: {
   pendingIn: FriendRequest[];
   pendingOut: SentRequest[];
@@ -960,7 +1032,19 @@ function RequestsPanel({
   onReject: (id: string) => void;
   onCancel: (id: string) => void;
   onViewProfile: (accountId: string) => void;
+  isProcessing?: boolean;
 }) {
+  const navigate = useNavigate();
+
+  if (isProcessing) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-xs text-muted-foreground font-semibold gap-2">
+        <Loader2 className="size-6 animate-spin text-primary" />
+        <span>Memproses permintaan...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <section>
@@ -1006,6 +1090,15 @@ function RequestsPanel({
                   <p className="text-xs text-muted-foreground">{r.from.accountId}</p>
                 </div>
                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: `/chat/${r.from.accountId}` })}
+                    aria-label="Kirim pesan"
+                    title="Kirim pesan"
+                    className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-primary/15 hover:text-primary active:scale-90 cursor-pointer"
+                  >
+                    <MessageSquare className="size-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => onAccept(r)}
@@ -1066,7 +1159,16 @@ function RequestsPanel({
                   </p>
                   <p className="text-xs text-muted-foreground">{s.to.accountId} · Menunggu konfirmasi</p>
                 </div>
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: `/chat/${s.to.accountId}` })}
+                    aria-label="Kirim pesan"
+                    title="Kirim pesan"
+                    className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-primary/15 hover:text-primary active:scale-90 cursor-pointer"
+                  >
+                    <MessageSquare className="size-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => onCancel(s.id)}
@@ -1088,15 +1190,22 @@ function RequestsPanel({
 
 function IncomingContactsPanel({
   contacts,
+  friends,
   onDelete,
   onDeleteAll,
   onViewProfile,
+  goList,
+  isProcessing,
 }: {
   contacts: IncomingContact[];
+  friends: Friend[];
   onDelete: (contact: IncomingContact) => void;
   onDeleteAll: () => void;
   onViewProfile: (accountId: string) => void;
+  goList?: () => void;
+  isProcessing?: boolean;
 }) {
+  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const visibleContacts = showAll ? contacts : contacts.slice(0, 5);
 
@@ -1106,7 +1215,7 @@ function IncomingContactsPanel({
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
           Kontak Masuk ({contacts.length})
         </h2>
-        {contacts.length > 0 && (
+        {contacts.length > 0 && !isProcessing && (
           <button
             type="button"
             onClick={onDeleteAll}
@@ -1119,65 +1228,101 @@ function IncomingContactsPanel({
         )}
       </div>
 
-      {contacts.length === 0 ? (
+      {isProcessing ? (
+        <div className="flex flex-col items-center justify-center py-16 text-xs text-muted-foreground font-semibold gap-2">
+          <Loader2 className="size-6 animate-spin text-primary" />
+          <span>Memproses kontak...</span>
+        </div>
+      ) : contacts.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
           title="Belum ada kontak masuk"
-          description="Pesan masuk dari pengguna yang belum berteman resmi akan tampil di sini."
+          description="Pesan masuk dari riwayat percakapan akan tampil di sini."
         />
       ) : (
         <div className="space-y-2">
-          {visibleContacts.map((c) => (
-            <div
-              key={c.roomId}
-              onClick={() => onViewProfile(c.user.accountId)}
-              className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft transition-all hover:border-primary/50 hover:shadow-md cursor-pointer select-none"
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewProfile(c.user.accountId);
+          {visibleContacts.map((c) => {
+            const isFriend = Boolean(
+              c.isFriend ||
+              friends.some(
+                (f) =>
+                  (f.accountId && f.accountId.toUpperCase() === c.user.accountId?.toUpperCase()) ||
+                  (c.user.uid && f.uid === c.user.uid)
+              )
+            );
+
+            return (
+              <div
+                key={c.roomId}
+                onClick={() => {
+                  if (isFriend && goList) {
+                    goList();
+                  } else {
+                    onViewProfile(c.user.accountId);
+                  }
                 }}
-                className="relative shrink-0 cursor-pointer"
-                title="Lihat profil"
+                className="group flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-soft transition-all hover:border-primary/50 hover:shadow-md cursor-pointer select-none"
               >
-                <Avatar
-                  initials={c.user.initials || c.user.username.slice(0, 2).toUpperCase()}
-                  hue={c.user.hue}
-                  avatarUrl={c.user.avatarUrl}
-                  size="md"
-                />
-              </button>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-bold text-foreground group-hover:underline">
-                    {c.user.username}
-                  </p>
-                  <span className="text-[10px] font-semibold text-muted-foreground/80">
-                    {c.user.accountId}
-                  </span>
-                </div>
-                <p className="truncate text-xs text-muted-foreground mt-0.5">
-                  <span className="font-semibold text-foreground/80">{c.user.username}</span>{" "}
-                  mengirim <span className="font-bold text-primary">{c.totalMessages}</span> pesan
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
-                  onClick={() => onDelete(c)}
-                  title="Hapus riwayat kontak"
-                  aria-label="Hapus riwayat kontak"
-                  className="rounded-xl p-2.5 text-muted-foreground transition-all hover:bg-destructive/15 hover:text-destructive active:scale-90 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewProfile(c.user.accountId);
+                  }}
+                  className="relative shrink-0 cursor-pointer"
+                  title="Lihat profil"
                 >
-                  <Trash2 className="size-4" />
+                  <Avatar
+                    initials={c.user.initials || c.user.username.slice(0, 2).toUpperCase()}
+                    hue={c.user.hue}
+                    avatarUrl={c.user.avatarUrl}
+                    size="md"
+                  />
                 </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold text-foreground group-hover:underline">
+                      {c.user.username}
+                    </p>
+                    <span className="text-[10px] font-semibold text-muted-foreground/80">
+                      {c.user.accountId}
+                    </span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground mt-0.5">
+                    <span className="font-semibold text-foreground/80">{c.user.username}</span>{" "}
+                    mengirim <span className="font-bold text-primary">{c.totalMessages}</span> pesan
+                  </p>
+                  {isFriend && (
+                    <p className="truncate text-xs font-semibold text-leaf mt-0.5">
+                      Anda sudah berteman dengan akun ini
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: `/chat/${c.user.accountId}` })}
+                    title="Kirim pesan"
+                    aria-label="Kirim pesan"
+                    className="rounded-xl p-2.5 text-muted-foreground transition-all hover:bg-primary/15 hover:text-primary active:scale-90 cursor-pointer"
+                  >
+                    <MessageSquare className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(c)}
+                    title="Hapus riwayat kontak"
+                    aria-label="Hapus riwayat kontak"
+                    className="rounded-xl p-2.5 text-muted-foreground transition-all hover:bg-destructive/15 hover:text-destructive active:scale-90 cursor-pointer"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Tombol Show More jika lebih dari 5 kontak */}
           {contacts.length > 5 && (
@@ -1216,6 +1361,7 @@ function ListPanel({
   onToggleFeatured,
   onRemove,
   onViewProfile,
+  isProcessing,
 }: {
   friends: Friend[];
   featured: string[];
@@ -1223,7 +1369,9 @@ function ListPanel({
   onToggleFeatured: (friend: Friend) => void;
   onRemove: (friend: Friend) => void;
   onViewProfile: (accountId: string) => void;
+  isProcessing?: boolean;
 }) {
+  const navigate = useNavigate();
   // Hanya hitung dan tampilkan teman yang benar-benar aktif berteman
   const validFeatured = useMemo(() => {
     return featured.filter((fid) => friends.some((f) => f.id === fid || f.accountId === fid));
@@ -1249,7 +1397,12 @@ function ListPanel({
         </p>
       </div>
 
-      {friends.length === 0 ? (
+      {isProcessing ? (
+        <div className="flex flex-col items-center justify-center py-16 text-xs text-muted-foreground font-semibold gap-2">
+          <Loader2 className="size-6 animate-spin text-primary" />
+          <span>Memproses daftar teman...</span>
+        </div>
+      ) : friends.length === 0 ? (
         <EmptyState
           icon={Users}
           title="Belum punya teman"
@@ -1289,7 +1442,7 @@ function ListPanel({
                   onClick={() => onToggleFeatured(f)}
                   disabled={!canFeature}
                   aria-label={isFeatured ? "Keluarkan dari Teman Tampil" : "Jadikan Teman Tampil"}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-40 ${
+                  className={`flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer ${
                     isFeatured
                       ? "bg-leaf/15 text-leaf"
                       : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
@@ -1299,9 +1452,18 @@ function ListPanel({
                   {isFeatured ? "Tampil" : "Pilih"}
                 </button>
                 <button
+                  type="button"
+                  onClick={() => navigate({ to: `/chat/${f.accountId}` })}
+                  aria-label="Kirim pesan"
+                  title="Kirim pesan"
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary active:scale-90 cursor-pointer"
+                >
+                  <MessageSquare className="size-4" />
+                </button>
+                <button
                   onClick={() => onRemove(f)}
                   aria-label="Hapus teman"
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                 >
                   <Trash2 className="size-4" />
                 </button>

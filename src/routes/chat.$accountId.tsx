@@ -45,6 +45,7 @@ import {
   Pencil,
   User,
   Users,
+  Loader2,
 } from "lucide-react";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
 import { TikTokEmotePicker, renderMessageWithEmotes, isMessageOnlyEmojis } from "@/components/chat/TikTokEmotes";
@@ -79,6 +80,9 @@ function ChatPage() {
   const emoteButtonRef = useRef<HTMLButtonElement>(null);
   const [isTextareaOverflowing, setIsTextareaOverflowing] = useState(false);
   const [isEmotePickerOpen, setIsEmotePickerOpen] = useState(false);
+
+  const [isChatLoading, setIsChatLoading] = useState(true);
+  const [isActionProcessing, setIsActionProcessing] = useState(false);
 
   // Interactive Message States: Reply, Edit, Select Mode & Menus
   const initialLoadedRoomsRef = useRef<Set<string>>(new Set());
@@ -282,68 +286,74 @@ function ChatPage() {
     let unsubscribeTyping: (() => void) | undefined;
 
     async function initChat() {
-      const rId = await getOrCreateChatRoom(user!.uid, targetProfile!.uid);
-      setRoomId(rId);
-      roomIdRef.current = rId;
+      try {
+        const rId = await getOrCreateChatRoom(user!.uid, targetProfile!.uid);
+        setRoomId(rId);
+        roomIdRef.current = rId;
 
-      // Always reset self typing status when entering room
-      await setTypingStatus(rId, user!.uid, false);
+        // Always reset self typing status when entering room
+        await setTypingStatus(rId, user!.uid, false);
 
-      unsubscribeMessages =
-        subscribeToMessages(rId, user!.uid, (msgs) => {
-          const prevCount = prevMessagesCountRef.current;
-          prevMessagesCountRef.current = msgs.length;
-          setMessages(msgs);
+        unsubscribeMessages =
+          subscribeToMessages(rId, user!.uid, (msgs) => {
+            setIsChatLoading(false);
+            const prevCount = prevMessagesCountRef.current;
+            prevMessagesCountRef.current = msgs.length;
+            setMessages(msgs);
 
-          if (user?.uid) {
-            // Selalu konfirmasi pesan telah sampai di device / browser penerima (Centang 2 abu-abu)
-            markMessagesAsDelivered(rId, user.uid);
+            if (user?.uid) {
+              // Selalu konfirmasi pesan telah sampai di device / browser penerima (Centang 2 abu-abu)
+              markMessagesAsDelivered(rId, user.uid);
 
-            // HANYA tandai sebagai dibaca (Centang 2 biru) jika tab sedang aktif dan dilihat pengguna
-            if (isChatActiveAndVisible()) {
-              markMessagesAsRead(rId, user.uid);
+              // HANYA tandai sebagai dibaca (Centang 2 biru) jika tab sedang aktif dan dilihat pengguna
+              if (isChatActiveAndVisible()) {
+                markMessagesAsRead(rId, user.uid);
+              }
             }
-          }
 
-          // HANYA scroll ke bawah saat:
-          // 1. Initial load pertama kali untuk room ini
-          // 2. Ada pesan baru yang benar-benar ditambahkan (msgs.length > prevCount)
-          // TIDAK AKAN PERNAH scroll ke bawah saat reaksi emoji ditambah/dihapus atau pesan diedit!
-          const isFirstLoadForRoom = !initialLoadedRoomsRef.current.has(rId);
-          if (isFirstLoadForRoom) {
-            if (msgs.length > 0) {
-              initialLoadedRoomsRef.current.add(rId);
-              setTimeout(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              }, 40);
+            // HANYA scroll ke bawah saat:
+            // 1. Initial load pertama kali untuk room ini
+            // 2. Ada pesan baru yang benar-benar ditambahkan (msgs.length > prevCount)
+            // TIDAK AKAN PERNAH scroll ke bawah saat reaksi emoji ditambah/dihapus atau pesan diedit!
+            const isFirstLoadForRoom = !initialLoadedRoomsRef.current.has(rId);
+            if (isFirstLoadForRoom) {
+              if (msgs.length > 0) {
+                initialLoadedRoomsRef.current.add(rId);
+                setTimeout(() => {
+                  if (chatContainerRef.current) {
+                    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                  }
+                }, 40);
+              }
+            } else if (msgs.length > prevCount) {
+              const lastMsg = msgs[msgs.length - 1];
+              const isMyNewMsg = lastMsg && lastMsg.senderId === user?.uid;
+              const container = chatContainerRef.current;
+              const isNearBottom = container
+                ? container.scrollHeight - container.scrollTop - container.clientHeight < 250
+                : true;
+
+              if (isMyNewMsg || isNearBottom) {
+                setTimeout(() => {
+                  if (chatContainerRef.current) {
+                    chatContainerRef.current.scrollTo({
+                      top: chatContainerRef.current.scrollHeight,
+                      behavior: "smooth",
+                    });
+                  }
+                }, 60);
+              }
             }
-          } else if (msgs.length > prevCount) {
-            const lastMsg = msgs[msgs.length - 1];
-            const isMyNewMsg = lastMsg && lastMsg.senderId === user?.uid;
-            const container = chatContainerRef.current;
-            const isNearBottom = container
-              ? container.scrollHeight - container.scrollTop - container.clientHeight < 250
-              : true;
+          }) || undefined;
 
-            if (isMyNewMsg || isNearBottom) {
-              setTimeout(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTo({
-                    top: chatContainerRef.current.scrollHeight,
-                    behavior: "smooth",
-                  });
-                }
-              }, 60);
-            }
-          }
-        }) || undefined;
-
-      unsubscribeTyping =
-        subscribeToTypingStatus(rId, (typingStatus) => {
-          setOtherTyping(Boolean(typingStatus[targetProfile!.uid]));
-        }) || undefined;
+        unsubscribeTyping =
+          subscribeToTypingStatus(rId, (typingStatus) => {
+            setOtherTyping(Boolean(typingStatus[targetProfile!.uid]));
+          }) || undefined;
+      } catch (err) {
+        console.error("Error initializing chat:", err);
+        setIsChatLoading(false);
+      }
     }
 
     initChat();
@@ -571,41 +581,56 @@ function ChatPage() {
   // Action handlers
   const handleClearAllHistory = async () => {
     if (!roomId || !user) return;
-    await clearAllChatHistory(roomId, user.uid);
-    setShowClearAllModal(false);
-    setSelectedMessageIds([]);
-    setIsSelectMode(false);
-    setReplyingTo(null);
+    try {
+      setIsActionProcessing(true);
+      await clearAllChatHistory(roomId, user.uid);
+      setShowClearAllModal(false);
+      setSelectedMessageIds([]);
+      setIsSelectMode(false);
+      setReplyingTo(null);
+    } finally {
+      setIsActionProcessing(false);
+    }
   };
 
   const handleDeleteSingle = async (forEveryone: boolean = false) => {
     if (!roomId || !singleDeleteMessageId || !user) return;
-    const res = await deleteSingleMessage(roomId, singleDeleteMessageId, user.uid, forEveryone);
-    if (!res.success && res.error) {
-      alert(res.error);
+    try {
+      setIsActionProcessing(true);
+      const res = await deleteSingleMessage(roomId, singleDeleteMessageId, user.uid, forEveryone);
+      if (!res.success && res.error) {
+        alert(res.error);
+      }
+      if (replyingTo?.id === singleDeleteMessageId) {
+        setReplyingTo(null);
+      }
+      if (editingMessage?.id === singleDeleteMessageId) {
+        handleCancelEdit();
+      }
+      setSingleDeleteMessageId(null);
+      setActiveMenuMessageId(null);
+    } finally {
+      setIsActionProcessing(false);
     }
-    if (replyingTo?.id === singleDeleteMessageId) {
-      setReplyingTo(null);
-    }
-    if (editingMessage?.id === singleDeleteMessageId) {
-      handleCancelEdit();
-    }
-    setSingleDeleteMessageId(null);
-    setActiveMenuMessageId(null);
   };
 
   const handleDeleteSelected = async () => {
     if (!roomId || !user || selectedMessageIds.length === 0) return;
-    await deleteMultipleMessages(roomId, selectedMessageIds, user.uid);
-    if (replyingTo && selectedMessageIds.includes(replyingTo.id)) {
-      setReplyingTo(null);
+    try {
+      setIsActionProcessing(true);
+      await deleteMultipleMessages(roomId, selectedMessageIds, user.uid);
+      if (replyingTo && selectedMessageIds.includes(replyingTo.id)) {
+        setReplyingTo(null);
+      }
+      if (editingMessage && selectedMessageIds.includes(editingMessage.id)) {
+        handleCancelEdit();
+      }
+      setSelectedMessageIds([]);
+      setIsSelectMode(false);
+      setShowDeleteSelectedModal(false);
+    } finally {
+      setIsActionProcessing(false);
     }
-    if (editingMessage && selectedMessageIds.includes(editingMessage.id)) {
-      handleCancelEdit();
-    }
-    setSelectedMessageIds([]);
-    setIsSelectMode(false);
-    setShowDeleteSelectedModal(false);
   };
 
   const toggleSelectMessage = (messageId: string) => {
@@ -884,16 +909,20 @@ function ChatPage() {
           isChatScrolling ? "is-scrolling" : ""
         }`}
       >
-        {messages.length === 0 && targetProfile && (
+        {(isChatLoading || !targetProfile || !roomId) ? (
+          <div className="flex h-full min-h-[320px] flex-col items-center justify-center text-center text-muted-foreground py-16 gap-3">
+            <Loader2 className="size-7 animate-spin text-primary" />
+            <p className="text-xs font-semibold text-muted-foreground">Menghubungkan...</p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground py-12">
             <p className="text-sm font-semibold text-foreground">Belum ada percakapan.</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-xs">
               Mulai kirimkan pesan kepada {targetProfile.username} sekarang?
             </p>
           </div>
-        )}
-
-        {messages.map((msg, index) => {
+        ) : (
+          messages.map((msg, index) => {
           const isMine = msg.senderId === user.uid;
           
           // Date separator logic
@@ -1692,7 +1721,7 @@ function ChatPage() {
               </div>
             </div>
           );
-        })}
+        }))}
         <div ref={messagesEndRef} className="h-2" />
       </main>
 
@@ -1877,9 +1906,11 @@ function ChatPage() {
               <button
                 type="button"
                 onClick={handleClearAllHistory}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shadow-soft"
+                disabled={isActionProcessing}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shadow-soft disabled:opacity-50"
               >
-                Hapus
+                {isActionProcessing && <Loader2 className="size-3.5 animate-spin" />}
+                <span>Hapus</span>
               </button>
             </div>
           </div>
@@ -1910,9 +1941,11 @@ function ChatPage() {
               <button
                 type="button"
                 onClick={handleDeleteSelected}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shadow-soft"
+                disabled={isActionProcessing}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-destructive py-2.5 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shadow-soft disabled:opacity-50"
               >
-                Hapus untuk Saya
+                {isActionProcessing && <Loader2 className="size-3.5 animate-spin" />}
+                <span>Hapus untuk Saya</span>
               </button>
             </div>
           </div>
@@ -1944,9 +1977,11 @@ function ChatPage() {
                 <button
                   type="button"
                   onClick={() => handleDeleteSingle(false)}
-                  className="w-full flex items-center justify-center rounded-2xl border border-border/80 bg-secondary/50 dark:bg-zinc-800/60 p-3 text-xs font-bold text-foreground hover:border-primary/50 hover:bg-secondary dark:hover:bg-zinc-800 transition-all cursor-pointer text-center"
+                  disabled={isActionProcessing}
+                  className="w-full flex items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-secondary/50 dark:bg-zinc-800/60 p-3 text-xs font-bold text-foreground hover:border-primary/50 hover:bg-secondary dark:hover:bg-zinc-800 transition-all cursor-pointer text-center disabled:opacity-50"
                 >
-                  Hapus untuk Saya
+                  {isActionProcessing && <Loader2 className="size-3.5 animate-spin text-primary" />}
+                  <span>Hapus untuk Saya</span>
                 </button>
 
                 {/* Opsi 2: Hapus untuk Semua Orang (Hanya jika pengirim & usia <= 5 menit) */}
@@ -1954,9 +1989,11 @@ function ChatPage() {
                   <button
                     type="button"
                     onClick={() => handleDeleteSingle(true)}
-                    className="w-full flex items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 dark:bg-destructive/20 p-3 text-xs font-bold text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/30 transition-all cursor-pointer text-center"
+                    disabled={isActionProcessing}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-2xl border border-destructive/30 bg-destructive/10 dark:bg-destructive/20 p-3 text-xs font-bold text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/30 transition-all cursor-pointer text-center disabled:opacity-50"
                   >
-                    Hapus untuk Semua Orang
+                    {isActionProcessing && <Loader2 className="size-3.5 animate-spin text-destructive" />}
+                    <span>Hapus untuk Semua Orang</span>
                   </button>
                 )}
               </div>

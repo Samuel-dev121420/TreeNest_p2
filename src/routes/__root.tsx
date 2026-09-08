@@ -138,9 +138,10 @@ import { DateTimeWidget } from "../components/DateTimeWidget";
 import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
 import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
 import { SoundToggleWidget } from "../components/SoundToggleWidget";
+import { ShieldAlert, LogOut } from "lucide-react";
 
 function AppShell() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -231,6 +232,49 @@ function AppShell() {
 
   if (loading) {
     return <LoadingScreen message="Menghubungkan ke TreeNest..." />;
+  }
+
+  // Tampilan Akun Ditangguhkan (Suspended Guard)
+  if (profile?.isSuspended && location.pathname !== "/login" && location.pathname !== "/admin") {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-red-50 to-amber-50 dark:from-zinc-950 dark:to-neutral-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-red-200 dark:border-red-900/50 p-6 md:p-8 text-center space-y-5">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-baloo">Akun Ditangguhkan</h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+              Akses akun Anda ke TreeNest telah dinonaktifkan sementara oleh Administrator.
+            </p>
+          </div>
+
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 text-left space-y-1.5">
+            <span className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">Alasan Penangguhan:</span>
+            <p className="text-sm text-zinc-800 dark:text-zinc-200 font-medium">
+              {profile.suspendReason || "Pelanggaran pedoman komunitas atau aktivitas mencurigakan."}
+            </p>
+            {profile.suspendedAt && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 pt-1">
+                Waktu: {new Date(profile.suspendedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Jika Anda merasa ini adalah kekeliruan, silakan hubungi tim administrator TreeNest.
+          </p>
+
+          <button
+            onClick={() => logout()}
+            className="w-full py-3 px-4 rounded-xl bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Keluar dari Akun
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const isHome = location.pathname === "/";

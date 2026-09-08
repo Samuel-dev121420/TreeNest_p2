@@ -525,7 +525,7 @@ function TreeGalleryPage() {
                 value={title}
                 disabled={uploading}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Judul Video"
+                placeholder="Judul video..."
                 className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-3 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>

@@ -93,18 +93,6 @@ function GrowPage() {
 
   return (
     <PageShell>
-      {/* ── Google-Inspired Hero Header Banner ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-card/85 p-6 sm:p-2.5 shadow-soft backdrop-blur-md dark:border-white/10 dark:bg-slate-900/90 mb-8 transition-all hover:border-primary/50">
-        {/* Subtle decorative background gradient accent */}
-        <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-12 -bottom-12 size-48 rounded-full bg-emerald-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex items-center justify-center">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight text-center">
-            Halo, {username}
-          </h1>
-        </div>
-      </div>
 
       {/* ── Main Productivity Tools Grid ── */}
       <div className="grid gap-5 sm:grid-cols-2">

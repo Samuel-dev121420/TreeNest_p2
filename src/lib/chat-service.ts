@@ -26,6 +26,7 @@ export interface IncomingContact {
   unreadCount: number;
   lastMessage: string;
   lastMessageTime: number;
+  isFriend?: boolean;
 }
 
 export interface ChatReplyInfo {
@@ -275,7 +276,7 @@ export function subscribeToTypingStatus(
   });
 }
 
-/** Mengambil daftar chat masuk khusus dari user yang belum saling berteman resmi */
+/** Mengambil daftar chat masuk (termasuk kontak non-teman dan yang sudah berteman) */
 export async function getIncomingContacts(
   currentUid: string,
   friendKeys: Set<string>
@@ -283,6 +284,15 @@ export async function getIncomingContacts(
   if (!currentUid || currentUid === "guest") return [];
 
   const { getUserProfile } = await import("./firestore-service");
+
+  let localDismissedMap: Record<string, number> = {};
+  if (typeof window !== "undefined") {
+    try {
+      localDismissedMap = JSON.parse(
+        localStorage.getItem(`treenest_dismissed_contacts_${currentUid}`) || "{}"
+      );
+    } catch {}
+  }
 
   // Local storage fallback saat offline / demo mode
   if (!isFirebaseConfigured || !db) {
@@ -300,14 +310,11 @@ export async function getIncomingContacts(
         const otherProfile = await getUserProfile(otherUid);
         if (!otherProfile) continue;
 
-        // Cek apakah lawan bicara adalah teman resmi
-        if (
+        const isFriend = Boolean(
           friendKeys.has(otherProfile.uid) ||
-          (otherProfile.accountId && friendKeys.has(otherProfile.accountId)) ||
+          (otherProfile.accountId && (friendKeys.has(otherProfile.accountId) || friendKeys.has(otherProfile.accountId.toUpperCase()))) ||
           friendKeys.has(otherUid)
-        ) {
-          continue;
-        }
+        );
 
         const msgs = roomData.messages || [];
         const incomingMsgs = msgs.filter((m) => m.senderId === otherUid);
@@ -315,6 +322,12 @@ export async function getIncomingContacts(
 
         const sortedMsgs = [...msgs].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
         const lastMsg = sortedMsgs[sortedMsgs.length - 1];
+        const lastTimestamp = lastMsg?.timestamp || Date.now();
+
+        const dismissedAt = localDismissedMap[rId] || 0;
+        if (dismissedAt > 0 && lastTimestamp <= dismissedAt) {
+          continue;
+        }
 
         contacts.push({
           roomId: rId,
@@ -322,7 +335,8 @@ export async function getIncomingContacts(
           totalMessages: incomingMsgs.length,
           unreadCount: incomingMsgs.filter((m) => !m.read).length,
           lastMessage: lastMsg?.text || "",
-          lastMessageTime: lastMsg?.timestamp || Date.now(),
+          lastMessageTime: lastTimestamp,
+          isFriend,
         });
       }
 
@@ -333,39 +347,40 @@ export async function getIncomingContacts(
     }
   }
 
+  const firestore = db;
+  if (!firestore) return [];
+
   try {
     const q = query(
-      collection(db, "chats"),
+      collection(firestore, "chats"),
       where("participants", "array-contains", currentUid)
     );
     const snap = await getDocs(q);
-    const contacts: IncomingContact[] = [];
+    const roomDocs = snap.docs;
 
-    for (const docSnap of snap.docs) {
-      const data = docSnap.data() as ChatRoom;
+    // Proses seluruh room secara concurrent untuk kecepatan maksimal tanpa latency
+    const contactPromises = roomDocs.map(async (docSnap) => {
+      const data = docSnap.data() as any;
       const roomId = docSnap.id;
-      const otherUid = data.participants.find((p) => p !== currentUid);
-      if (!otherUid) continue;
+      const otherUid = data.participants.find((p: string) => p !== currentUid);
+      if (!otherUid) return null;
 
       const otherProfile = await getUserProfile(otherUid);
-      if (!otherProfile) continue;
+      if (!otherProfile) return null;
 
-      // Filter jika lawan bicara sudah merupakan teman resmi
-      if (
+      const isFriend = Boolean(
         friendKeys.has(otherProfile.uid) ||
-        (otherProfile.accountId && friendKeys.has(otherProfile.accountId)) ||
+        (otherProfile.accountId && (friendKeys.has(otherProfile.accountId) || friendKeys.has(otherProfile.accountId.toUpperCase()))) ||
         friendKeys.has(otherUid)
-      ) {
-        continue;
-      }
+      );
 
       // Query pesan di dalam room chat
       const messagesQ = query(
-        collection(db, "chats", roomId, "messages"),
+        collection(firestore, "chats", roomId, "messages"),
         orderBy("timestamp", "desc")
       );
       const messagesSnap = await getDocs(messagesQ);
-      if (messagesSnap.empty) continue;
+      if (messagesSnap.empty) return null;
 
       let totalIncomingCount = 0;
       let unreadCount = 0;
@@ -378,7 +393,7 @@ export async function getIncomingContacts(
         }
       });
 
-      if (totalIncomingCount === 0) continue;
+      if (totalIncomingCount === 0) return null;
 
       const latestMsgDoc = messagesSnap.docs[0];
       const latestMsgData = latestMsgDoc?.data();
@@ -389,15 +404,33 @@ export async function getIncomingContacts(
           ? data.lastMessageTime
           : (data.lastMessageTime as any)?.toMillis?.() || Date.now());
 
-      contacts.push({
+      // Cek apakah kartu ini telah dihapus/disembunyikan oleh user saat ini
+      const remoteDismissedAt =
+        typeof data[`dismissedAt_${currentUid}`] === "number"
+          ? data[`dismissedAt_${currentUid}`]
+          : data.dismissedBy?.includes(currentUid)
+          ? 1
+          : 0;
+      const localDismissedAt = localDismissedMap[roomId] || 0;
+      const effectiveDismissedAt = Math.max(remoteDismissedAt, localDismissedAt);
+
+      if (effectiveDismissedAt > 0 && lastTimestamp <= effectiveDismissedAt) {
+        return null;
+      }
+
+      return {
         roomId,
         user: otherProfile,
         totalMessages: totalIncomingCount,
         unreadCount,
         lastMessage: latestMsgData?.["text"] || data.lastMessage || "",
         lastMessageTime: lastTimestamp,
-      });
-    }
+        isFriend,
+      } as IncomingContact;
+    });
+
+    const results = await Promise.all(contactPromises);
+    const contacts = results.filter((c): c is IncomingContact => c !== null);
 
     // Urutkan yang terbaru di paling atas
     contacts.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
@@ -408,39 +441,151 @@ export async function getIncomingContacts(
   }
 }
 
-/** Menghapus 1 percakapan chat */
-export async function deleteChatConversation(roomId: string): Promise<void> {
+/** Subscribe realtime ke kontak masuk */
+export function subscribeToIncomingContacts(
+  currentUid: string,
+  getFriendKeys: () => Set<string>,
+  callback: (contacts: IncomingContact[]) => void
+): () => void {
+  if (!currentUid || currentUid === "guest") {
+    callback([]);
+    return () => {};
+  }
+
+  let isUnsubscribed = false;
+  const unsubs: Array<() => void> = [];
+
+  const handleUpdate = async () => {
+    if (isUnsubscribed) return;
+    try {
+      const contacts = await getIncomingContacts(currentUid, getFriendKeys());
+      if (!isUnsubscribed) {
+        callback(contacts);
+      }
+    } catch {}
+  };
+
+  handleUpdate();
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(
+        collection(db, "chats"),
+        where("participants", "array-contains", currentUid)
+      );
+      const unsub = onSnapshot(
+        q,
+        () => handleUpdate(),
+        (err) => console.warn("Incoming contacts snapshot notice:", err)
+      );
+      unsubs.push(unsub);
+    } catch (err) {
+      console.warn("Could not subscribe to incoming contacts in Firestore:", err);
+    }
+  }
+
+  const handleStorageEvent = () => handleUpdate();
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", handleStorageEvent);
+    window.addEventListener("treenest_social_update", handleStorageEvent);
+    unsubs.push(() => {
+      window.removeEventListener("storage", handleStorageEvent);
+      window.removeEventListener("treenest_social_update", handleStorageEvent);
+    });
+  }
+
+  return () => {
+    isUnsubscribed = true;
+    unsubs.forEach((fn) => {
+      try {
+        fn();
+      } catch {}
+    });
+  };
+}
+
+/** Menyembunyikan / menghapus kartu kontak masuk hanya dari sudut pandang user yang menghapus */
+export async function dismissIncomingContact(roomId: string, currentUid?: string): Promise<void> {
   if (!roomId) return;
 
-  const raw = localStorage.getItem("treenest_local_chats");
-  if (raw) {
+  const now = Date.now();
+
+  // Simpan di local storage khusus untuk user ini
+  if (typeof window !== "undefined" && currentUid) {
     try {
-      const local = JSON.parse(raw);
-      delete local[roomId];
-      localStorage.setItem("treenest_local_chats", JSON.stringify(local));
+      const key = `treenest_dismissed_contacts_${currentUid}`;
+      const existing: Record<string, number> = JSON.parse(localStorage.getItem(key) || "{}");
+      existing[roomId] = now;
+      localStorage.setItem(key, JSON.stringify(existing));
     } catch {}
   }
 
-  if (!isFirebaseConfigured || !db) return;
-
-  try {
-    const messagesRef = collection(db, "chats", roomId, "messages");
-    const snap = await getDocs(messagesRef);
-    const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
-    await Promise.all(deletePromises);
-
-    const roomRef = doc(db, "chats", roomId);
-    await deleteDoc(roomRef);
-  } catch (err) {
-    console.error("Error deleting chat room:", err);
+  // Simpan di Firestore agar sinkron per-user tanpa menghapus data obrolan atau kartu akun lawan
+  const firestore = db;
+  if (isFirebaseConfigured && firestore) {
+    try {
+      const roomRef = doc(firestore, "chats", roomId);
+      const updateData: Record<string, any> = {};
+      if (currentUid) {
+        updateData["dismissedBy"] = arrayUnion(currentUid);
+        updateData[`dismissedAt_${currentUid}`] = now;
+      }
+      await setDoc(roomRef, updateData, { merge: true });
+    } catch (err) {
+      console.error("Error dismissing incoming contact:", err);
+    }
   }
+
+  const { triggerSocialUpdate } = await import("./firestore-service");
+  triggerSocialUpdate();
 }
 
-/** Menghapus semua riwayat kontak masuk non-teman */
-export async function deleteAllIncomingContacts(roomIds: string[]): Promise<void> {
+/** Menyembunyikan / menghapus semua kartu kontak masuk dari sudut pandang user aktif */
+export async function dismissAllIncomingContacts(roomIds: string[], currentUid?: string): Promise<void> {
   if (!roomIds || roomIds.length === 0) return;
-  await Promise.all(roomIds.map((rId) => deleteChatConversation(rId)));
+
+  const now = Date.now();
+
+  // Simpan di local storage
+  if (typeof window !== "undefined" && currentUid) {
+    try {
+      const key = `treenest_dismissed_contacts_${currentUid}`;
+      const existing: Record<string, number> = JSON.parse(localStorage.getItem(key) || "{}");
+      roomIds.forEach((rId) => {
+        existing[rId] = now;
+      });
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch {}
+  }
+
+  // Simpan di Firestore
+  const firestore = db;
+  if (isFirebaseConfigured && firestore) {
+    try {
+      await Promise.all(
+        roomIds.map((rId) => {
+          const updateData: Record<string, any> = {};
+          if (currentUid) {
+            updateData["dismissedBy"] = arrayUnion(currentUid);
+            updateData[`dismissedAt_${currentUid}`] = now;
+          }
+          return setDoc(doc(firestore, "chats", rId), updateData, { merge: true }).catch((err) =>
+            console.warn(err)
+          );
+        })
+      );
+    } catch (err) {
+      console.error("Error dismissing all incoming contacts:", err);
+    }
+  }
+
+  const { triggerSocialUpdate } = await import("./firestore-service");
+  triggerSocialUpdate();
 }
+
+/** Alias untuk kompatibilitas */
+export const deleteChatConversation = dismissIncomingContact;
+export const deleteAllIncomingContacts = dismissAllIncomingContacts;
 
 /** Mengedit teks pesan (Hanya pengirim, maksimal 90 detik) */
 export async function editMessage(

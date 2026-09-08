@@ -17,6 +17,7 @@ import {
   Twitter,
   Home,
   MessageCircle,
+  Loader2,
 } from "lucide-react";
 import { stageForLevel, expNeeded } from "@/lib/treenest";
 import { getUserProfile, type UserProfile } from "@/lib/firestore-service";
@@ -28,6 +29,7 @@ type Props = {
   viewerFriends?: Friend[] | undefined;
   onClose: () => void;
   onAddFriend?: ((person?: Person) => void) | undefined;
+  onGoToList?: (() => void) | undefined;
   isFriend?: boolean | undefined;
   isRequestSent?: boolean | undefined;
   disableVisit?: boolean | undefined;
@@ -92,6 +94,7 @@ export function PublicProfileModal({
   viewerFriends = [],
   onClose,
   onAddFriend,
+  onGoToList,
   isFriend = false,
   isRequestSent = false,
   disableVisit = false,
@@ -247,7 +250,10 @@ export function PublicProfileModal({
 
         <div className="px-5 pb-6">
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Memuat profil...</div>
+            <div className="py-14 flex flex-col items-center justify-center gap-2.5 text-xs text-muted-foreground font-semibold">
+              <Loader2 className="size-7 animate-spin text-primary" />
+              <span>Memuat profil...</span>
+            </div>
           ) : !targetProfile ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
               Profil tidak ditemukan.
@@ -359,9 +365,20 @@ export function PublicProfileModal({
                   </span>
                 )}
                 {!isOwner && isEffectiveFriend && (
-                  <span className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-leaf/10 px-4 py-2.5 text-xs font-bold text-leaf">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onGoToList) {
+                        onGoToList();
+                      } else {
+                        navigate({ to: "/friend-club", search: { tab: "list" } });
+                      }
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-leaf/10 px-4 py-2.5 text-xs font-bold text-leaf hover:bg-leaf/20 transition-colors cursor-pointer"
+                  >
                     Teman
-                  </span>
+                  </button>
                 )}
                 {!isOwner && !hideChatButton && (
                   <button
