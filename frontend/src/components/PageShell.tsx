@@ -1,28 +1,5 @@
 import type { ReactNode } from "react";
-import { motion, type Variants } from "framer-motion";
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.04,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.45,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
+import { motion } from "framer-motion";
 
 export function PageShell({
   title,
@@ -36,20 +13,18 @@ export function PageShell({
   return (
     <div className="min-h-screen bg-gradient-soft pb-32">
       <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="mx-auto w-full max-w-3xl px-5 pt-10"
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto w-full max-w-3xl px-5 pt-24 sm:pt-28"
       >
         {title ? (
-          <motion.header variants={itemVariants}>
+          <header>
             <h1 className="text-3xl font-bold text-foreground">{title}</h1>
             {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
-          </motion.header>
+          </header>
         ) : null}
-        <motion.div variants={itemVariants} className={title ? "mt-8" : ""}>
-          {children}
-        </motion.div>
+        <div className={title ? "mt-8" : ""}>{children}</div>
       </motion.div>
     </div>
   );
@@ -67,4 +42,5 @@ export function ComingSoon({ note }: { note: string }) {
     </motion.div>
   );
 }
+
 

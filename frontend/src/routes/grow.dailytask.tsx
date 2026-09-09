@@ -42,7 +42,7 @@ function ReminderPage() {
   const { profile } = useAuth();
   const uid = profile?.uid ?? "guest";
   const [tasks, setTasks] = useLocalStorage<DailyTask[]>(`treenest.dailytask.tasks.${uid}`, []);
-  const [dateKey, setDateKey] = useState(todayKey);
+  const [dateKey, setDateKey] = useState(() => todayKey());
   const [newTask, setNewTask] = useState("");
   const [editingTask, setEditingTask] = useState<DailyTask | null>(null);
   const [editText, setEditText] = useState("");
@@ -204,7 +204,12 @@ function ReminderPage() {
 
       <div className="mx-auto max-w-2xl space-y-4">
         {/* Search Bar */}
-        <div className="relative">
+        <motion.div
+          initial={{ opacity: 0, y: 18, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+          className="relative"
+        >
           <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={searchQuery}
@@ -220,20 +225,30 @@ function ReminderPage() {
               <X className="size-4" />
             </button>
           )}
-        </div>
+        </motion.div>
 
         {/* Search Results Indicator Banner */}
         {searchQuery && (
-          <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2.5 text-xs text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2.5 text-xs text-muted-foreground"
+          >
             <span>
               Hasil pencarian untuk "<strong>{searchQuery}</strong>" ({filteredDayTasks.length} item
               ditemukan)
             </span>
-          </div>
+          </motion.div>
         )}
 
-        {/* Unchecked Reminders Summary Section (Di atas agar langsung terlihat) */}
-        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+        {/* Unchecked Reminders Summary Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft"
+        >
           <div className="flex items-center justify-between gap-2 mb-3 border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
               <Bell className="size-4 text-sun shrink-0" />
@@ -282,11 +297,14 @@ function ReminderPage() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Date navigator + Calendar Quick Picker Trigger */}
-        <div
+        <motion.div
           ref={dateNavigatorRef}
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.20, ease: [0.16, 1, 0.3, 1] }}
           className={`flex items-center justify-between rounded-3xl border bg-card p-4 shadow-soft transition-all duration-500 scroll-mt-6 ${
             highlightTargetDate
               ? "border-primary ring-4 ring-primary/25 bg-primary/5 shadow-float scale-[1.01]"
@@ -380,10 +398,15 @@ function ReminderPage() {
           >
             <ChevronRight className="size-5" />
           </button>
-        </div>
+        </motion.div>
 
         {/* Progress */}
-        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl border border-border/70 bg-card p-5 shadow-soft"
+        >
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-foreground">Progres Pengingat</span>
             <span className="text-muted-foreground">
@@ -396,10 +419,15 @@ function ReminderPage() {
               style={{ width: `${progress}%` }}
             />
           </div>
-        </div>
+        </motion.div>
 
         {/* Input */}
-        <div className="flex gap-2 min-w-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="flex gap-2 min-w-0"
+        >
           <input
             maxLength={150}
             value={newTask}
@@ -416,23 +444,27 @@ function ReminderPage() {
           >
             <Plus className="size-5" />
           </button>
-        </div>
+        </motion.div>
 
         {/* 100% Completion Celebration Banner */}
         {progress === 100 && dayTasks.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            initial={{ opacity: 0, scale: 0.92, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            transition={{ type: "spring", stiffness: 350, damping: 22 }}
             className="flex items-center justify-center gap-2 rounded-2xl border border-primary/50 bg-primary/15 p-3.5 text-center text-xs font-bold text-primary shadow-soft backdrop-blur-md"
           >
-            <Sparkles className="size-4 text-primary animate-bounce" />
-            <span>Semua pengingat hari ini telah selesai! Kerja bagus! 🌿✨</span>
+            <span className="animate-bounce">Semua pengingat hari ini telah selesai!</span>
           </motion.div>
         )}
 
         {/* List */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, delay: 0.42, ease: [0.16, 1, 0.3, 1] }}
+          className="space-y-2"
+        >
           {filteredDayTasks.length === 0 ? (
             <EmptyState
               icon={CheckSquare}
@@ -494,7 +526,7 @@ function ReminderPage() {
               </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* ── MODAL KALENDER / QUICK DATE PICKER ── */}

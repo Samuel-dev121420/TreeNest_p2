@@ -346,7 +346,12 @@ function FlashcardPage() {
       <ToolHeader title="FlashCard" description="Buat deck dan kartu depan-belakang, untuk melatih daya ingatmu." />
 
       {/* Top Controls: Global Search Bar */}
-      <div className="relative mb-3">
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        className="relative mb-3"
+      >
         <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={searchQuery}
@@ -362,20 +367,30 @@ function FlashcardPage() {
             <X className="size-4" />
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Search Results Indicator Banner */}
       {searchQuery && (
-        <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2.5 text-xs text-muted-foreground border border-border/40">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-5 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2.5 text-xs text-muted-foreground border border-border/40"
+        >
           <span>
             Hasil pencarian untuk "<strong>{searchQuery}</strong>" (
             {activeDeckId ? deckCards.length : filteredDecks.length} item ditemukan)
           </span>
-        </div>
+        </motion.div>
       )}
 
       {/* SECTION 1: Koleksi Deck Belajar (Folder Style Full-Width Rows) */}
-      <div className="mb-8 rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.65, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-200 dark:border-border/60 pb-4">
           <div className="flex items-center gap-2">
             <Layers className="size-5 text-primary shrink-0" />
@@ -507,17 +522,17 @@ function FlashcardPage() {
             )}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* SECTION 2: Active Deck Workspace with Smooth Spring Motion */}
       <AnimatePresence mode="wait">
         {!activeDeck ? (
           <motion.div
             key="empty-deck-prompt"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 22, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -14, scale: 0.985 }}
+            transition={{ duration: 0.65, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-3xl border border-border/70 bg-card p-8 text-center shadow-soft"
           >
             <EmptyState
@@ -577,7 +592,7 @@ function FlashcardPage() {
                     maxLength={80}
                     value={cardTitle}
                     onChange={(e) => setCardTitle(e.target.value)}
-                    placeholder="Ketik Judul Kartu..."
+                    placeholder="Ketik judul kartu..."
                     className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -586,28 +601,28 @@ function FlashcardPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                      Sisi Depan (Pertanyaan / Kata) :
+                      Sisi Depan :
                     </label>
                     <input
                       maxLength={250}
                       value={front}
                       onChange={(e) => setFront(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addCard()}
-                      placeholder="Ketik Pertanyaan/Kata..."
+                      placeholder="Pertanyaan..."
                       className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                      Sisi Belakang (Jawaban / Penjelasan) :
+                      Sisi Belakang :
                     </label>
                     <input
                       maxLength={500}
                       value={back}
                       onChange={(e) => setBack(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addCard()}
-                      placeholder="Ketik Jawaban/Penjelasan..."
+                      placeholder="Jawaban..."
                       className="w-full rounded-xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>

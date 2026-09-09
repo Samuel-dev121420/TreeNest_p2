@@ -872,6 +872,7 @@ export async function sendFriendRequest(
       message: `${fromUser.name} menyukai profilmu dan mengirim permintaan pertemanan.`,
       link: "/friend-club?tab=requests",
       targetUid: resolvedToUid,
+      targetAccountId: toUser.accountId.toUpperCase(),
     });
   } catch {}
 
@@ -1458,6 +1459,7 @@ export async function acceptFriendRequest(
       message: `${currentUser.name || "Seseorang"} telah menerima permintaan pertemananmu.`,
       link: "/friend-club?tab=list",
       targetUid: fromUid,
+      targetAccountId: fromAccId,
     });
     addNotification({
       type: "friend_accepted",
@@ -1465,6 +1467,7 @@ export async function acceptFriendRequest(
       message: `${requestFrom.name || "Teman baru"} sekarang resmi menjadi temanmu.`,
       link: "/friend-club?tab=list",
       targetUid: toUid,
+      targetAccountId: toAccId,
     });
   } catch {
     // ignore

@@ -341,7 +341,12 @@ export function PiNotePage() {
 
       <div className="mx-auto max-w-5xl space-y-4">
         {/* Top Control Bar: Search & Actions */}
-        <div className="flex flex-col gap-3 rounded-3xl border border-border/70 bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        <motion.div
+          initial={{ opacity: 0, y: 18, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col gap-3 rounded-3xl border border-border/70 bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
+        >
           {/* Search bar */}
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -389,11 +394,16 @@ export function PiNotePage() {
               accept="image/*,video/*,application/pdf,text/*,.doc,.docx,.ppt,.pptx"
             />
           </div>
-        </div>
+        </motion.div>
 
         {/* Breadcrumb Navigation Trail */}
         {!searchQuery && (
-          <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-border/60 bg-card/60 px-4 py-2 text-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.65, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-border/60 bg-card/60 px-4 py-2 text-sm"
+          >
             <HardDrive className="size-4 shrink-0 text-muted-foreground" />
             {breadcrumbs.map((crumb, idx) => {
               const isLast = idx === breadcrumbs.length - 1;
@@ -413,12 +423,17 @@ export function PiNotePage() {
                 </div>
               );
             })}
-          </div>
+          </motion.div>
         )}
 
         {/* Search Results Indicator */}
         {searchQuery && (
-          <div className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2 text-xs text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-2 text-xs text-muted-foreground"
+          >
             <span>
               Hasil pencarian untuk "<strong>{searchQuery}</strong>" ({displayedItems.length} item
               ditemukan)
@@ -429,11 +444,16 @@ export function PiNotePage() {
             >
               Kembali ke Explorer
             </button>
-          </div>
+          </motion.div>
         )}
 
         {/* File Explorer Content Area */}
-        <div className="rounded-3xl border border-border/70 bg-card p-4 shadow-soft min-h-[22rem]">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.20, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl border border-border/70 bg-card p-4 shadow-soft min-h-[22rem]"
+        >
           {displayedItems.length === 0 ? (
             <EmptyState
               icon={Folder}
@@ -446,7 +466,7 @@ export function PiNotePage() {
             />
           ) : (
             <div className="flex flex-col gap-2">
-              {displayedItems.map((item) => {
+              {displayedItems.map((item, index) => {
                 const isFolder = item.type === "folder";
                 const isNote = item.type === "note";
 
@@ -456,8 +476,11 @@ export function PiNotePage() {
                   : 0;
 
                 return (
-                  <div
+                  <motion.div
                     key={item.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.3) }}
                     className="group flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-background dark:bg-secondary/40 dark:border-border/70 px-4 py-3 transition-all hover:border-primary/40 hover:shadow-sm"
                   >
                     {/* Main Clickable Item Info */}
@@ -534,12 +557,12 @@ export function PiNotePage() {
                         <Trash2 className="size-4" />
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Modal: Create Folder */}
@@ -696,7 +719,7 @@ export function PiNotePage() {
                 <textarea
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Tulis isi catatanmu di sini..."
+                  placeholder="Isi"
                   className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>

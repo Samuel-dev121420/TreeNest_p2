@@ -264,6 +264,20 @@
   box-shadow: var(--shadow-float);
 }
 
+@keyframes banner-slide-down {
+  0% {
+    transform: translate3d(0, -100%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@utility animate-banner-slide {
+  animation: banner-slide-down 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+}
+
 /* --- Animasi lembut khas TreeNest --- */
 @keyframes drift {
   from {

@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "@tanstack/react-router";
 import {
   Sparkles,
-  ChevronDown,
-  Check,
   LogIn,
   FileText,
   Layers,
@@ -13,7 +11,7 @@ import {
   TreePine,
   X,
 } from "lucide-react";
-import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import {
   getDailyQuestState,
@@ -32,6 +30,7 @@ export function DailyQuestWidget() {
   const [questState, setQuestState] = useState<DailyQuestState | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [toasts, setToasts] = useState<ToastNotice[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load quest state & subscribe to real-time events
   useEffect(() => {
@@ -59,6 +58,57 @@ export function DailyQuestWidget() {
     return () => unsubscribeToast();
   }, []);
 
+  useEffect(() => {
+    const handleToggle = () => setExpanded((prev) => !prev);
+    const handleOpen = () => setExpanded(true);
+    const handleClose = () => setExpanded(false);
+
+    // Close when other popups (Notifications, Calendar, Clock) are opened
+    const handleCloseOthers = () => setExpanded(false);
+
+    window.addEventListener("treenest_toggle_dailyquest", handleToggle);
+    window.addEventListener("treenest_open_dailyquest", handleOpen);
+    window.addEventListener("treenest_close_dailyquest", handleClose);
+    window.addEventListener("treenest_toggle_notifications", handleCloseOthers);
+    window.addEventListener("treenest_open_notifications", handleCloseOthers);
+    window.addEventListener("treenest_open_calendar", handleCloseOthers);
+    window.addEventListener("treenest_open_clock", handleCloseOthers);
+
+    return () => {
+      window.removeEventListener("treenest_toggle_dailyquest", handleToggle);
+      window.removeEventListener("treenest_open_dailyquest", handleOpen);
+      window.removeEventListener("treenest_close_dailyquest", handleClose);
+      window.removeEventListener("treenest_toggle_notifications", handleCloseOthers);
+      window.removeEventListener("treenest_open_notifications", handleCloseOthers);
+      window.removeEventListener("treenest_open_calendar", handleCloseOthers);
+      window.removeEventListener("treenest_open_clock", handleCloseOthers);
+    };
+  }, []);
+
+  // Click outside to close
+  useEffect(() => {
+    if (!expanded) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-treenest-quest-trigger]")) {
+        return;
+      }
+      if (containerRef.current && !containerRef.current.contains(target as Node)) {
+        setExpanded(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+
+    window.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [expanded]);
+
   if (location.pathname === "/admin" || location.pathname === "/login") return null;
   if (!uid || !profile) return null;
 
@@ -84,23 +134,19 @@ export function DailyQuestWidget() {
                 className={`pointer-events-auto flex items-center gap-3.5 rounded-3xl border px-5 py-3.5 shadow-2xl backdrop-blur-xl min-w-[280px] max-w-sm ${
                   isLevelUp
                     ? "border-amber-400/60 bg-gradient-to-r from-amber-500/95 via-yellow-500/95 to-amber-600/95 text-white shadow-amber-500/25"
-                    : "border-emerald-500/40 bg-white/95 text-neutral-900 shadow-xl dark:bg-zinc-900/95 dark:border-emerald-500/50 dark:text-zinc-100"
+                    : "border-primary/50 bg-card/95 text-card-foreground shadow-float dark:border-primary/40 dark:bg-card/95"
                 }`}
               >
-                <div
-                  className={`flex size-10 shrink-0 items-center justify-center rounded-2xl border ${
-                    isLevelUp
-                      ? "bg-white/20 border-white/40 text-yellow-100"
-                      : "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400"
-                  }`}
-                >
-                  <Sparkles className="size-5 animate-pulse" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`font-display text-sm font-extrabold tracking-tight ${isLevelUp ? "text-white" : "text-neutral-900 dark:text-white"}`}>
-                    {toast.title}
-                  </p>
-                  <p className={`text-xs font-semibold truncate ${isLevelUp ? "text-white/90" : "text-neutral-600 dark:text-zinc-400"}`}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-lg shadow-inner">
+                  {isLevelUp ? "⭐" : "🌱"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold leading-tight drop-shadow-xs">{toast.title}</p>
+                  <p
+                    className={`text-[11px] leading-snug mt-0.5 ${
+                      isLevelUp ? "text-amber-100" : "text-muted-foreground"
+                    }`}
+                  >
                     {toast.subtitle}
                   </p>
                 </div>
@@ -122,85 +168,82 @@ export function DailyQuestWidget() {
         </AnimatePresence>
       </div>
 
-      {/* ── DAILY QUEST WIDGET CONTAINER ── */}
-      <div className="fixed top-17 right-4 z-40 flex flex-col items-end">
-        {/* Toggle Button */}
-        <motion.button
-          onClick={() => setExpanded(!expanded)}
-          whileTap={{ scale: 0.93 }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className={`flex items-center gap-2 rounded-2xl border border-primary/50 bg-gradient-soft px-3.5 py-1.5 text-xs font-bold text-foreground shadow-soft backdrop-blur-md cursor-pointer ${
-            expanded ? "ring-2 ring-primary/40 border-white" : ""
-          }`}
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="flex size-5 items-center justify-center rounded-lg bg-primary/20 text-primary">
-              <TreePine className="size-3.5" />
-            </span>
-            <span>Lv.{currentLevel}</span>
-            <span className="text-muted-foreground font-normal">({currentExp}/50 EXP)</span>
-          </div>
-          <motion.div
-            animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          >
-            <ChevronDown className="size-3.5 text-primary" />
-          </motion.div>
-        </motion.button>
-
-        {/* Expanded Quest Card */}
+      {/* ── DAILY QUEST POP-UP KOTAK (Tanpa Lengkungan, Sejajar Vertikal dengan Icon Speaker) ── */}
+      <div
+        ref={containerRef}
+        className="fixed left-4 sm:left-6 md:left-8 top-[64px] sm:top-[72px] z-30 flex flex-col items-start select-none"
+      >
         <AnimatePresence>
           {expanded && questState && (
             <motion.div
               key="quest-panel"
-              initial={{ opacity: 0, y: -10, scaleY: 0.9, scaleX: 0.97 }}
+              initial={{ opacity: 0, y: -64, scaleY: 0.92, scaleX: 0.98 }}
               animate={{ opacity: 1, y: 0, scaleY: 1, scaleX: 1 }}
-              exit={{ opacity: 0, y: -10, scaleY: 0.9, scaleX: 0.97 }}
-              transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              exit={{ opacity: 0, y: -50, scaleY: 0.94, scaleX: 0.98 }}
+              transition={{ type: "spring", damping: 28, stiffness: 290, mass: 0.65 }}
               style={{ originY: 0 }}
-              className="mt-2 w-72 rounded-3xl border border-primary/50 bg-gradient-soft p-4 shadow-float backdrop-blur-md"
+              className="w-[22rem] sm:w-[26rem] max-h-[34rem] flex flex-col overflow-hidden rounded-md border border-black dark:border-white/30 bg-card/95 p-4 sm:p-5 shadow-2xl backdrop-blur-xl"
             >
               {/* Header: Stage & Level Progress */}
-              <div className="border-b border-primary/30 pb-3">
+              <div className="border-b border-black/10 dark:border-white/10 pb-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-foreground flex items-center gap-1">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
                     <TreePine className="size-4 text-primary" />
                     {stage.label}
+                  </span>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setExpanded(false)}
+                    className="rounded-full p-1 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer"
+                    title="Tutup"
+                  >
+                    <X className="size-4" />
+                  </motion.button>
+                </div>
+
+                {/* Animated EXP Progress Bar */}
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-sm bg-secondary/80 border border-border/60">
+                  <motion.div
+                    className="h-full rounded-sm bg-gradient-leaf"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${expProgressPct}%` }}
+                    transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.1 }}
+                  />
+                </div>
+
+                {/* Informasi Level & Progress EXP di bawah Progress Bar */}
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="font-bold text-primary">
+                    Level {currentLevel}
                   </span>
                   <motion.span
                     key={currentExp}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                    className="font-mono text-muted-foreground font-semibold"
+                    className="font-mono text-muted-foreground font-semibold text-[11px]"
                   >
                     {currentExp} / 50 EXP
                   </motion.span>
                 </div>
-
-                {/* Animated EXP Progress Bar */}
-                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-secondary/80 border border-white/90 shadow-xs">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-leaf"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${expProgressPct}%` }}
-                    transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.1 }}
-                  />
-                </div>
               </div>
 
               {/* Quests Section */}
-              <div className="mt-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Daily Quests Harian
-                </p>
+              <div className="mt-3 flex-1 overflow-y-auto pr-0.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Daily Quests Harian
+                  </p>
+                  <span className="text-[10px] text-primary font-bold flex items-center gap-1">
+                    Reset Tiap Hari
+                  </span>
+                </div>
 
                 <div className="mt-2 space-y-1.5">
                   {/* 1. Daily Login */}
                   <QuestRow
                     icon={LogIn}
-                    title="Daily Login"
+                    title="Login"
                     subtitle="+15 EXP"
                     current={questState.loginDone ? 1 : 0}
                     max={1}
@@ -210,7 +253,7 @@ export function DailyQuestWidget() {
                   {/* 2. PiNote */}
                   <QuestRow
                     icon={FileText}
-                    title="PiNote (Catatan & File)"
+                    title="PiNote"
                     subtitle="+5 EXP per aksi"
                     current={questState.pinoteCount}
                     max={3}
@@ -220,7 +263,7 @@ export function DailyQuestWidget() {
                   {/* 3. FlashCard */}
                   <QuestRow
                     icon={Layers}
-                    title="FlashCard (Buat Deck)"
+                    title="FlashCard"
                     subtitle="+5 EXP per card"
                     current={questState.flashcardCount}
                     max={3}
@@ -230,7 +273,7 @@ export function DailyQuestWidget() {
                   {/* 4. Study Session */}
                   <QuestRow
                     icon={Clock}
-                    title="Study Session (Selesai)"
+                    title="Study Session"
                     subtitle="+5 EXP per sesi"
                     current={questState.studyCount}
                     max={3}
@@ -240,7 +283,7 @@ export function DailyQuestWidget() {
                   {/* 5. TreeGallery */}
                   <QuestRow
                     icon={Video}
-                    title="TreeGallery (Upload Video)"
+                    title="TreeGallery"
                     subtitle="+10 EXP per video"
                     current={questState.galleryCount}
                     max={3}
@@ -251,23 +294,27 @@ export function DailyQuestWidget() {
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 5 * 0.06, type: "spring", stiffness: 340, damping: 26 }}
-                    className="flex items-center justify-between rounded-xl border border-border/50 bg-background/50 p-2 text-xs"
+                    transition={{ delay: 5 * 0.05, type: "spring", stiffness: 340, damping: 26 }}
+                    className="flex items-center justify-between rounded-md border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.04] p-2.5 text-xs"
                   >
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="size-4 text-sky-deep" />
-                      <div>
-                        <p className="font-semibold text-foreground">Add Friend</p>
-                        <p className="text-[10px] text-muted-foreground">+15 EXP / teman</p>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-500/15 text-sky-600 dark:text-sky-400">
+                        <UserPlus className="size-4 shrink-0" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground text-xs leading-tight">Add Friend</p>
+                        <p className="text-[10px] font-medium text-muted-foreground leading-tight mt-0.5">+15 EXP / teman</p>
                       </div>
                     </div>
-                    <span className="font-bold text-primary">{questState.friendCount} teman</span>
+                    <span className="inline-flex items-center rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                      {questState.friendCount} teman
+                    </span>
                   </motion.div>
                 </div>
               </div>
 
-              <p className="mt-3 text-center text-[10px] text-muted-foreground">
-                Quest di-reset otomatis setiap hari
+              <p className="mt-2.5 text-center text-[10px] text-muted-foreground border-t border-border/40 pt-2">
+                Selesaikan aktivitas harian untuk mempercepat pertumbuhan pohon
               </p>
             </motion.div>
           )}
@@ -298,37 +345,56 @@ function QuestRow({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, type: "spring", stiffness: 340, damping: 26 }}
-      className={`flex items-center justify-between rounded-xl border p-2 text-xs transition-colors ${
+      transition={{ delay: index * 0.05, type: "spring", stiffness: 340, damping: 26 }}
+      className={`group flex items-center justify-between rounded-md border p-2.5 text-xs transition-all duration-200 ${
         isDone
-          ? "border-leaf/40 bg-leaf/10 text-leaf"
-          : "border-border/50 bg-background/60 text-foreground"
+          ? "border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15 dark:border-emerald-500/30"
+          : "border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]"
       }`}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <Icon className={`size-4 shrink-0 ${isDone ? "text-leaf" : "text-muted-foreground"}`} />
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          className={`flex size-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+            isDone
+              ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground"
+          }`}
+        >
+          <Icon className="size-4 shrink-0" />
+        </div>
         <div className="min-w-0">
-          <p className="font-semibold truncate text-[11px]">{title}</p>
-          <p className="text-[10px] opacity-75">{subtitle}</p>
+          <p className="font-bold text-foreground truncate text-xs leading-tight">
+            {title}
+          </p>
+          <p
+            className={`text-[10px] font-medium leading-tight mt-0.5 ${
+              isDone
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-muted-foreground"
+            }`}
+          >
+            {subtitle}
+          </p>
         </div>
       </div>
+
       <div className="shrink-0 font-bold ml-2">
         {isDone ? (
           <motion.span
-            initial={{ scale: 0.6, opacity: 0 }}
+            initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 500, damping: 18 }}
-            className="flex items-center gap-0.5 font-bold text-leaf"
+            className="inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-0.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
           >
-            {current} / {max} <Check className="size-3.5 stroke-[3]" />
+            {current} / {max}
           </motion.span>
         ) : (
           <motion.span
             key={current}
-            initial={{ scale: 0.8, opacity: 0.5 }}
+            initial={{ scale: 0.9, opacity: 0.7 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
-            className="text-muted-foreground"
+            className="inline-flex items-center rounded-md bg-black/5 dark:bg-white/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-foreground/80 border border-black/5 dark:border-white/10"
           >
             {current} / {max}
           </motion.span>

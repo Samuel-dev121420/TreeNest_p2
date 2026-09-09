@@ -14,7 +14,7 @@ import type { Friend } from "@/lib/social";
 import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-service";
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
-import { Sparkles, Home, ChevronRight, X, TreePine, Droplet, Heart, Info } from "lucide-react";
+import { Sparkles, TreePine } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/")({
@@ -153,6 +153,8 @@ function HomePage() {
     }
   };
 
+
+
   return (
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
       <h1 className="sr-only">TreeNest — Home</h1>
@@ -172,79 +174,6 @@ function HomePage() {
       {/* Burung */}
       <Bird className="top-[17%]" duration={40} delay={-7} paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip} />
       <Bird className="top-[28%] scale-75" duration={56} delay={-27} paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip} />
-
-      {/* Kartu level & EXP — HANYA tampil jika BUKAN visiting mode */}
-      {!isVisiting && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.03, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setShowTreeTip(true)}
-          transition={{ type: "spring", stiffness: 380, damping: 24 }}
-          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 hover:border-white cursor-pointer select-none"
-        >
-          <div className="flex items-baseline justify-between">
-            <p className="text-sm font-bold text-foreground">
-              Halo, {username} <span className="text-muted-foreground">· {stage.label}</span>
-            </p>
-            <p className="text-xs font-bold text-primary">Lv {level}</p>
-          </div>
-          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 border border-white/90 shadow-xs dark:bg-secondary/80">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full rounded-full bg-gradient-leaf shadow-xs"
-            />
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground text-center font-bold">
-            {exp} / {need} EXP · Rumah Pohon terbuka di Level {TREEHOUSE_LEVEL}
-          </p>
-        </motion.div>
-      )}
-
-      {/* Banner Visiting Mode — tampil saat mengunjungi Home Page user lain */}
-      {isVisiting && visitedProfile && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ type: "spring", stiffness: 380, damping: 24 }}
-          onClick={() => setSelectedFriendAccountId(visitedProfile.accountId)}
-          className="absolute left-1/2 top-6 w-[min(90vw,22rem)] -translate-x-1/2 rounded-3xl border border-primary/50 bg-card dark:bg-gradient-soft p-3.5 sm:p-4 shadow-soft backdrop-blur-md z-10 hover:border-white cursor-pointer select-none"
-          title={`Klik untuk melihat profil ${visitedProfile.username}`}
-        >
-          <div className="flex items-center gap-3">
-            {visitedProfile.avatarUrl ? (
-              <img
-                src={visitedProfile.avatarUrl}
-                alt={visitedProfile.username}
-                className="size-10 rounded-full object-cover ring-2 ring-black dark:ring-white shrink-0"
-              />
-            ) : (
-              <span
-                className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-primary-foreground ring-2 ring-black dark:ring-white"
-                style={{
-                  backgroundImage: `linear-gradient(140deg, oklch(0.78 0.11 ${visitedProfile.hue}), oklch(0.66 0.13 ${visitedProfile.hue + 25}))`,
-                }}
-              >
-                {visitedProfile.initials}
-              </span>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{visitedProfile.username}</p>
-              <p className="text-xs text-muted-foreground">
-                Lv {displayLevel} · {stage.label}
-              </p>
-            </div>
-          </div>
-          <p className="mt-2 text-[12px] text-muted-foreground/80 text-center font-bold">
-            Kamu sedang mengunjungi Home Page milik "{visitedProfile.username}"
-          </p>
-        </motion.div>
-      )}
 
       {/* Tanah lurus — Permukaan rumput berada di bottom-[20%] di atas BottomNav */}
       <div className="absolute inset-x-0 bottom-0 h-[25%] bg-gradient-ground">
@@ -278,7 +207,6 @@ function HomePage() {
                 }}
                 className="animate-bounce inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-primary/50 bg-gradient-soft px-4 py-2 text-xs font-bold text-foreground shadow-soft backdrop-blur-md transition-colors hover:border-white cursor-pointer select-none dark:border-primary/50 dark:bg-card dark:text-foreground dark:hover:border-primary"
               >
-                <Home className="size-4 text-primary shrink-0" />
                 <span className="whitespace-nowrap font-bold text-foreground">
                   {isVisiting ? `Rumah Pohon ${visitedProfile?.username || ""}` : "Masuk Rumah Pohon"}
                 </span>
@@ -339,6 +267,22 @@ function HomePage() {
           />
         )}
 
+        {/* Jika visiting mode: tampilkan orb milik user yang dikunjungi */}
+        {isVisiting && visitedProfile && (
+          <Orb
+            label={visitedProfile.username}
+            initials={visitedProfile.initials || "U"}
+            hue={visitedProfile.hue ?? 150}
+            avatarUrl={visitedProfile.avatarUrl || undefined}
+            duration={26}
+            delay={0}
+            from={6}
+            to={34}
+            onClick={() => setSelectedFriendAccountId(visitedProfile.accountId)}
+            paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip}
+          />
+        )}
+
         {/* Orbs teman yang tampil (milik sendiri atau milik yang dikunjungi) */}
         {displayFriends.map((f, i) => (
           <Orb
@@ -349,8 +293,8 @@ function HomePage() {
             avatarUrl={f.avatarUrl || undefined}
             duration={30 + i * 7}
             delay={-(i + 1) * 9}
-            from={isVisiting ? 15 + i * 17 : 38 + i * 17}
-            to={isVisiting ? 28 + i * 17 : 48 + i * 17}
+            from={38 + i * 17}
+            to={48 + i * 17}
             onClick={() => setSelectedFriendAccountId(f.accountId)}
             paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip}
           />
@@ -378,7 +322,13 @@ function HomePage() {
           accountId={selectedFriendAccountId}
           viewerUid={authProfile?.uid ?? ""}
           viewerFriends={featuredFriendsList}
-          isFriend={true}
+          isFriend={
+            selectedFriendAccountId === authProfile?.accountId
+              ? true
+              : (isVisiting && selectedFriendAccountId === visitedProfile?.accountId
+                  ? isVisitedFriend
+                  : true)
+          }
           disableVisit={isVisiting}
           onClose={() => setSelectedFriendAccountId(null)}
         />

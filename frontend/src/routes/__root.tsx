@@ -133,10 +133,9 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { DailyQuestWidget } from "../components/DailyQuestWidget";
-import { DateTimeWidget } from "../components/DateTimeWidget";
 import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
 import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
-import { SoundToggleWidget } from "../components/SoundToggleWidget";
+import { TopHeaderBanner } from "../components/TopHeaderBanner";
 import { ShieldAlert, LogOut } from "lucide-react";
 
 function AppShell() {
@@ -276,35 +275,17 @@ function AppShell() {
     );
   }
 
-  const isHome = location.pathname === "/";
+  const isPublicRoute = location.pathname === "/login" || location.pathname === "/admin";
 
   return (
     <>
       <GlobalStudyTimerBar />
-      {!isVisiting && !isMinimalRoute && <NotificationCenterWidget />}
-      {!isVisiting && !isMinimalRoute && <SoundToggleWidget />}
-      {/* Page Transition Motion Wrapper — EXCLUDE Home Page (instant render) */}
-      {isHome ? (
+      {!isPublicRoute && <TopHeaderBanner />}
+      {!isPublicRoute && <NotificationCenterWidget />}
+      {!isPublicRoute && <DailyQuestWidget />}
+      <main className="w-full flex-1 overflow-x-hidden">
         <Outlet />
-      ) : (
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, scale: 0.982 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.982 }}
-            transition={{
-              duration: 0.40,
-              ease: [0.16, 1, 0.3, 1], // Gentle, smooth iOS/macOS style easing
-            }}
-            className="w-full flex-1 overflow-x-hidden"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      )}
-      {!isVisiting && !isMinimalRoute && <DateTimeWidget />}
-      {!isVisiting && !isMinimalRoute && <DailyQuestWidget />}
+      </main>
       {!isMinimalRoute && <BottomNav />}
     </>
   );

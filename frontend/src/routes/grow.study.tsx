@@ -138,21 +138,28 @@ function StudyPage() {
       />
 
       <div className="mx-auto flex max-w-2xl flex-col items-center">
-        {/* Timer ring with Breathing Aura */}
+        {/* Timer ring with Breathing Aura & Entrance Motion */}
         <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 20 }}
           animate={
             running
               ? {
+                  opacity: 1,
                   scale: [1, 1.02, 1],
+                  y: 0,
                   boxShadow: [
                     "0 0 20px rgba(16,185,129,0.15)",
                     "0 0 45px rgba(16,185,129,0.35)",
                     "0 0 20px rgba(16,185,129,0.15)",
                   ],
                 }
-              : { scale: 1 }
+              : { opacity: 1, scale: 1, y: 0 }
           }
-          transition={running ? { duration: 4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+          transition={
+            running
+              ? { duration: 4, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.65, delay: 0.05, ease: [0.16, 1, 0.3, 1] }
+          }
           className="relative flex aspect-square w-full max-w-sm items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 shadow-float select-none transition-all"
         >
           <svg className="absolute inset-0 size-full p-6" viewBox="0 0 100 100">
@@ -189,7 +196,12 @@ function StudyPage() {
         </motion.div>
 
         {/* Ambient Nature Sound Controller */}
-        <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card p-3 shadow-soft w-full max-w-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card p-3 shadow-soft w-full max-w-sm"
+        >
           <p className="text-xs font-bold text-muted-foreground">Suara Latar Alam Relaksasi:</p>
           <div className="grid grid-cols-4 gap-2 w-full">
             <button
@@ -237,10 +249,15 @@ function StudyPage() {
               <span>Api</span>
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Presets */}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-5 flex flex-wrap justify-center gap-2"
+        >
           {PRESETS.map((m) => (
             <motion.button
               key={m}
@@ -268,10 +285,15 @@ function StudyPage() {
             />
             <span className="text-xs text-muted-foreground">menit</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Controls */}
-        <div className="mt-6 flex gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-6 flex gap-3"
+        >
           <motion.button
             whileTap={{ scale: 0.95 }}
             whileHover={{ scale: 1.03 }}
@@ -289,10 +311,15 @@ function StudyPage() {
           >
             <RotateCcw className="size-5" /> Reset
           </motion.button>
-        </div>
+        </motion.div>
 
         {/* History */}
-        <div className="mt-10 w-full rounded-3xl border border-border/70 bg-card p-5 shadow-soft">
+        <motion.div
+          initial={{ opacity: 0, y: 22, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-10 w-full rounded-3xl border border-border/70 bg-card p-5 shadow-soft"
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
               Riwayat Sesi
@@ -345,8 +372,9 @@ function StudyPage() {
               ))}
             </ul>
           )}
-        </div>
+        </motion.div>
       </div>
     </PageShell>
   );
 }
+
