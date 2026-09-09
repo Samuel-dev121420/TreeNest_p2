@@ -372,13 +372,13 @@ export function PiNotePage() {
               onClick={() => setIsCreatingFolder(true)}
               className="flex items-center gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-300 px-3.5 py-2 text-xs font-bold shadow-xs transition-all hover:bg-amber-500/20 dark:hover:bg-amber-500/30 active:scale-95 cursor-pointer"
             >
-              <Folder className="size-4 text-amber-600 dark:text-amber-400" /> + Folder
+              <Folder className="size-4 text-amber-600 dark:text-amber-400" />Folder
             </button>
             <button
               onClick={handleOpenCreateNote}
               className="flex items-center gap-1.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:text-emerald-300 px-3.5 py-2 text-xs font-bold shadow-xs transition-all hover:bg-emerald-500/20 dark:hover:bg-emerald-500/30 active:scale-95 cursor-pointer"
             >
-              <FileText className="size-4 text-emerald-600 dark:text-emerald-400" /> + Catatan
+              <FileText className="size-4 text-emerald-600 dark:text-emerald-400" />Catatan
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -591,15 +591,20 @@ export function PiNotePage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Folder akan dibuat di dalam posisi explorer saat ini.
               </p>
-              <input
-                autoFocus
-                maxLength={60}
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-                placeholder="Nama folder..."
-                className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
+              <div className="relative mt-4">
+                <input
+                  autoFocus
+                  maxLength={50}
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                  placeholder="Nama folder..."
+                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground pl-4 pr-16 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none select-none">
+                  {newFolderName.length}/50
+                </div>
+              </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={() => {
@@ -643,14 +648,19 @@ export function PiNotePage() {
               className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
               <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
-              <input
-                autoFocus
-                maxLength={60}
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
-                className="mt-4 w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
+              <div className="relative mt-4">
+                <input
+                  autoFocus
+                  maxLength={renamingItem.type === "folder" ? 50 : 60}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRenameItem()}
+                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground pl-4 pr-16 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none select-none">
+                  {renameValue.length}/{renamingItem.type === "folder" ? 50 : 60}
+                </div>
+              </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={() => setRenamingItem(null)}
@@ -709,19 +719,26 @@ export function PiNotePage() {
                 </button>
               </div>
               <div className="mt-4 flex flex-1 flex-col gap-3">
-                <input
-                  maxLength={80}
-                  value={noteTitle}
-                  onChange={(e) => setNoteTitle(e.target.value)}
-                  placeholder="Judul Catatan"
-                  className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground px-4 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
-                />
-                <textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Isi"
-                  className="min-h-0 flex-1 resize-none rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring"
-                />
+                <div className="relative">
+                  <input
+                    maxLength={60}
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    placeholder="Judul Catatan"
+                    className="w-full rounded-2xl border border-input bg-white text-neutral-900 placeholder:text-neutral-400 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground pl-4 pr-16 py-2.5 text-base font-bold outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none select-none">
+                    {noteTitle.length}/60
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0 flex flex-col rounded-2xl border border-input bg-white dark:bg-card focus-within:ring-2 focus-within:ring-ring p-3 sm:p-4 transition-all">
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Tulis isi catatanmu di sini..."
+                    className="pinote-content-scrollbar w-full h-full flex-1 resize-none border-0 bg-transparent text-neutral-900 placeholder:text-neutral-400 dark:text-foreground dark:placeholder:text-muted-foreground p-0 pr-1.5 text-sm leading-relaxed outline-none ring-0 focus:outline-none focus:ring-0 break-words [word-break:normal] [overflow-wrap:break-word] whitespace-pre-wrap"
+                  />
+                </div>
               </div>
               <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-3">
                 <button
@@ -737,7 +754,7 @@ export function PiNotePage() {
                   onClick={handleSaveNote}
                   className="rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
                 >
-                  Simpan Catatan
+                  Simpan
                 </button>
               </div>
             </motion.div>

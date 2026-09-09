@@ -137,119 +137,131 @@ function StudyPage() {
         description="Atur durasi fokus, dengarkan suara alam relaksasi, dan tumbuhkan fokusmu."
       />
 
-      <div className="mx-auto flex max-w-2xl flex-col items-center">
-        {/* Timer ring with Breathing Aura & Entrance Motion */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92, y: 20 }}
-          animate={
-            running
-              ? {
-                  opacity: 1,
-                  scale: [1, 1.02, 1],
-                  y: 0,
-                  boxShadow: [
-                    "0 0 20px rgba(16,185,129,0.15)",
-                    "0 0 45px rgba(16,185,129,0.35)",
-                    "0 0 20px rgba(16,185,129,0.15)",
-                  ],
-                }
-              : { opacity: 1, scale: 1, y: 0 }
-          }
-          transition={
-            running
-              ? { duration: 4, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.65, delay: 0.05, ease: [0.16, 1, 0.3, 1] }
-          }
-          className="relative flex aspect-square w-full max-w-sm items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 shadow-float select-none transition-all"
-        >
-          <svg className="absolute inset-0 size-full p-6" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="var(--secondary)" strokeWidth="6" />
-            <circle
-              cx="50"
-              cy="50"
-              r="42"
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={`${progress * 2.64} 264`}
-              transform="rotate(-90 50 50)"
-              className="transition-all duration-1000"
-            />
-          </svg>
-          <div className="z-10 text-center">
-            {finished ? (
-              <>
-                <Sparkles className="mx-auto size-12 text-primary animate-bounce" />
-                <p className="mt-2 text-2xl font-extrabold text-foreground">Sesi Selesai!</p>
-                <p className="mt-1 text-sm text-primary font-bold">{selectedMinutes} menit fokus tercatat</p>
-              </>
-            ) : (
-              <>
-                <p className="text-6xl font-extrabold tracking-tight text-foreground font-mono">
-                  {formatTime(secondsLeft)}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground font-semibold">dari {selectedMinutes} menit</p>
-              </>
-            )}
-          </div>
-        </motion.div>
+      <div className="mx-auto flex max-w-4xl flex-col items-center">
+        {/* Top Area: Timer Ring + Ambient Nature Sound Controller (Side by Side on md+) */}
+        <div className="flex flex-col md:flex-row items-center md:items-stretch justify-center gap-5 w-full">
+          {/* Timer ring with Breathing Aura & Entrance Motion */}
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.65, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-sm flex justify-center"
+          >
+            <motion.div
+              animate={
+                running
+                  ? {
+                      scale: [1, 1.02, 1],
+                      boxShadow: [
+                        "0 0 20px rgba(16,185,129,0.15)",
+                        "0 0 45px rgba(16,185,129,0.35)",
+                        "0 0 20px rgba(16,185,129,0.15)",
+                      ],
+                    }
+                  : {
+                      scale: 1,
+                      boxShadow: "0 10px 30px -10px rgba(0,0,0,0.1)",
+                    }
+              }
+              transition={
+                running
+                  ? { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                  : { duration: 0.3, ease: "easeOut" }
+              }
+              className="relative flex aspect-square w-full items-center justify-center rounded-3xl border-2 border-border/80 bg-card p-8 shadow-float select-none transition-all"
+            >
+              <svg className="absolute inset-0 size-full p-6" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="var(--secondary)" strokeWidth="6" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${progress * 2.64} 264`}
+                  transform="rotate(-90 50 50)"
+                  className="transition-all duration-1000"
+                />
+              </svg>
+              <div className="z-10 text-center">
+                {finished ? (
+                  <>
+                    <Sparkles className="mx-auto size-12 text-primary animate-bounce" />
+                    <p className="mt-2 text-2xl font-extrabold text-foreground">Sesi Selesai!</p>
+                    <p className="mt-1 text-sm text-primary font-bold">{selectedMinutes} menit fokus tercatat</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-6xl font-extrabold tracking-tight text-foreground font-mono">
+                      {formatTime(secondsLeft)}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground font-semibold">dari {selectedMinutes} menit</p>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
 
-        {/* Ambient Nature Sound Controller */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card p-3 shadow-soft w-full max-w-sm"
-        >
-          <p className="text-xs font-bold text-muted-foreground">Suara Latar Alam Relaksasi:</p>
-          <div className="grid grid-cols-4 gap-2 w-full">
-            <button
-              onClick={() => toggleAmbient("none")}
-              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 px-1 text-xs font-bold transition-all cursor-pointer ${
-                ambientType === "none"
-                  ? "bg-secondary text-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-secondary/50"
-              }`}
-            >
-              <VolumeX className="size-4" />
-              <span>Hening</span>
-            </button>
-            <button
-              onClick={() => toggleAmbient("rain")}
-              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 px-1 text-xs font-bold transition-all cursor-pointer ${
-                ambientType === "rain"
-                  ? "bg-sky-500 text-white shadow-soft"
-                  : "text-muted-foreground hover:bg-sky-500/10 hover:text-sky-500"
-              }`}
-            >
-              <CloudRain className="size-4" />
-              <span>Hujan</span>
-            </button>
-            <button
-              onClick={() => toggleAmbient("forest")}
-              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 px-1 text-xs font-bold transition-all cursor-pointer ${
-                ambientType === "forest"
-                  ? "bg-emerald-600 text-white shadow-soft"
-                  : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600"
-              }`}
-            >
-              <Trees className="size-4" />
-              <span>Pinus</span>
-            </button>
-            <button
-              onClick={() => toggleAmbient("fire")}
-              className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 px-1 text-xs font-bold transition-all cursor-pointer ${
-                ambientType === "fire"
-                  ? "bg-amber-600 text-white shadow-soft"
-                  : "text-muted-foreground hover:bg-amber-500/10 hover:text-amber-600"
-              }`}
-            >
-              <Flame className="size-4" />
-              <span>Api</span>
-            </button>
-          </div>
-        </motion.div>
+          {/* Ambient Nature Sound Controller (Di Samping Kanan Timer - Tinggi Sama & Vertikal Ramping) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col justify-between items-center gap-2 rounded-3xl border-2 border-border/80 bg-card p-3 sm:p-3.5 shadow-float w-full max-w-sm md:w-28 self-stretch"
+          >
+            <p className="text-[11px] font-bold text-muted-foreground text-center w-full pt-1">
+              Backsound :
+            </p>
+            <div className="flex flex-col gap-2 w-full flex-1">
+              <button
+                onClick={() => toggleAmbient("none")}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl py-2 px-1 text-xs font-bold transition-all cursor-pointer w-full flex-1 ${
+                  ambientType === "none"
+                    ? "bg-secondary text-foreground shadow-xs ring-1 ring-border"
+                    : "text-muted-foreground hover:bg-secondary/50 border border-border/50"
+                }`}
+              >
+                <VolumeX className="size-4.5" />
+                <span>Hening</span>
+              </button>
+              <button
+                onClick={() => toggleAmbient("rain")}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl py-2 px-1 text-xs font-bold transition-all cursor-pointer w-full flex-1 ${
+                  ambientType === "rain"
+                    ? "bg-sky-500 text-white shadow-soft"
+                    : "text-muted-foreground hover:bg-sky-500/10 hover:text-sky-500 border border-border/50"
+                }`}
+              >
+                <CloudRain className="size-4.5" />
+                <span>Hujan</span>
+              </button>
+              <button
+                onClick={() => toggleAmbient("forest")}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl py-2 px-1 text-xs font-bold transition-all cursor-pointer w-full flex-1 ${
+                  ambientType === "forest"
+                    ? "bg-emerald-600 text-white shadow-soft"
+                    : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600 border border-border/50"
+                }`}
+              >
+                <Trees className="size-4.5" />
+                <span>Pinus</span>
+              </button>
+              <button
+                onClick={() => toggleAmbient("fire")}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl py-2 px-1 text-xs font-bold transition-all cursor-pointer w-full flex-1 ${
+                  ambientType === "fire"
+                    ? "bg-amber-600 text-white shadow-soft"
+                    : "text-muted-foreground hover:bg-amber-500/10 hover:text-amber-600 border border-border/50"
+                }`}
+              >
+                <Flame className="size-4.5" />
+                <span>Api</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
 
         {/* Presets */}
         <motion.div
@@ -300,7 +312,6 @@ function StudyPage() {
             onClick={handleStartPause}
             className="flex items-center gap-2 rounded-2xl bg-primary px-7 py-3 text-base font-bold text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 cursor-pointer select-none"
           >
-            {running ? <Pause className="size-5" /> : <Play className="size-5" />}
             {running ? "Jeda" : timerSnap.status === "paused" ? "Lanjutkan" : "Mulai"}
           </motion.button>
           <motion.button
@@ -309,7 +320,7 @@ function StudyPage() {
             onClick={handleReset}
             className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-6 py-3 text-base font-bold text-foreground shadow-soft transition-colors hover:bg-muted cursor-pointer select-none"
           >
-            <RotateCcw className="size-5" /> Reset
+            Reset
           </motion.button>
         </motion.div>
 

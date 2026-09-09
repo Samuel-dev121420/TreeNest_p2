@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
@@ -14,8 +14,9 @@ import type { Friend } from "@/lib/social";
 import type { UserProfile as FirestoreUserProfile } from "@/lib/firestore-service";
 import { TreehouseModal } from "@/components/TreehouseModal";
 import { PublicProfileModal } from "@/components/PublicProfileModal";
-import { Sparkles, TreePine } from "lucide-react";
+import { Sparkles, TreePine, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { playTapPop } from "@/lib/sound-fx";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { visit?: string | undefined } => ({
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+  const navigate = useNavigate();
   const { profile: authProfile } = useAuth();
   const { visit: visitAccountId } = Route.useSearch();
   const isVisiting = Boolean(visitAccountId);
@@ -158,6 +160,30 @@ function HomePage() {
   return (
     <main className="relative h-screen w-full overflow-hidden bg-gradient-sky">
       <h1 className="sr-only">TreeNest — Home</h1>
+
+      {/* Tombol Kembali saat Mengunjungi Home Page User Lain (Di Bawah Banner Atas Bagian Kiri) */}
+      {isVisiting && (
+        <div className="fixed top-20 sm:top-24 left-4 sm:left-6 md:left-8 z-30 animate-in fade-in slide-in-from-top-2 duration-300">
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              playTapPop(0);
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                window.history.back();
+              } else {
+                navigate({ to: "/friend-club" });
+              }
+            }}
+            aria-label="Kembali"
+            className="group flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card px-4 py-2.5 text-xs sm:text-sm font-bold text-foreground shadow-soft hover:shadow-float transition-all hover:bg-secondary hover:border-primary active:scale-95 cursor-pointer select-none backdrop-blur-md"
+          >
+            <ArrowLeft className="size-4.5 transition-transform group-hover:-translate-x-1 text-foreground" />
+            <span className="text-foreground">Kembali</span>
+          </motion.button>
+        </div>
+      )}
 
       {/* Scene latar: langit gradien, bukit, treeline, awan, burung */}
       <SceneBackground paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Images, Sprout, Home, Users, User, ArrowLeft } from "lucide-react";
+import { Images, Sprout, Home, Users, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStudyTimerSnapshot, subscribeStudyTimer } from "@/lib/study-timer-service";
 import { hasUncheckedReminders } from "@/lib/grow-tools";
@@ -139,36 +139,9 @@ export function BottomNav() {
     return null;
   }
 
-  // Jika sedang mengunjungi Home Page user lain: Tampilkan HANYA 1 tombol Kembali / Escape
+  // Jika sedang mengunjungi Home Page user lain: sembunyikan BottomNav (tombol kembali dipindahkan ke bawah banner atas)
   if (isVisiting) {
-    return (
-      <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pb-4 animate-in fade-in duration-200">
-        <div className="pointer-events-auto relative flex items-center justify-center rounded-3xl border border-border/60 bg-card/85 px-6 pb-2 pt-2 shadow-float backdrop-blur-md">
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== "undefined" && window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.href = "/friend-club";
-              }
-            }}
-            aria-label="Kembali ke Halaman Sebelumnya"
-            className="group -mt-7 flex shrink-0 flex-col items-center gap-1 cursor-pointer"
-          >
-            <motion.span
-              whileTap={{ scale: 0.88 }}
-              whileHover={{ scale: 1.08 }}
-              transition={{ type: "spring", stiffness: 400, damping: 18 }}
-              className="flex size-16 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card"
-            >
-              <ArrowLeft className="size-7" strokeWidth={2.5} />
-            </motion.span>
-            <span className="text-[11px] font-bold text-foreground">Kembali</span>
-          </button>
-        </div>
-      </nav>
-    );
+    return null;
   }
 
   function getBadgeStatus(to: string) {
