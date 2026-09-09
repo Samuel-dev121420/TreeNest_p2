@@ -784,7 +784,7 @@ function AccountPage() {
       {/* ── 2. INFORMASI AKUN & KEAMANAN ── */}
       <div className="mt-4 rounded-3xl border border-border/80 bg-card p-5 shadow-soft hover:shadow-float transition-all duration-300 space-y-3">
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <Sparkles className="size-4 text-sun" /> Informasi Akun & Keamanan
+          Informasi Akun & Keamanan
         </h3>
 
         {/* Email */}

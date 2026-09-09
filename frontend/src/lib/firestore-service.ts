@@ -2742,3 +2742,282 @@ export async function getSystemMetricsAdmin(): Promise<{
     approvedVideos: approvedCount,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Shared FlashCard (Komunitas / Explorer) Service                    */
+/* ------------------------------------------------------------------ */
+
+export type SharedFlashDeckCard = {
+  id: string;
+  title?: string | undefined;
+  front: string;
+  back: string;
+};
+
+export type SharedFlashDeck = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  cardsCount: number;
+  cards: SharedFlashDeckCard[];
+  authorUid: string;
+  authorUsername: string;
+  authorAccountId?: string | undefined;
+  authorAvatarUrl?: string | null | undefined;
+  authorHue?: number | undefined;
+  authorInitials?: string | undefined;
+  downloadsCount: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+const SEED_SHARED_DECKS: SharedFlashDeck[] = [
+  {
+    id: "seed-deck-english-ielts",
+    title: "Kosakata Esensial Bahasa Inggris (IELTS & TOEFL)",
+    description: "Kumpulan kosakata akademik penting untuk meningkatkan skor writing dan speaking bahasa Inggris.",
+    category: "Bahasa",
+    cardsCount: 6,
+    authorUid: "system-treenest",
+    authorUsername: "TreeNest Official",
+    authorAccountId: "TN-1001",
+    authorAvatarUrl: null,
+    authorHue: 145,
+    authorInitials: "TN",
+    downloadsCount: 142,
+    createdAt: Date.now() - 86400000 * 5,
+    updatedAt: Date.now() - 86400000 * 5,
+    cards: [
+      { id: "c1", title: "Ubiquitous", front: "Ubiquitous", back: "Hadir di mana-mana / sangat umum ditemukan (Contoh: Smartphones have become ubiquitous in daily life)." },
+      { id: "c2", title: "Eloquent", front: "Eloquent", back: "Fasih, runtut, dan persuasif dalam bertutur kata atau menulis." },
+      { id: "c3", title: "Pragmatic", front: "Pragmatic", back: "Pendekatan yang praktis, realistis, dan berorientasi pada hasil nyata daripada teori abstrak." },
+      { id: "c4", title: "Mitigate", front: "Mitigate", back: "Meringankan, mengurangi keparahan atau dampak negatif dari suatu masalah." },
+      { id: "c5", title: "Resilient", front: "Resilient", back: "Tangguh, memiliki kemampuan untuk pulih dengan cepat setelah menghadapi kesulitan." },
+      { id: "c6", title: "Paradigm", front: "Paradigm", back: "Pola pikir, kerangka berpikir, atau model standar yang mendasari suatu konsep." },
+    ],
+  },
+  {
+    id: "seed-deck-web-dev",
+    title: "Dasar Pemrograman Frontend & JavaScript",
+    description: "Konsep-konsep inti yang sering ditanyakan dalam interview frontend developer.",
+    category: "Teknologi & IT",
+    cardsCount: 5,
+    authorUid: "system-treenest",
+    authorUsername: "Samuel Dev",
+    authorAccountId: "TN-2044",
+    authorAvatarUrl: null,
+    authorHue: 210,
+    authorInitials: "SD",
+    downloadsCount: 98,
+    createdAt: Date.now() - 86400000 * 3,
+    updatedAt: Date.now() - 86400000 * 3,
+    cards: [
+      { id: "c7", title: "Closure", front: "Apa itu Closure dalam JavaScript?", back: "Kombinasi antara sebuah fungsi dan lingkungan leksikal (lexical environment) tempat fungsi tersebut dideklarasikan, memungkinkan fungsi mengakses variabel dari scope luarnya bahkan setelah fungsi luar selesai dieksekusi." },
+      { id: "c8", title: "Event Loop", front: "Bagaimana cara kerja Event Loop?", back: "Mekanisme yang terus-menerus memantau Call Stack dan Callback/Task Queue. Jika Call Stack kosong, event loop akan mendorong tugas dari queue ke stack." },
+      { id: "c9", title: "Virtual DOM", front: "Apa itu Virtual DOM dalam React?", back: "Representasi virtual ringan dari DOM asli di memori. React membandingkan VDOM baru dengan yang lama (diffing) dan hanya mengupdate bagian yang berubah pada DOM asli (reconciliation)." },
+      { id: "c10", title: "Promise vs Async/Await", front: "Perbedaan Promise & Async/Await", back: "Async/Await adalah syntactic sugar di atas Promise yang membuat kode asinkron terlihat dan terbaca seperti kode sinkron yang rapi." },
+      { id: "c11", title: "CSS Box Model", front: "Apa saja komponen dalam CSS Box Model?", back: "Content (isi elemen), Padding (ruang dalam), Border (garis batas), dan Margin (ruang luar di sekitar border)." },
+    ],
+  },
+  {
+    id: "seed-deck-biology",
+    title: "Biologi: Sistem Peredaran & Pernafasan",
+    description: "Rangkuman fakta dan istilah krusial sistem tubuh manusia untuk ujian biologi.",
+    category: "Sains & Matematika",
+    cardsCount: 5,
+    authorUid: "system-treenest",
+    authorUsername: "Rania Sains",
+    authorAccountId: "TN-3319",
+    authorAvatarUrl: null,
+    authorHue: 330,
+    authorInitials: "RS",
+    downloadsCount: 76,
+    createdAt: Date.now() - 86400000 * 1,
+    updatedAt: Date.now() - 86400000 * 1,
+    cards: [
+      { id: "c12", title: "Fungsi Hemoglobin", front: "Apa fungsi utama Hemoglobin dalam sel darah merah?", back: "Mengikat oksigen (O2) dari paru-paru untuk diedarkan ke seluruh jaringan tubuh, serta membantu membawa sebagian karbon dioksida (CO2) kembali ke paru-paru." },
+      { id: "c13", title: "Alveolus", front: "Apa fungsi Alveolus pada paru-paru?", back: "Kantung udara mikroskopis tempat terjadinya pertukaran gas oksigen (O2) dan karbon dioksida (CO2) antara udara dan kapiler darah." },
+      { id: "c14", title: "Ventrikel Kiri Jantung", front: "Mengapa dinding bilik kiri (ventrikel kiri) jantung paling tebal?", back: "Karena bertugas memompa darah beroksigen tinggi ke seluruh bagian tubuh melawan hambatan resistensi sistemik." },
+      { id: "c15", title: "Perbedaan Arteri & Vena", front: "Perbedaan utama Arteri dan Vena", back: "Arteri membawa darah menjauhi jantung (bertekanan tinggi, dinding tebal), sedangkan Vena membawa darah kembali menuju jantung (memiliki katup untuk mencegah aliran balik)." },
+      { id: "c16", title: "Enzim Ptialin", front: "Enzim Ptialin (Amilase Mulut)", back: "Mengubah karbohidrat/amilum menjadi glukosa/maltosa sederhana di dalam rongga mulut saat proses pencernaan mekanik & kimiawi." },
+    ],
+  },
+];
+
+function getLocalSharedDecks(): SharedFlashDeck[] {
+  try {
+    const raw = localStorage.getItem("treenest.shared_flashcards.store");
+    if (!raw) {
+      localStorage.setItem("treenest.shared_flashcards.store", JSON.stringify(SEED_SHARED_DECKS));
+      return SEED_SHARED_DECKS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_SHARED_DECKS;
+  } catch {
+    return SEED_SHARED_DECKS;
+  }
+}
+
+function saveLocalSharedDecks(decks: SharedFlashDeck[]) {
+  try {
+    localStorage.setItem("treenest.shared_flashcards.store", JSON.stringify(decks));
+  } catch (e) {
+    console.error("Failed to save local shared decks:", e);
+  }
+}
+
+export async function getSharedFlashDecks(
+  category?: string,
+  searchQuery?: string,
+): Promise<SharedFlashDeck[]> {
+  let list: SharedFlashDeck[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const colRef = collection(db, "shared_flashcards");
+      const q = query(colRef, orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      const remoteList: SharedFlashDeck[] = [];
+      snap.forEach((d) => {
+        remoteList.push({ id: d.id, ...d.data() } as SharedFlashDeck);
+      });
+
+      if (remoteList.length > 0) {
+        list = remoteList;
+      } else {
+        list = getLocalSharedDecks();
+      }
+    } catch (err) {
+      console.warn("Error fetching shared flashcards from Firestore, using local store:", err);
+      list = getLocalSharedDecks();
+    }
+  } else {
+    list = getLocalSharedDecks();
+  }
+
+  // Filter category
+  if (category && category !== "Semua") {
+    list = list.filter((d) => d.category === category);
+  }
+
+  // Filter search
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    list = list.filter(
+      (d) =>
+        d.title.toLowerCase().includes(q) ||
+        d.description.toLowerCase().includes(q) ||
+        d.authorUsername.toLowerCase().includes(q) ||
+        (d.authorAccountId && d.authorAccountId.toLowerCase().includes(q)) ||
+        d.cards.some((c) => c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q)),
+    );
+  }
+
+  return list;
+}
+
+export async function publishSharedFlashDeck(payload: {
+  title: string;
+  description: string;
+  category: string;
+  cards: SharedFlashDeckCard[];
+  authorUid: string;
+  authorUsername: string;
+  authorAccountId?: string | undefined;
+  authorAvatarUrl?: string | null | undefined;
+  authorHue?: number | undefined;
+  authorInitials?: string | undefined;
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+  if (!payload.title.trim()) {
+    return { success: false, error: "Judul deck tidak boleh kosong." };
+  }
+  if (!payload.cards || payload.cards.length < 5) {
+    return { success: false, error: "Deck harus memiliki minimal 5 kartu sebelum dapat diekspor." };
+  }
+
+  const now = Date.now();
+  const deckId = `deck-${generateId()}`;
+  const sharedDeck: SharedFlashDeck = {
+    id: deckId,
+    title: payload.title.trim(),
+    description: payload.description.trim() || "Tidak ada deskripsi.",
+    category: payload.category.trim() || "Umum",
+    cardsCount: payload.cards.length,
+    cards: payload.cards,
+    authorUid: payload.authorUid,
+    authorUsername: payload.authorUsername,
+    authorAccountId: payload.authorAccountId,
+    authorAvatarUrl: payload.authorAvatarUrl || null,
+    authorHue: payload.authorHue ?? 150,
+    authorInitials: payload.authorInitials || "TN",
+    downloadsCount: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // 1. Simpan ke local store terlebih dahulu
+  const localList = getLocalSharedDecks();
+  const updatedLocal = [sharedDeck, ...localList.filter((d) => d.id !== deckId)];
+  saveLocalSharedDecks(updatedLocal);
+
+  // 2. Simpan ke Firestore jika aktif
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, "shared_flashcards", deckId);
+      await setDoc(docRef, sharedDeck);
+    } catch (err: any) {
+      console.warn("Failed to write shared flashcard to Firestore:", err);
+    }
+  }
+
+  return { success: true, id: deckId };
+}
+
+export async function deleteSharedFlashDeck(
+  deckId: string,
+  currentUid: string,
+  isAdmin = false,
+): Promise<{ success: boolean; error?: string }> {
+  const localList = getLocalSharedDecks();
+  const target = localList.find((d) => d.id === deckId);
+  if (target && target.authorUid !== currentUid && !isAdmin) {
+    return { success: false, error: "Kamu tidak memiliki hak untuk menghapus template ini." };
+  }
+
+  const updatedLocal = localList.filter((d) => d.id !== deckId);
+  saveLocalSharedDecks(updatedLocal);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, "shared_flashcards", deckId);
+      await deleteDoc(docRef);
+    } catch (err: any) {
+      console.warn("Failed to delete shared flashcard from Firestore:", err);
+    }
+  }
+
+  return { success: true };
+}
+
+export async function incrementSharedDeckDownloads(deckId: string): Promise<void> {
+  const localList = getLocalSharedDecks();
+  const updatedLocal = localList.map((d) =>
+    d.id === deckId ? { ...d, downloadsCount: (d.downloadsCount || 0) + 1 } : d,
+  );
+  saveLocalSharedDecks(updatedLocal);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, "shared_flashcards", deckId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const cur = snap.data()?.["downloadsCount"] || 0;
+        await updateDoc(docRef, { downloadsCount: cur + 1 });
+      }
+    } catch (e) {
+      console.warn("Failed to increment downloadsCount in Firestore:", e);
+    }
+  }
+}
+

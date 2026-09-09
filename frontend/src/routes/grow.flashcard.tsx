@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Layers,
@@ -17,6 +17,11 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Compass,
+  Share2,
+  Tag,
+  CheckCircle2,
+  Download,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
@@ -28,6 +33,7 @@ import { generateId, type FlashDeck, type FlashCard } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
 import { awardActivityExp } from "@/lib/exp-service";
 import { playCardFlip, playLevelUpFanfare, playTapPop } from "@/lib/sound-fx";
+import { publishSharedFlashDeck } from "@/lib/firestore-service";
 
 export const Route = createFileRoute("/grow/flashcard")({
   head: () => ({
@@ -48,8 +54,9 @@ export const Route = createFileRoute("/grow/flashcard")({
 });
 
 function FlashcardPage() {
-  const { profile } = useAuth();
-  const uid = profile?.uid ?? "guest";
+  const navigate = useNavigate();
+  const { profile, user } = useAuth();
+  const uid = profile?.uid ?? user?.uid ?? "guest";
   const [decks, setDecks] = useLocalStorage<FlashDeck[]>(`treenest.flashcard.decks.${uid}`, []);
   const [cards, setCards] = useLocalStorage<FlashCard[]>(`treenest.flashcard.cards.${uid}`, []);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -82,13 +89,22 @@ function FlashcardPage() {
   const [deletingDeck, setDeletingDeck] = useState<FlashDeck | null>(null);
   const [deletingCard, setDeletingCard] = useState<FlashCard | null>(null);
 
+  // Export Deck state
+  const [exportingDeck, setExportingDeck] = useState<FlashDeck | null>(null);
+  const [exportTitle, setExportTitle] = useState("");
+  const [exportCategory, setExportCategory] = useState("Umum");
+  const [exportDescription, setExportDescription] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+
   useScrollLock(
     Boolean(
       selectedDetailCard ||
-        editingDeck ||
-        deletingDeck ||
-        deletingCard ||
-        editingCard,
+      editingDeck ||
+      deletingDeck ||
+      deletingCard ||
+      editingCard ||
+      exportingDeck,
     ),
   );
 
@@ -161,6 +177,63 @@ function FlashcardPage() {
     setDecks((prev) => prev.filter((d) => d.id !== id));
     setCards((prev) => prev.filter((c) => c.deckId !== id));
     if (activeDeckId === id) setActiveDeckId(null);
+  }
+
+  // Export Deck Actions
+  function openExportDeck(deck: FlashDeck) {
+    if (deck.isImported || deck.name.includes("(Komunitas)")) return;
+    const deckCardsList = cards.filter((c) => c.deckId === deck.id);
+    if (deckCardsList.length < 5) return;
+    setExportingDeck(deck);
+    setExportTitle(deck.name);
+    setExportCategory("Umum");
+    setExportDescription("");
+    setExportSuccess(false);
+    playTapPop(0);
+  }
+
+  async function handleConfirmExport() {
+    if (!exportingDeck || exportingDeck.isImported || exportingDeck.name.includes("(Komunitas)")) return;
+    const finalTitle = exportTitle.trim() || exportingDeck.name;
+    if (!finalTitle) return;
+    const deckCardsList = cards.filter((c) => c.deckId === exportingDeck.id);
+    if (deckCardsList.length < 5) return;
+
+    setIsPublishing(true);
+    try {
+      const res = await publishSharedFlashDeck({
+        title: finalTitle,
+        description:
+          exportDescription.trim() ||
+          `Template ${finalTitle} dengan ${deckCardsList.length} kartu belajar.`,
+        category: exportCategory,
+        cards: deckCardsList.map((c) => ({
+          id: c.id,
+          title: c.title,
+          front: c.front,
+          back: c.back,
+        })),
+        authorUid: uid,
+        authorUsername: profile?.username || user?.displayName || "Pengguna TreeNest",
+        authorAccountId: profile?.accountId,
+        authorAvatarUrl: profile?.avatarUrl || user?.photoURL || null,
+        authorHue: profile?.hue ?? 150,
+        authorInitials: profile?.initials || "TN",
+      });
+
+      if (res.success) {
+        setExportSuccess(true);
+        playLevelUpFanfare();
+        awardActivityExp(uid, "flashcard");
+      } else {
+        alert(res.error || "Gagal mengekspor deck");
+      }
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Terjadi kesalahan saat mengekspor deck.");
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   // Card Actions
@@ -400,13 +473,26 @@ function FlashcardPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowAddDeckForm((v) => !v)}
-            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-2xl bg-primary text-primary-foreground border border-primary/20 px-4 py-2 text-xs font-bold shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
-          >
-            {showAddDeckForm ? <X className="size-4" /> : <FolderPlus className="size-4" />}
-            {showAddDeckForm ? "Tutup Form" : "Buat Deck Baru"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                playTapPop(0);
+                navigate({ to: "/grow/flashcard-explore" });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-border/80 bg-secondary/70 text-foreground px-3.5 py-2 text-xs font-bold shadow-soft transition-all hover:bg-secondary hover:border-primary active:scale-95 cursor-pointer"
+            >
+              <Compass className="size-4 text-primary" />
+              <span>Eksplor Komunitas</span>
+            </button>
+
+            <button
+              onClick={() => setShowAddDeckForm((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-primary text-primary-foreground border border-primary/20 px-4 py-2 text-xs font-bold shadow-soft transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+            >
+              {showAddDeckForm ? "Tutup Form" : "Buat Deck Baru"}
+            </button>
+          </div>
         </div>
 
         {/* Form Tambah Deck Baru */}
@@ -447,11 +533,10 @@ function FlashcardPage() {
                   <div
                     key={d.id}
                     onClick={() => handleToggleSelectDeck(d.id)}
-                    className={`group relative flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all hover:shadow-soft active:scale-[0.99] min-w-0 ${
-                      isActive
+                    className={`group relative flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all hover:shadow-soft active:scale-[0.99] min-w-0 ${isActive
                         ? "border-2 border-primary bg-primary/10 shadow-soft"
                         : "border-neutral-300 dark:border-border/80 bg-background dark:bg-secondary/40 hover:border-primary/50 hover:bg-muted/60"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
@@ -473,6 +558,22 @@ function FlashcardPage() {
                       )}
 
                       <div className="flex items-center gap-1">
+                        {/* Tombol Export ke Komunitas (Hanya muncul jika minimal 5 kartu & bukan deck hasil import) */}
+                        {cardCount >= 5 && !d.isImported && !d.name.includes("(Komunitas)") && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openExportDeck(d);
+                            }}
+                            className="flex items-center gap-1 rounded-xl bg-primary/10 border border-primary/25 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-xs active:scale-95 mr-1"
+                            title="Export Template Deck ke Komunitas"
+                          >
+                            <Share2 className="size-3.5" />
+                            <span className="hidden sm:inline">Export</span>
+                          </button>
+                        )}
+
                         {/* Edit Deck button */}
                         <button
                           onClick={(e) => {
@@ -566,13 +667,15 @@ function FlashcardPage() {
                 </h2>
               </div>
 
-              <button
-                onClick={startStudy}
-                disabled={deckCards.length === 0}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
-              >
-                <Play className="size-4 fill-current" /> Mulai Mode Belajar
-              </button>
+              <div className="flex items-center shrink-0">
+                <button
+                  onClick={startStudy}
+                  disabled={deckCards.length === 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <Play className="size-4 fill-current" /> Mulai Mode Belajar
+                </button>
+              </div>
             </div>
 
             {/* Form Tambah Kartu Baru */}
@@ -634,7 +737,7 @@ function FlashcardPage() {
                 disabled={(!cardTitle.trim() && !front.trim()) || !back.trim()}
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
               >
-                <Plus className="size-4" /> Simpan Kartu Ke Deck
+                <Plus className="size-4" />
               </button>
             </div>
 
@@ -657,7 +760,7 @@ function FlashcardPage() {
                       <div
                         key={c.id}
                         onClick={() => setSelectedDetailCard(c)}
-                        className="group relative flex flex-col justify-between rounded-2xl border border-neutral-300 dark:border-border/80 bg-background dark:bg-secondary/40 p-4 shadow-xs transition-all hover:border-primary/50 hover:bg-muted/50 hover:shadow-soft cursor-pointer"
+                        className="group relative flex flex-col justify-between rounded-2xl border border-neutral-300 dark:border-border/80 bg-white dark:bg-secondary/40 p-4 shadow-xs transition-all hover:border-primary/50 hover:bg-neutral-50/50 dark:hover:bg-muted/50 hover:shadow-soft cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="flex-1 font-bold text-xs text-foreground truncate min-w-0 text-center py-1">
@@ -665,7 +768,7 @@ function FlashcardPage() {
                           </h4>
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-border/60">
+                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-black dark:border-border/60">
                           <span className="text-[11px] font-bold text-primary group-hover:underline flex items-center gap-1">
                             <Info className="size-3.5" /> Lihat Detail
                           </span>
@@ -1095,6 +1198,170 @@ function FlashcardPage() {
                   Hapus Kartu
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ── MODAL EXPORT TEMPLATE DECK KE KOMUNITAS ── */}
+      <AnimatePresence>
+        {exportingDeck && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => !isPublishing && setExportingDeck(null)}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-float space-y-5"
+            >
+              {exportSuccess ? (
+                <div className="text-center space-y-4 py-3">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-primary/20 text-primary mx-auto">
+                    <CheckCircle2 className="size-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Berhasil Diekspor!</h3>
+                  </div>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playTapPop(0);
+                        setExportingDeck(null);
+                        navigate({ to: "/grow/flashcard-explore" });
+                      }}
+                      className="w-full rounded-2xl bg-primary py-3 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                    >
+                      Lihat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportingDeck(null)}
+                      className="w-full rounded-2xl border border-border bg-card py-2.5 text-xs font-bold text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                    >
+                      Selesai
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground">Export Deck ke Komunitas</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {cards.filter((c) => c.deckId === exportingDeck.id).length} kartu siap dibagikan
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isPublishing}
+                      onClick={() => setExportingDeck(null)}
+                      className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        Nama Template Deck :
+                      </label>
+                      <input
+                        maxLength={80}
+                        value={exportTitle}
+                        onChange={(e) => setExportTitle(e.target.value)}
+                        placeholder="Nama template deck..."
+                        className="w-full rounded-xl border border-input bg-card dark:bg-secondary/50 px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground outline-none shadow-xs focus:border-primary focus:ring-2 focus:ring-primary/25 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        Kategori Materi :
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          "Bahasa",
+                          "Sains & Matematika",
+                          "Teknologi & IT",
+                          "Sejarah & Sosial",
+                          "Umum",
+                        ].map((cat) => {
+                          const active = exportCategory === cat;
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => {
+                                playTapPop(0);
+                                setExportCategory(cat);
+                              }}
+                              className={`rounded-xl border py-2 px-3 text-xs font-bold transition-all text-center cursor-pointer ${active
+                                  ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                                  : "border-border bg-card dark:bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                }`}
+                            >
+                              {cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-foreground mb-1">
+                        Deskripsi Singkat (Opsional) :
+                      </label>
+                      <textarea
+                        rows={3}
+                        maxLength={250}
+                        value={exportDescription}
+                        onChange={(e) => setExportDescription(e.target.value)}
+                        placeholder="Deskripsi singkat..."
+                        className="w-full rounded-xl border border-input bg-card dark:bg-secondary/50 p-3 text-foreground placeholder:text-muted-foreground outline-none shadow-xs focus:border-primary focus:ring-2 focus:ring-primary/25 resize-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-2 border-t border-border/60">
+                    <button
+                      type="button"
+                      disabled={isPublishing}
+                      onClick={() => setExportingDeck(null)}
+                      className="flex-1 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-foreground hover:bg-secondary/70 transition-colors cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isPublishing || !exportTitle.trim()}
+                      onClick={handleConfirmExport}
+                      className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-soft active:scale-98 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isPublishing ? (
+                        <>
+                          <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                          <span>Mengekspor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Ekspor</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -32,6 +32,7 @@ export type FlashDeck = {
   id: string;
   name: string;
   createdAt: number;
+  isImported?: boolean;
 };
 
 export type FlashCard = {

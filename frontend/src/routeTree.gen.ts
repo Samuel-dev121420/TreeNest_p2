@@ -21,6 +21,7 @@ import { Route as ChatAccountIdRouteImport } from './routes/chat.$accountId'
 import { Route as GrowIndexRouteImport } from './routes/grow.index'
 import { Route as GrowDailytaskRouteImport } from './routes/grow.dailytask'
 import { Route as GrowFlashcardRouteImport } from './routes/grow.flashcard'
+import { Route as GrowFlashcardExploreRouteImport } from './routes/grow.flashcard-explore'
 import { Route as GrowPinoteRouteImport } from './routes/grow.pinote'
 import { Route as GrowStudyRouteImport } from './routes/grow.study'
 
@@ -84,6 +85,11 @@ const GrowFlashcardRoute = GrowFlashcardRouteImport.update({
   path: '/flashcard',
   getParentRoute: () => GrowRoute,
 } as any)
+const GrowFlashcardExploreRoute = GrowFlashcardExploreRouteImport.update({
+  id: '/flashcard-explore',
+  path: '/flashcard-explore',
+  getParentRoute: () => GrowRoute,
+} as any)
 const GrowPinoteRoute = GrowPinoteRouteImport.update({
   id: '/pinote',
   path: '/pinote',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/chat/$accountId': typeof ChatAccountIdRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
+  '/grow/flashcard-explore': typeof GrowFlashcardExploreRoute
   '/grow/pinote': typeof GrowPinoteRoute
   '/grow/study': typeof GrowStudyRoute
   '/grow/': typeof GrowIndexRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/chat/$accountId': typeof ChatAccountIdRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
+  '/grow/flashcard-explore': typeof GrowFlashcardExploreRoute
   '/grow/pinote': typeof GrowPinoteRoute
   '/grow/study': typeof GrowStudyRoute
   '/grow': typeof GrowIndexRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/chat/$accountId': typeof ChatAccountIdRoute
   '/grow/dailytask': typeof GrowDailytaskRoute
   '/grow/flashcard': typeof GrowFlashcardRoute
+  '/grow/flashcard-explore': typeof GrowFlashcardExploreRoute
   '/grow/pinote': typeof GrowPinoteRoute
   '/grow/study': typeof GrowStudyRoute
   '/grow/': typeof GrowIndexRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/chat/$accountId'
     | '/grow/dailytask'
     | '/grow/flashcard'
+    | '/grow/flashcard-explore'
     | '/grow/pinote'
     | '/grow/study'
     | '/grow/'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/chat/$accountId'
     | '/grow/dailytask'
     | '/grow/flashcard'
+    | '/grow/flashcard-explore'
     | '/grow/pinote'
     | '/grow/study'
     | '/grow'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/chat/$accountId'
     | '/grow/dailytask'
     | '/grow/flashcard'
+    | '/grow/flashcard-explore'
     | '/grow/pinote'
     | '/grow/study'
     | '/grow/'
@@ -291,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GrowFlashcardRouteImport
       parentRoute: typeof GrowRoute
     }
+    '/grow/flashcard-explore': {
+      id: '/grow/flashcard-explore'
+      path: '/flashcard-explore'
+      fullPath: '/grow/flashcard-explore'
+      preLoaderRoute: typeof GrowFlashcardExploreRouteImport
+      parentRoute: typeof GrowRoute
+    }
     '/grow/pinote': {
       id: '/grow/pinote'
       path: '/pinote'
@@ -311,6 +330,7 @@ declare module '@tanstack/react-router' {
 interface GrowRouteChildren {
   GrowDailytaskRoute: typeof GrowDailytaskRoute
   GrowFlashcardRoute: typeof GrowFlashcardRoute
+  GrowFlashcardExploreRoute: typeof GrowFlashcardExploreRoute
   GrowPinoteRoute: typeof GrowPinoteRoute
   GrowStudyRoute: typeof GrowStudyRoute
   GrowIndexRoute: typeof GrowIndexRoute
@@ -319,6 +339,7 @@ interface GrowRouteChildren {
 const GrowRouteChildren: GrowRouteChildren = {
   GrowDailytaskRoute: GrowDailytaskRoute,
   GrowFlashcardRoute: GrowFlashcardRoute,
+  GrowFlashcardExploreRoute: GrowFlashcardExploreRoute,
   GrowPinoteRoute: GrowPinoteRoute,
   GrowStudyRoute: GrowStudyRoute,
   GrowIndexRoute: GrowIndexRoute,
