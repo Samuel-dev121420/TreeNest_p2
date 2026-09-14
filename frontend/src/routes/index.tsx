@@ -18,6 +18,8 @@ import { Sparkles, TreePine, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playTapPop } from "@/lib/sound-fx";
 
+import { useSidebar } from "@/hooks/use-sidebar";
+
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { visit?: string | undefined } => ({
     visit: typeof search["visit"] === "string" ? search["visit"] : undefined,
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const navigate = useNavigate();
   const { profile: authProfile } = useAuth();
+  const { isCollapsed } = useSidebar();
   const { visit: visitAccountId } = Route.useSearch();
   const isVisiting = Boolean(visitAccountId);
 
@@ -162,28 +165,46 @@ function HomePage() {
       <h1 className="sr-only">TreeNest — Home</h1>
 
       {/* Tombol Kembali saat Mengunjungi Home Page User Lain (Di Bawah Banner Atas Bagian Kiri) */}
-      {isVisiting && (
-        <div className="fixed top-20 sm:top-24 left-4 sm:left-6 md:left-8 z-30 animate-in fade-in slide-in-from-top-2 duration-300">
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              playTapPop(0);
-              if (typeof window !== "undefined" && window.history.length > 1) {
-                window.history.back();
-              } else {
-                navigate({ to: "/friend-club" });
-              }
+      <AnimatePresence>
+        {isVisiting && (
+          <motion.div
+            key="visiting-back-btn"
+            initial={{ opacity: 0, y: -28, x: -8, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, x: -6, scale: 0.92, transition: { duration: 0.3, ease: "easeInOut" } }}
+            transition={{
+              duration: 0.8,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.08,
             }}
-            aria-label="Kembali"
-            className="group flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card px-4 py-2.5 text-xs sm:text-sm font-bold text-foreground shadow-soft hover:shadow-float transition-all hover:bg-secondary hover:border-primary active:scale-95 cursor-pointer select-none backdrop-blur-md"
+            className={`fixed top-[76px] sm:top-[84px] z-30 select-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isCollapsed ? "left-3 sm:left-4.5 md:left-[90px]" : "left-3 sm:left-4.5 md:left-[254px]"
+            }`}
           >
-            <ArrowLeft className="size-4.5 transition-transform group-hover:-translate-x-1 text-foreground" />
-            <span className="text-foreground">Kembali</span>
-          </motion.button>
-        </div>
-      )}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05, x: -2 }}
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              onClick={() => {
+                playTapPop(0);
+                if (typeof window !== "undefined" && window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  navigate({ to: "/friend-club" });
+                }
+              }}
+              aria-label="Kembali"
+              className="group flex items-center justify-center p-2.5 rounded-2xl border border-border/80 bg-white/95 dark:bg-card/95 shadow-soft hover:shadow-float transition-all hover:bg-secondary/70 hover:border-primary active:scale-95 cursor-pointer select-none backdrop-blur-md"
+            >
+              <ArrowLeft
+                className="size-5 transition-transform duration-300 ease-out group-hover:-translate-x-1 text-black dark:text-white"
+                strokeWidth={2.2}
+              />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Scene latar: langit gradien, bukit, treeline, awan, burung */}
       <SceneBackground paused={showTreehouse || Boolean(selectedFriendAccountId) || showTreeTip} />

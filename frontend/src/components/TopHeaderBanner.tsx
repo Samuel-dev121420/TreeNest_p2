@@ -64,7 +64,7 @@ function getTimeGreeting(date: Date | null) {
   if (hours >= 4 && hours < 11) return "Selamat Pagi";
   if (hours >= 11 && hours < 15) return "Selamat Siang";
   if (hours >= 15 && hours < 18) return "Selamat Sore";
-  return "Selamat Malam 🌙";
+  return "Selamat Malam";
 }
 
 function formatTimezoneTime(date: Date | null, targetOffsetHours: number) {
@@ -77,25 +77,18 @@ function formatTimezoneTime(date: Date | null, targetOffsetHours: number) {
   return `${h}.${m}.${s}`;
 }
 
+import { useSidebar } from "@/hooks/use-sidebar";
+
 export function TopHeaderBanner() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const now = useNow();
+  const { isCollapsed } = useSidebar();
 
   const username = profile?.username || user?.displayName || "Pengguna";
   const authUid = profile?.uid ?? user?.uid ?? "guest";
   const authAccountId = profile?.accountId;
   const isAdmin = (profile as any)?.role === "admin";
-
-  // Sembunyikan banner secara mutlak di halaman Admin dan Login
-  if (location.pathname === "/admin" || location.pathname === "/login") {
-    return null;
-  }
-
-  // Sembunyikan di halaman chat personal yang memiliki header sendiri
-  if (location.pathname.startsWith("/chat")) {
-    return null;
-  }
 
   // Visiting mode detection pada Home Page
   const searchObj = location.search as { visit?: string };
@@ -217,25 +210,43 @@ export function TopHeaderBanner() {
     setShowClock(false);
   }, [location.pathname]);
 
+  // Sembunyikan banner secara mutlak di halaman Admin, Login, dan Chat
+  if (
+    location.pathname === "/admin" ||
+    location.pathname === "/login" ||
+    location.pathname.startsWith("/chat")
+  ) {
+    return null;
+  }
+
+  const bannerKey = `${location.pathname}?visit=${visitAccountId || ""}`;
+
   return (
     <>
-      {/* ── BANNER TERPADU ATAS GLOBAL (EDGE-TO-EDGE) DENGAN ANIMASI TRANSISI HALAMAN YANG SMOOTH & ELEGAN ── */}
+      {/* ── BANNER TERPADU ATAS GLOBAL (EDGE-TO-EDGE) DENGAN ANIMASI MUNCUL DARI TEPI PALING ATAS ── */}
       <motion.header
-        key={location.pathname}
-        initial={{ y: -40, opacity: 0 }}
+        key={bannerKey}
+        initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{
-          duration: 0.85,
+          duration: 0.8,
           ease: [0.16, 1, 0.3, 1],
         }}
-        className="fixed inset-x-0 top-0 z-40 w-full min-h-[64px] sm:min-h-[72px] border-b border-border/60 shadow-sm px-4 sm:px-6 md:px-8 py-3 sm:py-3.5 flex items-center select-none overflow-hidden"
+        className={`fixed inset-x-0 top-0 z-30 h-[64px] sm:h-[72px] border-b border-border/60 shadow-xs px-4 sm:px-6 md:px-8 flex items-center select-none overflow-hidden transition-[left] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isCollapsed ? "md:left-[76px]" : "md:left-60"
+        }`}
       >
         {/* Layer Latar Belakang Banner: Putih di Mode Terang, Hitam Navbar (bg-card) di Mode Gelap */}
-        <div className="absolute inset-0 bg-white/70 dark:bg-card/70 backdrop-blur-md" />
+        <div className="absolute inset-0 bg-white/80 dark:bg-card/85 backdrop-blur-md" />
 
         <div className="relative flex w-full items-center justify-between z-10">
           {/* Pojok Kiri: Tombol Fitur / Sistem Suara, Pusat Notifikasi & Daily Quest */}
-          <div className="flex items-center justify-start gap-1 sm:gap-2 shrink-0">
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+            className="flex items-center justify-start gap-1 sm:gap-2 shrink-0"
+          >
             {/* Tombol Suara */}
             <motion.button
               type="button"
@@ -291,31 +302,52 @@ export function TopHeaderBanner() {
             >
               <TreePine className="size-5 shrink-0" />
             </motion.button>
-          </div>
+          </motion.div>
 
-          {/* Bagian Tengah: Informasi Sapaan & Username Akun (100% Dead-Center Presisi) */}
+          {/* Bagian Tengah: Informasi Sapaan & Username Akun (100% Dead-Center Presisi dengan Smooth Cross-Fade) */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4 sm:px-16">
-            {isVisiting && visitedProfile ? (
-              <motion.h2
-                whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                className="pointer-events-auto text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight drop-shadow-xs truncate max-w-[65vw] sm:max-w-[70vw] select-none cursor-default text-center"
-              >
-                Anda sedang mengunjungi Home Page milik <span className="text-primary font-black drop-shadow-xs">{visitedProfile.username}</span>
-              </motion.h2>
-            ) : (
-              <motion.h2
-                whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                className="pointer-events-auto text-base sm:text-xl md:text-2xl font-black text-foreground tracking-tight drop-shadow-xs truncate max-w-[50vw] sm:max-w-[60vw] select-none cursor-default"
-              >
-                Haloo, <span className="text-primary font-black drop-shadow-xs">{username}</span>
-              </motion.h2>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {isVisiting && visitedProfile ? (
+                <motion.h2
+                  key={`visiting-${visitedProfile.username}`}
+                  initial={{ opacity: 0, y: -14, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 14, scale: 0.96 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ scale: 1.05 }}
+                  className="pointer-events-auto text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight drop-shadow-xs truncate max-w-[65vw] sm:max-w-[70vw] select-none cursor-default text-center"
+                >
+                  Anda sedang mengunjungi Home Page milik{" "}
+                  <span className="text-primary font-black drop-shadow-[0_2px_10px_rgba(34,197,94,0.3)]">
+                    {visitedProfile.username}
+                  </span>
+                </motion.h2>
+              ) : (
+                <motion.h2
+                  key={`home-${username}`}
+                  initial={{ opacity: 0, y: -14, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 14, scale: 0.96 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ scale: 1.05 }}
+                  className="pointer-events-auto text-base sm:text-xl md:text-2xl font-black text-foreground tracking-tight drop-shadow-xs truncate max-w-[50vw] sm:max-w-[60vw] select-none cursor-default"
+                >
+                  Haloo,{" "}
+                  <span className="text-primary font-black drop-shadow-[0_2px_10px_rgba(34,197,94,0.3)]">
+                    {username}
+                  </span>
+                </motion.h2>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Pojok Kanan: Tombol Kalender & Tombol Jam */}
-          <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+            className="flex items-center justify-end gap-1 sm:gap-2 shrink-0"
+          >
             {/* Tombol Kalender */}
             <motion.button
               type="button"
@@ -369,7 +401,7 @@ export function TopHeaderBanner() {
             >
               <Clock className="size-5 shrink-0" />
             </motion.button>
-          </div>
+          </motion.div>
         </div>
       </motion.header>
 

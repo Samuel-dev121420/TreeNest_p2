@@ -137,11 +137,13 @@ import { GlobalStudyTimerBar } from "../components/GlobalStudyTimerBar";
 import { NotificationCenterWidget } from "../components/NotificationCenterWidget";
 import { TopHeaderBanner } from "../components/TopHeaderBanner";
 import { ShieldAlert, LogOut } from "lucide-react";
+import { useSidebar } from "../hooks/use-sidebar";
 
 function AppShell() {
   const { user, profile, loading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isCollapsed } = useSidebar();
 
   const searchObj = location.search as { visit?: string };
   const isVisiting = location.pathname === "/" && Boolean(searchObj?.visit);
@@ -283,7 +285,11 @@ function AppShell() {
       {!isPublicRoute && <TopHeaderBanner />}
       {!isPublicRoute && <NotificationCenterWidget />}
       {!isPublicRoute && <DailyQuestWidget />}
-      <main className="w-full flex-1 overflow-x-hidden">
+      <main
+        className={`w-full flex-1 overflow-x-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          !isMinimalRoute ? (isCollapsed ? "md:pl-[76px]" : "md:pl-60") : ""
+        }`}
+      >
         <Outlet />
       </main>
       {!isMinimalRoute && <BottomNav />}

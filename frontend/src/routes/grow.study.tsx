@@ -4,7 +4,6 @@ import { Clock, Play, Pause, RotateCcw, Sparkles, Trash2, CloudRain, Trees, Flam
 import { motion, AnimatePresence } from "framer-motion";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
-import { EmptyState } from "@/components/EmptyState";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { type StudySession } from "@/lib/grow-tools";
 import { useAuth } from "@/lib/auth-context";
@@ -350,12 +349,14 @@ function StudyPage() {
           </div>
 
           {sessions.length === 0 ? (
-            <div className="mt-3">
-              <EmptyState
-                icon={Clock}
-                title="Belum ada sesi"
-                description="Mulai timer untuk mencatat sesi pertamamu."
-              />
+            <div className="flex flex-col items-center justify-center p-8 text-center select-none">
+              <div className="flex size-14 items-center justify-center rounded-3xl bg-muted/80 dark:bg-secondary/60 text-muted-foreground border border-border/40 shadow-inner mb-3">
+                <Clock className="size-7 text-muted-foreground/80" />
+              </div>
+              <p className="text-sm font-bold text-foreground">Belum ada sesi</p>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground leading-relaxed">
+                Mulai timer untuk mencatat sesi pertamamu.
+              </p>
             </div>
           ) : (
             <ul className="mt-3 space-y-2">

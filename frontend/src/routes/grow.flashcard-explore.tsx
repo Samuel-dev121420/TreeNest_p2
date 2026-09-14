@@ -479,7 +479,7 @@ function FlashcardExplorePage() {
                       className="group relative flex min-h-[190px] w-full flex-col items-center justify-center rounded-2xl border border-border/80 bg-secondary/40 p-6 text-center shadow-inner cursor-pointer select-none transition-all hover:border-primary/50"
                     >
                       <span className="absolute top-3 left-3 text-[10px] font-bold text-muted-foreground">
-                        {previewFlipped ? "Sisi Belakang (Jawaban/Arti)" : "Sisi Depan (Pertanyaan/Istilah)"}
+                        {previewFlipped ? "Sisi Belakang" : "Sisi Depan"}
                       </span>
                       <span className="absolute top-3 right-3 text-[10px] font-bold text-primary">
                         Kartu {previewIndex + 1} dari {previewDeck.cards.length}
@@ -499,7 +499,7 @@ function FlashcardExplorePage() {
                       </div>
 
                       <span className="mt-2 text-[10px] font-semibold text-muted-foreground/70 group-hover:text-primary transition-colors">
-                        Ketuk untuk membalik kartu ↻
+                        Ketuk untuk membalik kartu
                       </span>
                     </div>
                   )}
@@ -553,8 +553,7 @@ function FlashcardExplorePage() {
                       className="rounded-xl border border-border/60 bg-secondary/30 p-3 text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between text-muted-foreground font-semibold text-[10px]">
-                        <span>Kartu #{idx + 1}</span>
-                        {c.title && <span>{c.title}</span>}
+                        <span>Kartu {idx + 1}</span>
                       </div>
                       <p className="font-bold text-foreground">{c.front}</p>
                       <p className="text-muted-foreground border-t border-border/40 pt-1 mt-1">
@@ -576,7 +575,7 @@ function FlashcardExplorePage() {
                   className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-xs sm:text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-98 cursor-pointer"
                 >
                   <Download className="size-4" />
-                  <span>Import Deck Ini ke FlashCard Saya</span>
+                  <span>Import</span>
                 </button>
               </div>
             </motion.div>

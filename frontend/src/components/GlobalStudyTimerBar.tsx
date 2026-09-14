@@ -7,8 +7,11 @@ import {
   type StudyTimerState,
 } from "@/lib/study-timer-service";
 
+import { useSidebar } from "@/hooks/use-sidebar";
+
 export function GlobalStudyTimerBar() {
   const location = useLocation();
+  const { isCollapsed } = useSidebar();
   const [timerSnap, setTimerSnap] = useState(getStudyTimerSnapshot());
 
   useEffect(() => {
@@ -41,7 +44,11 @@ export function GlobalStudyTimerBar() {
   const isCompleted = timerSnap.status === "completed";
 
   return (
-    <div className="fixed bottom-5 left-4 z-40 flex items-center pointer-events-none">
+    <div
+      className={`fixed bottom-5 z-40 flex items-center pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isCollapsed ? "left-4 md:left-[92px]" : "left-4 md:left-[256px]"
+      }`}
+    >
       <Link
         to="/grow/study"
         className={`pointer-events-auto flex items-center gap-2.5 rounded-2xl px-4 py-2 text-xs font-bold shadow-float backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border animate-in slide-in-from-bottom-4 ${

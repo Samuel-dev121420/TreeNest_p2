@@ -22,9 +22,12 @@ import {
 } from "@/lib/exp-service";
 import { stageForLevel } from "@/lib/treenest";
 
+import { useSidebar } from "@/hooks/use-sidebar";
+
 export function DailyQuestWidget() {
   const location = useLocation();
   const { user, profile, refreshProfile } = useAuth();
+  const { isCollapsed } = useSidebar();
   const uid = profile?.uid ?? user?.uid;
 
   const [questState, setQuestState] = useState<DailyQuestState | null>(null);
@@ -171,7 +174,9 @@ export function DailyQuestWidget() {
       {/* ── DAILY QUEST POP-UP KOTAK (Tanpa Lengkungan, Sejajar Vertikal dengan Icon Speaker) ── */}
       <div
         ref={containerRef}
-        className="fixed left-4 sm:left-6 md:left-8 top-[64px] sm:top-[72px] z-30 flex flex-col items-start select-none"
+        className={`fixed top-[64px] sm:top-[72px] z-50 flex flex-col items-start select-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isCollapsed ? "left-4 sm:left-6 md:left-[92px]" : "left-4 sm:left-6 md:left-[256px]"
+        }`}
       >
         <AnimatePresence>
           {expanded && questState && (

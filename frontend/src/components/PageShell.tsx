@@ -11,7 +11,7 @@ export function PageShell({
   children?: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-soft pb-32">
+    <div className="min-h-screen bg-gradient-soft pb-28 md:pb-16">
       <motion.div
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}

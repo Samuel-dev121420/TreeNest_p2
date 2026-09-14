@@ -36,10 +36,13 @@ const ICON_MAP: Record<NotificationType, React.ComponentType<{ className?: strin
   admin_video_pending: ShieldCheck,
 };
 
+import { useSidebar } from "@/hooks/use-sidebar";
+
 export function NotificationCenterWidget() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { isCollapsed } = useSidebar();
   const isAdmin = (profile as any)?.role === "admin";
   const uid = profile?.uid ?? "guest";
   const accountId = profile?.accountId;
@@ -175,7 +178,9 @@ export function NotificationCenterWidget() {
   return (
     <div
       ref={containerRef}
-      className="fixed left-4 sm:left-6 md:left-8 top-[64px] sm:top-[72px] z-30 flex flex-col items-start select-none"
+      className={`fixed top-[64px] sm:top-[72px] z-50 flex flex-col items-start select-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isCollapsed ? "left-4 sm:left-6 md:left-[92px]" : "left-4 sm:left-6 md:left-[256px]"
+      }`}
     >
       {/* Balok / Elemen Pop-up Kotak (Tanpa Lengkungan) */}
       <AnimatePresence>

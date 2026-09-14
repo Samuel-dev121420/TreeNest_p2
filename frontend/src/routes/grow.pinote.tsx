@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
-import { EmptyState } from "@/components/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
@@ -452,18 +451,22 @@ export function PiNotePage() {
           initial={{ opacity: 0, y: 20, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.65, delay: 0.20, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-3xl border border-border/70 bg-card p-4 shadow-soft min-h-[22rem]"
+          className="rounded-3xl border border-border/70 bg-card p-4 shadow-soft min-h-[22rem] flex flex-col"
         >
           {displayedItems.length === 0 ? (
-            <EmptyState
-              icon={Folder}
-              title={searchQuery ? "Tidak ditemukan" : "Folder Kosong"}
-              description={
-                searchQuery
-                  ? "Coba kata kunci lain."
-                  : "Buat folder baru, catatan teks, atau upload file dokumen."
-              }
-            />
+            <div className="flex flex-1 min-h-[18rem] flex-col items-center justify-center p-8 text-center select-none">
+              <div className="flex size-16 items-center justify-center rounded-3xl bg-muted/80 dark:bg-secondary/60 text-muted-foreground border border-border/40 shadow-inner mb-4">
+                <Folder className="size-8 text-muted-foreground/80" />
+              </div>
+              <p className="text-base font-bold text-foreground">
+                {searchQuery ? "Tidak ditemukan" : "Folder Kosong"}
+              </p>
+              <p className="mt-1.5 max-w-sm text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {searchQuery
+                  ? "Coba kata kunci lain untuk mencari folder, catatan, atau file."
+                  : "Buat folder baru, catatan teks, atau upload file dokumen."}
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {displayedItems.map((item, index) => {
@@ -647,7 +650,7 @@ export function PiNotePage() {
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-5 shadow-float"
             >
-              <h3 className="text-base font-bold text-foreground">Ubah Nama</h3>
+              <h3 className="text-base font-bold text-foreground">Ubah Judul</h3>
               <div className="relative mt-4">
                 <input
                   autoFocus

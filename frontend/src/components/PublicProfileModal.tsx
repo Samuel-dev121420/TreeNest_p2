@@ -252,7 +252,7 @@ export function PublicProfileModal({
           {loading ? (
             <div className="py-14 flex flex-col items-center justify-center gap-2.5 text-xs text-muted-foreground font-semibold">
               <Loader2 className="size-7 animate-spin text-primary" />
-              <span>Memuat profil...</span>
+              <span>Memuat...</span>
             </div>
           ) : !targetProfile ? (
             <div className="py-12 text-center text-sm text-muted-foreground">

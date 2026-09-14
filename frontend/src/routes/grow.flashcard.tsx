@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ToolHeader } from "@/components/ToolHeader";
-import { EmptyState } from "@/components/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
@@ -464,7 +463,7 @@ function FlashcardPage() {
         transition={{ duration: 0.65, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-200 dark:border-border/60 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b-3 border-neutral-300 dark:border-border/80 pb-4">
           <div className="flex items-center gap-2">
             <Layers className="size-5 text-primary shrink-0" />
             <div>
@@ -511,18 +510,26 @@ function FlashcardPage() {
               disabled={!newDeckName.trim()}
               className="shrink-0 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
             >
-              <Plus className="size-4" /> Simpan Deck
+              <Plus className="size-4" />
             </button>
           </div>
         )}
 
         {/* List Cards Deck - 1 per row (like PiNote folders) */}
         {filteredDecks.length === 0 ? (
-          <EmptyState
-            icon={Layers}
-            title={searchQuery ? "Deck tidak ditemukan" : "Belum ada deck"}
-            description={searchQuery ? "Coba kata kunci pencarian lain." : "Klik tombol '+ Buat Deck Baru' di atas untuk memulai."}
-          />
+          <div className="flex flex-col items-center justify-center p-8 text-center select-none">
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-muted/80 dark:bg-secondary/60 text-muted-foreground border border-border/40 shadow-inner mb-4">
+              <Layers className="size-8 text-muted-foreground/80" />
+            </div>
+            <p className="text-base font-bold text-foreground">
+              {searchQuery ? "Deck tidak ditemukan" : "Belum ada deck"}
+            </p>
+            <p className="mt-1.5 max-w-sm text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              {searchQuery
+                ? "Coba kata kunci pencarian lain."
+                : "Klik tombol 'Buat Deck Baru' di atas untuk membuat deck."}
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             <div className="grid gap-3 grid-cols-1">
@@ -634,13 +641,12 @@ function FlashcardPage() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -14, scale: 0.985 }}
             transition={{ duration: 0.65, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-3xl border border-border/70 bg-card p-8 text-center shadow-soft"
+            className="rounded-3xl border border-border/70 bg-card p-8 text-center shadow-soft flex flex-col items-center justify-center select-none"
           >
-            <EmptyState
-              icon={BookOpen}
-              title="Pilih Deck Untuk Memulai"
-              description="Silakan pilih salah satu deck di atas untuk menambah kartu baru atau mulai latihan."
-            />
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-muted/80 dark:bg-secondary/60 text-muted-foreground border border-border/40 shadow-inner mb-4">
+              <BookOpen className="size-8 text-muted-foreground/80" />
+            </div>
+            <p className="text-base font-bold text-foreground">Pilih deck Untuk memulai</p>
           </motion.div>
         ) : (
           <motion.div
@@ -673,15 +679,14 @@ function FlashcardPage() {
                   disabled={deckCards.length === 0}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  <Play className="size-4 fill-current" /> Mulai Mode Belajar
+                 Mulai Mode Belajar
                 </button>
               </div>
             </div>
 
             {/* Form Tambah Kartu Baru */}
             <div className="rounded-3xl border border-neutral-300 dark:border-border/80 bg-card p-5 sm:p-6 shadow-soft space-y-4">
-              <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-border/60 pb-3">
-                <Plus className="size-5 text-primary shrink-0" />
+              <div className="flex items-center gap-2 border-b border-neutral-300 dark:border-border/80 pb-3">
                 <h3 className="text-base font-bold text-foreground">Tambah Kartu Baru</h3>
               </div>
 
@@ -768,9 +773,10 @@ function FlashcardPage() {
                           </h4>
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-black dark:border-border/60">
-                          <span className="text-[11px] font-bold text-primary group-hover:underline flex items-center gap-1">
-                            <Info className="size-3.5" /> Lihat Detail
+                        <div className="mt-3 flex items-center justify-between pt-2 border-t-[3px] border-black dark:border-border/80">
+                          <span className="text-[11px] font-bold text-primary group-hover:underline inline-flex items-center gap-1.5 leading-none">
+                            <Info className="size-3.5 shrink-0" />
+                            <span className="leading-none">Lihat Detail</span>
                           </span>
                           <div className="flex items-center gap-1">
                             <button
