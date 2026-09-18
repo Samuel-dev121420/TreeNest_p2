@@ -17,7 +17,7 @@ import { AuthProvider, useAuth } from "../lib/auth-context";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { motion, AnimatePresence } from "framer-motion";
 
-function NotFoundComponent() {
+export function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -53,7 +53,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           This page didn't load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Something went wrong on our end.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -82,6 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "no-referrer" },
       { title: "TreeNest" },
       {
         name: "description",
@@ -120,11 +121,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -148,19 +149,19 @@ function AppShell() {
   const searchObj = location.search as { visit?: string };
   const isVisiting = location.pathname === "/" && Boolean(searchObj?.visit);
   const isChatRoute = location.pathname.startsWith("/chat");
-  const isMinimalRoute =
-    location.pathname === "/login" || location.pathname === "/admin" || isChatRoute;
+  const isMinimalRoute = location.pathname === "/login" || location.pathname === "/admin";
+  const isPublicRoute = location.pathname === "/login" || location.pathname === "/admin";
+  const showTopWidgets = !isPublicRoute && !isChatRoute;
 
   useEffect(() => {
     if (!loading) {
-      const isPublicRoute = location.pathname === "/login" || location.pathname === "/admin";
       if ((!user || !profile) && !isPublicRoute) {
         navigate({ to: "/login" });
       } else if (user && profile && location.pathname === "/login") {
         navigate({ to: "/" });
       }
     }
-  }, [loading, user, profile, location.pathname, navigate]);
+  }, [loading, user, profile, location.pathname, navigate, isPublicRoute]);
 
   // Scroll to top on normal route change, unless a scroll restoration is scheduled
   useEffect(() => {
@@ -202,8 +203,6 @@ function AppShell() {
           pingPresence(user.uid);
           markAllIncomingAsDelivered(user.uid);
         }
-        // NOTE: Sengaja TIDAK mengubah status menjadi offline saat tab hidden / background!
-        // User yang membuka TreeNest di tab background atau aplikasi lain tetap berstatus online.
       };
 
       const handleUnload = () => {
@@ -231,11 +230,11 @@ function AppShell() {
   }, [user, profile]);
 
   if (loading) {
-    return <LoadingScreen message="Menghubungkan ke TreeNest..." />;
+    return <LoadingScreen message="Menghubungkan..." />;
   }
 
   // Tampilan Akun Ditangguhkan (Suspended Guard)
-  if (profile?.isSuspended && location.pathname !== "/login" && location.pathname !== "/admin") {
+  if (profile?.isSuspended && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-red-50 to-amber-50 dark:from-zinc-950 dark:to-neutral-900 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-red-200 dark:border-red-900/50 p-6 md:p-8 text-center space-y-5">
@@ -277,14 +276,12 @@ function AppShell() {
     );
   }
 
-  const isPublicRoute = location.pathname === "/login" || location.pathname === "/admin";
-
   return (
     <>
       <GlobalStudyTimerBar />
-      {!isPublicRoute && <TopHeaderBanner />}
-      {!isPublicRoute && <NotificationCenterWidget />}
-      {!isPublicRoute && <DailyQuestWidget />}
+      {showTopWidgets && <TopHeaderBanner />}
+      {showTopWidgets && <NotificationCenterWidget />}
+      {showTopWidgets && <DailyQuestWidget />}
       <main
         className={`w-full flex-1 overflow-x-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           !isMinimalRoute ? (isCollapsed ? "md:pl-[76px]" : "md:pl-60") : ""

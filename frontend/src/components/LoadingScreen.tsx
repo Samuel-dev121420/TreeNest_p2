@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 
-export function LoadingScreen({ message = "Menghubungkan ke TreeNest..." }: { message?: string }) {
+export function LoadingScreen({ message = "Menghubungkan..." }: { message?: string }) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background px-4">
       {/* Soft background ambient blur circles */}

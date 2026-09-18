@@ -84,6 +84,7 @@ const STATUS_META = {
 
 const ACCEPT_TYPES = "video/mp4,video/webm,video/quicktime,video/ogg";
 const MAX_FILE_MB = 50;
+const MAX_TITLE_LENGTH = 50;
 
 function TreeGalleryPage() {
   const navigate = useNavigate();
@@ -273,6 +274,10 @@ function TreeGalleryPage() {
     const t = title.trim();
     if (!t) {
       setUploadError("Judul wajib diisi.");
+      return;
+    }
+    if (t.length > MAX_TITLE_LENGTH) {
+      setUploadError(`Judul video maksimal ${MAX_TITLE_LENGTH} karakter.`);
       return;
     }
     if (!canUpload) return;
@@ -517,12 +522,26 @@ function TreeGalleryPage() {
           <div className="space-y-4">
             {/* Judul */}
             <div>
-              <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                Judul Video
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-bold text-muted-foreground">
+                  Judul Video
+                </label>
+                <span
+                  className={`text-[11px] font-semibold transition-colors ${
+                    title.length >= MAX_TITLE_LENGTH
+                      ? "text-destructive font-bold"
+                      : title.length > 40
+                        ? "text-sun font-bold"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {title.length}/{MAX_TITLE_LENGTH}
+                </span>
+              </div>
               <input
                 type="text"
                 value={title}
+                maxLength={MAX_TITLE_LENGTH}
                 disabled={uploading}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Judul video..."
@@ -728,7 +747,7 @@ function TreeGalleryPage() {
                 return (
                   <div
                     key={v.id}
-                    className="group relative flex flex-col overflow-hidden rounded-3xl border-2 border-border/80 bg-card shadow-soft dark:border-border/70 hover:border-primary/50 transition-all"
+                    className="group relative flex flex-col overflow-hidden rounded-xl border-2 border-border/80 bg-card shadow-soft dark:border-border/70 hover:border-leaf dark:hover:border-primary hover:shadow-[0_8px_30px_-6px_rgba(34,197,94,0.25)] dark:hover:shadow-[0_8px_30px_-6px_rgba(34,197,94,0.3)] transition-all duration-300 hover:-translate-y-1"
                   >
                     <button
                       onClick={() => setPreview(v)}
@@ -739,32 +758,29 @@ function TreeGalleryPage() {
                         <Play className="size-10 text-white drop-shadow-lg opacity-0 transition-opacity group-hover:opacity-100" />
                       </span>
                       <SourceBadge source={v.sourceType} />
+
+                      {/* Badge Tampil di Rumah Pohon (Pojok Kiri Atas Thumbnail) */}
+                      {isFeatured && (
+                        <span className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-md bg-emerald-600/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-sm animate-in fade-in">
+                          <span className="size-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                          Now Showing
+                        </span>
+                      )}
                     </button>
                     <div className="flex flex-1 flex-col p-3">
                       <p className="line-clamp-1 text-sm font-bold text-foreground">{v.title}</p>
-                      <p className="text-xs text-muted-foreground">Masuk {timeAgo(v.approvedAt || v.submittedAt)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Masuk {timeAgo(v.approvedAt || v.submittedAt)}</p>
 
-                      {/* Status Informasi Rumah Pohon */}
-                      {isFeatured ? (
-                        <div className="mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-leaf text-center">
-                          
-                          <span>Tampil di Rumah Pohon</span>
-                          
-                        </div>
-                      ) : (
-                        <div className="mt-2 h-4" />
-                      )}
-
-                      <div className="mt-2 flex items-center gap-2 pt-2 border-t border-border/40">
+                      <div className="mt-2.5 flex items-center gap-2 pt-2 border-t-2 border-border/80 dark:border-border/70">
                         <button
                           onClick={() => toggleFeatured(v.id)}
                           className={`flex-1 rounded-xl px-2 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                             isFeatured
-                              ? "border border-border/80 bg-secondary/80 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                              ? "border border-emerald-500/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/40 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                               : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
                           }`}
                         >
-                          {isFeatured ? "Hentikan Tayangan" : "Jadikan Tayangan"}
+                          {isFeatured ? "Stop Showing" : "Set as Show"}
                         </button>
                         
                         {/* Tombol Catatan Admin */}
@@ -1344,7 +1360,7 @@ function TreeGalleryPage() {
                 }}
                 className="flex-1 rounded-xl bg-destructive py-2.5 text-xs font-bold text-white transition-colors hover:bg-destructive/90 cursor-pointer shadow-soft"
               >
-                Ya, Hapus Video
+                Hapus
               </button>
               <button
                 onClick={() => setDeleteTargetVideo(null)}
@@ -1392,6 +1408,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       <img
         src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`}
         alt={video.title}
+        referrerPolicy="no-referrer"
         loading="lazy"
         className="size-full object-cover transition-transform group-hover:scale-105"
       />
@@ -1403,6 +1420,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       <img
         src={tiktokThumb}
         alt={video.title}
+        referrerPolicy="no-referrer"
         loading="lazy"
         className="size-full object-cover transition-transform group-hover:scale-105"
       />

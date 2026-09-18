@@ -241,9 +241,10 @@ export function TreehouseModal({
                     <div className="aspect-video w-full">
                       <iframe
                         className="size-full rounded-2xl"
-                        src={`https://www.youtube.com/embed/${yt}?autoplay=0`}
+                        src={`https://www.youtube-nocookie.com/embed/${yt}?autoplay=0&rel=0&modestbranding=1&playsinline=1`}
                         title={featuredVideo.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
                       />
                     </div>

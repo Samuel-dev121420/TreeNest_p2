@@ -9,6 +9,15 @@ import {
   TreePine,
   PanelLeftClose,
   PanelLeft,
+  FileText,
+  Layers,
+  Clock,
+  CheckSquare,
+  Search,
+  UserPlus,
+  MessageSquare,
+  UserCheck,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStudyTimerSnapshot, subscribeStudyTimer } from "@/lib/study-timer-service";
@@ -51,6 +60,68 @@ const navItems = [
   },
 ] as const;
 
+const treeGallerySubItems = [
+  {
+    to: "/treegallery-all",
+    label: "TreeGallery All",
+    icon: Images,
+  },
+] as const;
+
+const growSubItems = [
+  {
+    to: "/grow/pinote",
+    label: "PiNote",
+    icon: FileText,
+  },
+  {
+    to: "/grow/flashcard",
+    label: "FlashCard",
+    icon: Layers,
+  },
+  {
+    to: "/grow/study",
+    label: "Study Session",
+    icon: Clock,
+  },
+  {
+    to: "/grow/dailytask",
+    label: "Reminder",
+    icon: CheckSquare,
+  },
+] as const;
+
+const friendClubSubItems = [
+  {
+    to: "/friend-club",
+    search: { tab: "search" as const },
+    label: "Cari Teman",
+    tab: "search",
+    icon: Search,
+  },
+  {
+    to: "/friend-club",
+    search: { tab: "requests" as const },
+    label: "Informasi Lanjut",
+    tab: "requests",
+    icon: UserPlus,
+  },
+  {
+    to: "/friend-club",
+    search: { tab: "incoming_contacts" as const },
+    label: "Kontak Masuk",
+    tab: "incoming_contacts",
+    icon: MessageSquare,
+  },
+  {
+    to: "/friend-club",
+    search: { tab: "list" as const },
+    label: "Daftar Teman",
+    tab: "list",
+    icon: UserCheck,
+  },
+] as const;
+
 export function BottomNav() {
   const location = useLocation();
   const { profile } = useAuth();
@@ -58,9 +129,15 @@ export function BottomNav() {
   const { isCollapsed, toggleSidebar } = useSidebar();
 
   const [hasGrowBadge, setHasGrowBadge] = useState(false);
+  const [hasStudyBadge, setHasStudyBadge] = useState(false);
+  const [hasReminderBadge, setHasReminderBadge] = useState(false);
   const [hasGalleryBadge, setHasGalleryBadge] = useState(false);
   const [hasFriendBadge, setHasFriendBadge] = useState(false);
+  const [hasFriendRequestsBadge, setHasFriendRequestsBadge] = useState(false);
+  const [hasFriendContactsBadge, setHasFriendContactsBadge] = useState(false);
+  const [hasFriendListBadge, setHasFriendListBadge] = useState(false);
   const [isToggleHovered, setIsToggleHovered] = useState(false);
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -70,6 +147,8 @@ export function BottomNav() {
       const isTimerActive = timerSnap.status === "running" || timerSnap.status === "completed";
       const hasReminders = hasUncheckedReminders(uid);
       if (!isCancelled) {
+        setHasStudyBadge(isTimerActive);
+        setHasReminderBadge(hasReminders);
         setHasGrowBadge(isTimerActive || hasReminders);
       }
 
@@ -121,6 +200,9 @@ export function BottomNav() {
           const hasContacts = inContacts.length > contactsViewed;
 
           if (!isCancelled) {
+            setHasFriendRequestsBadge(hasReq);
+            setHasFriendContactsBadge(hasContacts);
+            setHasFriendListBadge(hasFr);
             setHasFriendBadge(hasReq || hasFr || hasContacts);
           }
         } catch {
@@ -128,6 +210,9 @@ export function BottomNav() {
         }
       } else {
         if (!isCancelled) {
+          setHasFriendRequestsBadge(false);
+          setHasFriendContactsBadge(false);
+          setHasFriendListBadge(false);
           setHasFriendBadge(false);
         }
       }
@@ -145,8 +230,7 @@ export function BottomNav() {
 
   if (
     location.pathname === "/login" ||
-    location.pathname === "/admin" ||
-    location.pathname === "/treegallery-all"
+    location.pathname === "/admin"
   ) {
     return null;
   }
@@ -155,6 +239,16 @@ export function BottomNav() {
     if (to === "/grow") return hasGrowBadge;
     if (to === "/treegallery") return hasGalleryBadge;
     if (to === "/friend-club") return hasFriendBadge;
+    return false;
+  }
+
+  function getSubBadgeStatus(sub: any) {
+    if (sub.to === "/treegallery-all") return hasGalleryBadge;
+    if (sub.to === "/grow/study") return hasStudyBadge;
+    if (sub.to === "/grow/dailytask" || sub.to === "/grow/reminder") return hasReminderBadge;
+    if (sub.tab === "requests") return hasFriendRequestsBadge;
+    if (sub.tab === "incoming_contacts") return hasFriendContactsBadge;
+    if (sub.tab === "list") return hasFriendListBadge;
     return false;
   }
 
@@ -209,55 +303,151 @@ export function BottomNav() {
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const showBadge = getBadgeStatus(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  title={isCollapsed ? item.label : undefined}
-                  className="group relative flex items-center h-11 rounded-2xl text-sm font-bold text-muted-foreground hover:bg-neutral-100/90 dark:hover:bg-white/8 hover:text-foreground transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none active:scale-[0.98] px-3.5 gap-3.5 overflow-hidden"
-                  activeProps={{
-                    className:
-                      "text-primary bg-primary/15 dark:bg-primary/25 dark:text-emerald-300 font-black shadow-xs ring-1 ring-primary/20",
-                  }}
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="relative flex items-center justify-center size-5 shrink-0">
-                      <item.icon
-                        className={`size-5 transition-transform duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                          item.iconClass ?? "group-hover:scale-120 group-hover:-translate-y-0.5"
-                        }`}
-                        strokeWidth={2.2}
-                      />
-                      <AnimatePresence>
-                        {showBadge && isCollapsed && (
-                          <motion.span
-                            key="badge-dot-collapsed"
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                            className="absolute -right-1.5 -top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse"
-                          />
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    <span
-                      className={`truncate transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
-                        isCollapsed
-                          ? "max-w-0 opacity-0 -translate-x-4 pointer-events-none"
-                          : "max-w-[120px] opacity-100 translate-x-0"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
+              const subItems =
+                item.to === "/treegallery"
+                  ? treeGallerySubItems
+                  : item.to === "/grow"
+                  ? growSubItems
+                  : item.to === "/friend-club"
+                  ? friendClubSubItems
+                  : undefined;
+              const isHovered = hoveredNav === item.to;
 
-                  <span
-                    className={`size-2 rounded-full bg-destructive animate-pulse shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      !isCollapsed && showBadge ? "opacity-100 scale-100 ml-auto" : "opacity-0 scale-0 pointer-events-none"
-                    }`}
-                  />
-                </Link>
+              return (
+                <div
+                  key={item.to}
+                  onMouseEnter={() => setHoveredNav(item.to)}
+                  onMouseLeave={() => setHoveredNav(null)}
+                  className="relative group/navblock"
+                >
+                  <Link
+                    to={item.to}
+                    title={isCollapsed ? item.label : undefined}
+                    className="group relative flex items-center h-11 rounded-2xl text-sm font-bold text-muted-foreground hover:bg-neutral-100/90 dark:hover:bg-white/8 hover:text-foreground transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none active:scale-[0.98] px-3.5 gap-3.5 overflow-hidden"
+                    activeProps={{
+                      className:
+                        "text-primary bg-primary/15 dark:bg-primary/25 dark:text-emerald-300 font-black shadow-xs ring-1 ring-primary/20",
+                    }}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className="relative flex items-center justify-center size-5 shrink-0">
+                        <item.icon
+                          className={`size-5 transition-transform duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                            item.iconClass ?? "group-hover:scale-120 group-hover:-translate-y-0.5"
+                          }`}
+                          strokeWidth={2.2}
+                        />
+                        <AnimatePresence>
+                          {showBadge && isCollapsed && (
+                            <motion.span
+                              key="badge-dot-collapsed"
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0, opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                              className="absolute -right-1.5 -top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-card animate-pulse"
+                            />
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <span
+                        className={`truncate transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
+                          isCollapsed
+                            ? "max-w-0 opacity-0 -translate-x-4 pointer-events-none"
+                            : "max-w-[120px] opacity-100 translate-x-0"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`size-2 rounded-full bg-destructive animate-pulse shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        !isCollapsed && showBadge ? "opacity-100 scale-100 ml-auto" : "opacity-0 scale-0 pointer-events-none"
+                      }`}
+                    />
+                  </Link>
+
+                  {/* Sub-menu Accordion (Turun di Bawah Tombol Utama pada Mode Expand & Mode Collapse) */}
+                  <AnimatePresence>
+                    {subItems && isHovered && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className={`overflow-hidden space-y-1 pt-1 pb-0.5 ${
+                          isCollapsed ? "px-0" : "pl-3 pr-1"
+                        }`}
+                      >
+                        {subItems.map((sub: any) => {
+                          const isSubActive = sub.tab
+                            ? location.pathname === "/friend-club" &&
+                              ((location.search as any)?.tab || "search") === sub.tab
+                            : location.pathname === sub.to;
+                          const showSubBadge = getSubBadgeStatus(sub);
+
+                          return (
+                            <Link
+                              key={sub.label}
+                              to={sub.to}
+                              search={sub.search}
+                              title={isCollapsed ? sub.label : undefined}
+                              onClick={() => playTapPop(0)}
+                              className={`group/sub relative flex items-center h-9 rounded-xl text-xs font-semibold transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none active:scale-[0.97] overflow-hidden ${
+                                isCollapsed ? "justify-center p-2" : "px-3 gap-2.5"
+                              } ${
+                                isSubActive
+                                  ? "text-primary bg-primary/15 dark:bg-primary/25 font-bold shadow-2xs ring-1 ring-primary/20"
+                                  : "text-muted-foreground hover:bg-neutral-100/80 dark:hover:bg-white/6 hover:text-foreground"
+                              }`}
+                            >
+                              <div className={`flex items-center min-w-0 ${isCollapsed ? "justify-center" : "gap-2.5 flex-1"}`}>
+                                <div className="relative flex items-center justify-center size-4 shrink-0">
+                                  <sub.icon
+                                    className={`size-4 transition-transform duration-200 ${
+                                      isSubActive
+                                        ? "scale-110 text-primary"
+                                        : "group-hover/sub:scale-115 group-hover/sub:text-primary"
+                                    }`}
+                                    strokeWidth={2}
+                                  />
+                                  <AnimatePresence>
+                                    {showSubBadge && isCollapsed && (
+                                      <motion.span
+                                        key="sub-badge-collapsed"
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                                        className="absolute -right-1 -top-1 size-2 rounded-full bg-destructive ring-1.5 ring-card animate-pulse"
+                                      />
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                                <span
+                                  className={`truncate transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
+                                    isCollapsed
+                                      ? "max-w-0 opacity-0 -translate-x-3 pointer-events-none"
+                                      : "max-w-[110px] opacity-100 translate-x-0"
+                                  }`}
+                                >
+                                  {sub.label}
+                                </span>
+                              </div>
+
+                              <span
+                                className={`size-1.5 rounded-full bg-destructive animate-pulse shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                  !isCollapsed && showSubBadge ? "opacity-100 scale-100 ml-auto" : "opacity-0 scale-0 pointer-events-none"
+                                }`}
+                              />
+                            </Link>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               );
             })}
           </nav>
@@ -373,42 +563,44 @@ export function BottomNav() {
       </aside>
 
       {/* ── 2. BILAH NAVIGASI BAWAH RESPONSIP KHUSUS MOBILE (SMARTPHONE / md:hidden) ── */}
-      <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex md:hidden justify-center pb-3 px-3">
-        <div className="pointer-events-auto relative flex w-full max-w-md items-end justify-between gap-1 rounded-3xl border border-border/60 bg-card/85 px-3 pb-2 pt-2 shadow-float backdrop-blur-md">
-          {navItems.slice(1, 3).map((item) => (
-            <MobileNavItem
-              key={item.to}
-              {...item}
-              showBadge={getBadgeStatus(item.to)}
-            />
-          ))}
-
-          <Link
-            to="/"
-            aria-label="Home"
-            className="group -mt-8 flex shrink-0 flex-col items-center gap-1 cursor-pointer select-none"
-            activeProps={{ "data-active": "true" }}
-          >
-            <span className="flex size-15 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108 group-active:scale-90">
-              <Home
-                className="size-6.5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5 group-hover:scale-110"
-                strokeWidth={2.2}
+      {!location.pathname.startsWith("/chat") && (
+        <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex md:hidden justify-center pb-3 px-3">
+          <div className="pointer-events-auto relative flex w-full max-w-md items-end justify-between gap-1 rounded-3xl border border-border/60 bg-card/85 px-3 pb-2 pt-2 shadow-float backdrop-blur-md">
+            {navItems.slice(1, 3).map((item) => (
+              <MobileNavItem
+                key={item.to}
+                {...item}
+                showBadge={getBadgeStatus(item.to)}
               />
-            </span>
-            <span className="text-[10px] font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
-              Home
-            </span>
-          </Link>
+            ))}
 
-          {navItems.slice(3, 5).map((item) => (
-            <MobileNavItem
-              key={item.to}
-              {...item}
-              showBadge={getBadgeStatus(item.to)}
-            />
-          ))}
-        </div>
-      </nav>
+            <Link
+              to="/"
+              aria-label="Home"
+              className="group -mt-8 flex shrink-0 flex-col items-center gap-1 cursor-pointer select-none"
+              activeProps={{ "data-active": "true" }}
+            >
+              <span className="flex size-15 items-center justify-center rounded-full bg-gradient-leaf text-primary-foreground shadow-float ring-4 ring-card transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108 group-active:scale-90">
+                <Home
+                  className="size-6.5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5 group-hover:scale-110"
+                  strokeWidth={2.2}
+                />
+              </span>
+              <span className="text-[10px] font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
+                Home
+              </span>
+            </Link>
+
+            {navItems.slice(3, 5).map((item) => (
+              <MobileNavItem
+                key={item.to}
+                {...item}
+                showBadge={getBadgeStatus(item.to)}
+              />
+            ))}
+          </div>
+        </nav>
+      )}
     </>
   );
 }

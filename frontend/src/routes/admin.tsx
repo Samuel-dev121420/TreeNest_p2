@@ -1389,6 +1389,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       <img
         src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`}
         alt={video.title}
+        referrerPolicy="no-referrer"
         loading="lazy"
         className="size-full object-cover transition-transform group-hover:scale-105"
       />
@@ -1400,6 +1401,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
       <img
         src={tiktokThumb}
         alt={video.title}
+        referrerPolicy="no-referrer"
         loading="lazy"
         className="size-full object-cover transition-transform group-hover:scale-105"
       />

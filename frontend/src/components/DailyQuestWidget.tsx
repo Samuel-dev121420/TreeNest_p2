@@ -187,7 +187,7 @@ export function DailyQuestWidget() {
               exit={{ opacity: 0, y: -50, scaleY: 0.94, scaleX: 0.98 }}
               transition={{ type: "spring", damping: 28, stiffness: 290, mass: 0.65 }}
               style={{ originY: 0 }}
-              className="w-[22rem] sm:w-[26rem] max-h-[34rem] flex flex-col overflow-hidden rounded-md border border-black dark:border-white/30 bg-card/95 p-4 sm:p-5 shadow-2xl backdrop-blur-xl"
+              className="w-[22rem] sm:w-[26rem] max-h-[40rem] sm:max-h-[42rem] flex flex-col overflow-hidden rounded-md border border-black dark:border-white/30 bg-card/95 p-4 sm:p-5 shadow-2xl backdrop-blur-xl"
             >
               {/* Header: Stage & Level Progress */}
               <div className="border-b border-black/10 dark:border-white/10 pb-3">
@@ -234,7 +234,7 @@ export function DailyQuestWidget() {
               </div>
 
               {/* Quests Section */}
-              <div className="mt-3 flex-1 overflow-y-auto pr-0.5">
+              <div className="mt-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Daily Quests Harian

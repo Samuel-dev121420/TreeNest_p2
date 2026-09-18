@@ -226,7 +226,7 @@ export function NotificationCenterWidget() {
             </div>
 
             {/* List Content */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 overflow-y-auto notif-scrollbar p-3 space-y-3">
               {notifications.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}

@@ -112,6 +112,13 @@ function FriendClubPage() {
   const [incomingContacts, setIncomingContacts] = useState<IncomingContact[]>([]);
   const [featured, setFeatured] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 

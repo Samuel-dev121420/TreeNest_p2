@@ -5,10 +5,12 @@ export function PageShell({
   title,
   description,
   children,
+  className,
 }: {
   title?: string;
   description?: string;
   children?: ReactNode;
+  className?: string;
 }) {
   return (
     <div className="min-h-screen bg-gradient-soft pb-28 md:pb-16">
@@ -16,7 +18,7 @@ export function PageShell({
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-3xl px-5 pt-24 sm:pt-28"
+        className={className || "mx-auto w-full max-w-3xl px-5 pt-24 sm:pt-28"}
       >
         {title ? (
           <header>
