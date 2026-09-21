@@ -65,7 +65,7 @@ export type GalleryVideo = {
   url: string;
   sourceType: GalleryVideoSource;
   thumbnail: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   reason?: string | undefined;
   approvalComment?: string | undefined;
   submittedAt: number;

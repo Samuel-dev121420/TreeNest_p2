@@ -2151,7 +2151,7 @@ export async function getAllGalleryVideosAdmin(
     } else if (statusFilter === "approved") {
       list = list.filter((v) => v.status === "approved" && !v.userDeleted);
     } else if (statusFilter === "pending") {
-      list = list.filter((v) => v.status === "pending" && !v.userDeleted);
+      list = list.filter((v) => v.status === "pending");
     } else if (statusFilter !== "all") {
       list = list.filter((v) => v.status === statusFilter && !v.userDeleted);
     }
@@ -2171,7 +2171,7 @@ export async function getAllGalleryVideosAdmin(
     } else if (statusFilter === "approved") {
       list = list.filter((v) => v.status === "approved" && !v.userDeleted);
     } else if (statusFilter === "pending") {
-      list = list.filter((v) => v.status === "pending" && !v.userDeleted);
+      list = list.filter((v) => v.status === "pending");
     }
     return list.sort(sortVideosByTime);
   } catch (err) {
@@ -2322,6 +2322,47 @@ export async function moderateVideo(
       link: "/treegallery",
       targetUid,
     });
+  }
+}
+
+/** Batalkan pengajuan video (menarik kembali sebelum moderasi selesai) */
+export async function cancelGalleryVideo(videoId: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, GALLERY_COLLECTION, videoId), {
+        status: "cancelled",
+        userDeleted: true,
+        userDeletedAt: Date.now(),
+      });
+    } catch (err) {
+      console.error("Error cancelling gallery video in Firestore:", err);
+    }
+  }
+
+  // Update in localStorage
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("treenest_gallery_videos_")) {
+        const local = localStorage.getItem(key);
+        if (local) {
+          const list: GalleryVideo[] = JSON.parse(local);
+          let modified = false;
+          const updated = list.map((v) => {
+            if (v.id === videoId) {
+              modified = true;
+              return { ...v, status: "cancelled", userDeleted: true, userDeletedAt: Date.now() };
+            }
+            return v;
+          });
+          if (modified) {
+            localStorage.setItem(key, JSON.stringify(updated));
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error updating video cancellation in localStorage:", err);
   }
 }
 

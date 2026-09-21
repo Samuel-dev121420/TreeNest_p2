@@ -12,6 +12,8 @@ import {
   VolumeX,
   Film,
   RotateCcw,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { youtubeId, tiktokId, timeAgo, type GalleryVideo } from "@/lib/social";
@@ -36,8 +38,15 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
   const isYTShort = Boolean(yt && (video.url.includes("/shorts/") || video.url.includes("shorts/")));
 
   const [resolvedUrl, setResolvedUrl] = useState<string>(video.url);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ytIframeRef = useRef<HTMLIFrameElement>(null);
+  const tiktokIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Playback state: starts paused as requested
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [tikTokAutoplay, setTikTokAutoplay] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Dynamic aspect ratio category for uploaded / direct-link videos (Default portrait 9:16)
   const [detectedRatio, setDetectedRatio] = useState<"portrait" | "square" | "standard" | "widescreen">("portrait");
@@ -71,6 +80,164 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
     setIsLooping((prev) => !prev);
     setLoopSpin((prev) => prev + 360);
   }
+
+  // Full Screen toggle handler
+  const toggleFullScreen = async () => {
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        const target = playerContainerRef.current;
+        if (target?.requestFullscreen) {
+          await target.requestFullscreen();
+        } else if ((target as any)?.webkitRequestFullscreen) {
+          await (target as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any)?.webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error("Fullscreen toggle error:", err);
+    }
+  };
+
+  // Sync fullscreen state with browser events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  // Play/Pause toggle function for all video types
+  const togglePlay = () => {
+    // 1. YouTube iframe
+    if (yt && ytIframeRef.current?.contentWindow) {
+      const target = ytIframeRef.current.contentWindow;
+      if (isPlaying) {
+        target.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: "" }), "*");
+        target.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*");
+        setIsPlaying(false);
+      } else {
+        target.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: "" }), "*");
+        target.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    // 2. TikTok iframe
+    if (isTikTok) {
+      if (isPlaying || tikTokAutoplay) {
+        setTikTokAutoplay(false);
+        setIsPlaying(false);
+        if (tiktokIframeRef.current?.contentWindow) {
+          const target = tiktokIframeRef.current.contentWindow;
+          target.postMessage({ type: "pause" }, "*");
+          target.postMessage({ type: "player:pause" }, "*");
+          target.postMessage(JSON.stringify({ type: "pause" }), "*");
+          target.postMessage(JSON.stringify({ type: "player:pause" }), "*");
+        }
+      } else {
+        setTikTokAutoplay(true);
+        setIsPlaying(true);
+        if (tiktokIframeRef.current?.contentWindow) {
+          const target = tiktokIframeRef.current.contentWindow;
+          target.postMessage({ type: "play" }, "*");
+          target.postMessage({ type: "player:play" }, "*");
+          target.postMessage(JSON.stringify({ type: "play" }), "*");
+          target.postMessage(JSON.stringify({ type: "player:play" }), "*");
+        }
+      }
+      return;
+    }
+
+    // 3. Native HTML5 video (Upload / Link)
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+      return;
+    }
+  };
+
+  const handleClose = () => {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    onClose();
+  };
+
+  // Blur on unmount to prevent focus ring on previous card
+  useEffect(() => {
+    if (isTikTok) {
+      const timer = setTimeout(() => {
+        try {
+          tiktokIframeRef.current?.focus();
+        } catch {}
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+    return () => {
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
+  }, [isTikTok]);
+
+  // Global keyboard shortcuts (Space to toggle play/pause, Escape to close, F for fullscreen)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't intercept if user is typing in an input or contenteditable element
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+          e.preventDefault();
+          handleClose();
+        }
+        return;
+      }
+
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        togglePlay();
+        return;
+      }
+
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        toggleFullScreen();
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, yt, isTikTok, resolvedUrl, video.url]);
 
   useEffect(() => {
     let active = true;
@@ -120,13 +287,13 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
   const handleIframeLoad = () => {
     if (ytIframeRef.current?.contentWindow) {
       ytIframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "listening" }),
+        JSON.stringify({ event: "listening", id: 1 }),
         "*"
       );
     }
   };
 
-  // Handle YouTube auto-reset and auto-loop without playlist to eliminate end-screen "More Videos"
+  // Handle YouTube auto-reset, auto-loop, and playback state tracking
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (typeof event.data !== "string") return;
@@ -136,23 +303,24 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
           (data.event === "onStateChange" && data.info === 0) ||
           (data.event === "infoDelivery" && data.info && data.info.playerState === 0);
 
-        if (isEnded && ytIframeRef.current?.contentWindow) {
-          const target = ytIframeRef.current.contentWindow;
-          target.postMessage(
-            JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
-            "*"
-          );
-          if (isLooping) {
+        if (isEnded) {
+          setIsPlaying(false);
+          if (isLooping && ytIframeRef.current?.contentWindow) {
+            const target = ytIframeRef.current.contentWindow;
             target.postMessage(
-              JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+              JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
               "*"
             );
-          } else {
             target.postMessage(
-              JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+              JSON.stringify({ event: "command", func: "playVideo", args: "" }),
               "*"
             );
+            setIsPlaying(true);
           }
+        } else if (data.event === "onStateChange" || (data.event === "infoDelivery" && typeof data.info?.playerState === "number")) {
+          const state = typeof data.info === "number" ? data.info : data.info?.playerState;
+          if (state === 1) setIsPlaying(true); // Playing
+          else if (state === 2 || state === 0 || state === 5) setIsPlaying(false); // Paused / Ended / Cued
         }
       } catch {
         // ignore non-json messages
@@ -179,17 +347,28 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
   function renderPlayer() {
     /* YouTube */
     if (yt) {
+      const ytOrigin = typeof window !== "undefined" ? window.location.origin : "";
       return (
-        <div className={`w-full bg-neutral-950 overflow-hidden ${
-          isYTShort ? "aspect-[9/16] max-h-[70vh] sm:max-h-[72vh]" : "aspect-video max-h-[76vh]"
+        <div className={`w-full bg-neutral-950 overflow-hidden flex items-center justify-center ${
+          isFullscreen
+            ? "size-full max-h-screen"
+            : isYTShort
+              ? "aspect-[9/16] max-h-[70vh] sm:max-h-[72vh]"
+              : "aspect-video max-h-[76vh]"
         }`}>
           <iframe
             ref={ytIframeRef}
-            className="size-full border-0"
-            src={`https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&enablejsapi=1`}
+            className={`border-0 ${
+              isFullscreen
+                ? isYTShort
+                  ? "h-full aspect-[9/16] max-w-full"
+                  : "size-full aspect-video max-w-full"
+                : "size-full"
+            }`}
+            src={`https://www.youtube.com/embed/${yt}?autoplay=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`}
             title={video.title}
             referrerPolicy="strict-origin-when-cross-origin"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             onLoad={handleIframeLoad}
           />
@@ -201,7 +380,9 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
     if (isTikTok) {
       if (!ttId) {
         return (
-          <div className="flex aspect-[9/16] w-full max-h-[70vh] items-center justify-center bg-neutral-950 p-6">
+          <div className={`flex w-full items-center justify-center bg-neutral-950 p-6 ${
+            isFullscreen ? "size-full" : "aspect-[9/16] max-h-[70vh]"
+          }`}>
             <a
               href={video.url}
               target="_blank"
@@ -214,17 +395,27 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
         );
       }
 
-      // Parameters to strip like, comment, share, and description bars
-      const playerSrc = `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0`;
+      // Parameters to strip like, comment, share, and description bars, plus dynamic autoplay param
+      const playerSrc = `https://www.tiktok.com/player/v1/${ttId}?music_info=0&description=0&controls=1&rel=0&native_context_menu=0&closed_caption=0&autoplay=${tikTokAutoplay ? 1 : 0}`;
+
+      const handleTikTokIframeLoad = () => {
+        try {
+          tiktokIframeRef.current?.focus();
+        } catch {}
+      };
 
       return (
-        <div className="relative flex aspect-[9/16] w-full max-h-[70vh] items-center justify-center overflow-hidden bg-neutral-950">
+        <div className={`relative flex w-full items-center justify-center overflow-hidden bg-neutral-950 ${
+          isFullscreen ? "size-full max-h-screen" : "aspect-[9/16] max-h-[70vh]"
+        }`}>
           <iframe
-            className="size-full border-0"
+            ref={tiktokIframeRef}
+            className={`border-0 focus:outline-none ${isFullscreen ? "h-full aspect-[9/16] max-w-full" : "size-full"}`}
             src={playerSrc}
             title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
+            onLoad={handleTikTokIframeLoad}
           />
         </div>
       );
@@ -232,13 +423,18 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
 
     /* Upload / Direct link — Dynamic Canvas per detected ratio */
     if (video.sourceType === "upload" || video.sourceType === "link") {
-      let aspectClass = "aspect-[9/16] max-h-[70vh] sm:max-h-[72vh]";
-      if (detectedRatio === "square") {
-        aspectClass = "aspect-square max-h-[65vh]";
-      } else if (detectedRatio === "standard") {
-        aspectClass = "aspect-[4/3] max-h-[70vh]";
-      } else if (detectedRatio === "widescreen") {
-        aspectClass = "aspect-video max-h-[76vh]";
+      let aspectClass = isFullscreen
+        ? "size-full max-h-screen"
+        : "aspect-[9/16] max-h-[70vh] sm:max-h-[72vh]";
+
+      if (!isFullscreen) {
+        if (detectedRatio === "square") {
+          aspectClass = "aspect-square max-h-[65vh]";
+        } else if (detectedRatio === "standard") {
+          aspectClass = "aspect-[4/3] max-h-[70vh]";
+        } else if (detectedRatio === "widescreen") {
+          aspectClass = "aspect-video max-h-[76vh]";
+        }
       }
 
       return (
@@ -248,8 +444,9 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
             className="size-full object-contain"
             src={resolvedUrl || video.url}
             controls
-            autoPlay
             playsInline
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
             onLoadedMetadata={handleVideoMetadata}
           />
         </div>
@@ -258,7 +455,9 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
 
     /* Generic fallback */
     return (
-      <div className="flex aspect-video w-full max-h-[60vh] flex-col items-center justify-center gap-4 bg-neutral-950 p-6">
+      <div className={`flex w-full flex-col items-center justify-center gap-4 bg-neutral-950 p-6 ${
+        isFullscreen ? "size-full" : "aspect-video max-h-[60vh]"
+      }`}>
         <a
           href={video.url}
           target="_blank"
@@ -335,7 +534,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
+      onClick={handleClose}
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md"
     >
       <div className="relative flex items-center justify-center max-w-full">
@@ -346,7 +545,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
           onClick={(e) => e.stopPropagation()}
-          className={`relative flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 transition-[width,max-width] duration-300 ${modalWidthClass}`}
+          className={`relative flex flex-col overflow-hidden rounded-md border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 transition-[width,max-width] duration-300 ${modalWidthClass}`}
         >
           {/* ── Header: Judul di Kiri, Tombol Close di Kanan ── */}
           <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:py-3.5 dark:border-neutral-800">
@@ -355,16 +554,37 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
             </h3>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Tutup"
-              className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+              className="shrink-0 rounded p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
             >
               <X className="size-5" />
             </button>
           </div>
 
           {/* ── Video Canvas ── */}
-          {renderPlayer()}
+          <div
+            ref={playerContainerRef}
+            className={`relative w-full overflow-hidden bg-neutral-950 flex items-center justify-center ${
+              isFullscreen ? "fixed inset-0 z-[100] size-full h-screen max-h-none" : ""
+            }`}
+          >
+            {renderPlayer()}
+
+            {/* Floating Exit Fullscreen Button in Fullscreen mode */}
+            {isFullscreen && (
+              <button
+                type="button"
+                onClick={toggleFullScreen}
+                title="Keluar Layar Penuh"
+                aria-label="Keluar Layar Penuh"
+                className="absolute top-4 right-4 z-50 flex items-center gap-2 rounded bg-black/75 px-3.5 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:bg-black/90 cursor-pointer border border-white/20 hover:scale-105 active:scale-95"
+              >
+                <Minimize2 className="size-4" />
+                <span>Keluar Layar Penuh</span>
+              </button>
+            )}
+          </div>
 
           {/* ── Footer ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900">
@@ -387,7 +607,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
                   href={video.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-neutral-100 px-3 py-1.5 text-xs font-bold text-neutral-800 transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  className="flex items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-3 py-1.5 text-xs font-bold text-neutral-800 transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
                   {yt || video.sourceType === "youtube"
                     ? "Buka di YouTube"
@@ -402,7 +622,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
                 <button
                   type="button"
                   onClick={adminActions.onApprove}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 cursor-pointer"
                 >
                   <CheckCircle className="size-3.5" /> Approve
                 </button>
@@ -412,7 +632,7 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
                 <button
                   type="button"
                   onClick={adminActions.onReject}
-                  className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded border border-red-200 bg-red-50 px-3.5 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50 cursor-pointer"
                 >
                   <XCircle className="size-3.5" /> Reject
                 </button>
@@ -451,6 +671,28 @@ export function VideoPlayerModal({ video, onClose, adminActions }: VideoPlayerMo
               </span>
             </div>
           )}
+
+          {/* 2. Tombol Layar Penuh (Full Screen) dengan Hover Expand — Tepat di bawah informasi tipe video */}
+          <button
+            type="button"
+            onClick={toggleFullScreen}
+            title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
+            aria-label={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
+            className={`group flex h-9 w-max max-w-[36px] hover:max-w-[160px] items-center overflow-hidden px-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer shadow-xs ${
+              isFullscreen
+                ? "bg-primary text-primary-foreground"
+                : "bg-neutral-100/80 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800/80 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            }`}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+            ) : (
+              <Maximize2 className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+            )}
+            <span className="ml-2 whitespace-nowrap text-xs font-bold opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              {isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
+            </span>
+          </button>
 
           {/* 2. Salin Link (Icon Peniti Berbaring / Link2) dengan Hover Expand — Khusus non-upload */}
           {video.sourceType !== "upload" && (

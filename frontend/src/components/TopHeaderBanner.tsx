@@ -232,7 +232,7 @@ export function TopHeaderBanner() {
           duration: 0.8,
           ease: [0.16, 1, 0.3, 1],
         }}
-        className={`fixed inset-x-0 top-0 z-30 h-[64px] sm:h-[72px] border-b border-border/60 shadow-xs px-4 sm:px-6 md:px-8 flex items-center select-none overflow-hidden transition-[left] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`fixed inset-x-0 top-0 z-40 h-[64px] sm:h-[72px] border-b border-border/60 shadow-xs px-4 sm:px-6 md:px-8 flex items-center select-none overflow-hidden transition-[left] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isCollapsed ? "md:left-[76px]" : "md:left-60"
         }`}
       >
@@ -410,7 +410,7 @@ export function TopHeaderBanner() {
         {showCalendar && (
           <div
             ref={calendarRef}
-            className="fixed right-4 sm:right-6 md:right-8 top-[64px] sm:top-[72px] z-30 flex flex-col items-end select-none"
+            className="fixed right-4 sm:right-6 md:right-8 top-[64px] sm:top-[72px] z-50 flex flex-col items-end select-none"
           >
             <motion.div
               key="calendar-popup"
@@ -491,7 +491,7 @@ export function TopHeaderBanner() {
         {showClock && (
           <div
             ref={clockRef}
-            className="fixed right-4 sm:right-6 md:right-8 top-[64px] sm:top-[72px] z-30 flex flex-col items-end select-none"
+            className="fixed right-4 sm:right-6 md:right-8 top-[64px] sm:top-[72px] z-50 flex flex-col items-end select-none"
           >
             <motion.div
               key="clock-popup"

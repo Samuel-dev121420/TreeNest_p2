@@ -1387,7 +1387,7 @@ function VideoThumbnail({ video, yt }: { video: GalleryVideo; yt: string | null 
   if (yt) {
     return (
       <img
-        src={`https://i.ytimg.com/vi/${yt}/hqdefault.jpg`}
+        src={`https://i.ytimg.com/vi/${yt}/mqdefault.jpg`}
         alt={video.title}
         referrerPolicy="no-referrer"
         loading="lazy"
