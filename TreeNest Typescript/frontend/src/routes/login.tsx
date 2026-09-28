@@ -331,7 +331,7 @@ function LoginPage() {
       {/* Pojok Kanan Atas: Slogan & Leaf Icon */}
       <div className="fixed top-4 right-4 sm:top-6 sm:right-7 z-20 flex items-center gap-2 select-none">
         <span className="text-xs sm:text-[13px] font-medium text-muted-foreground tracking-tight hidden sm:inline">
-          Bersama tumbuh, lebih baik.
+          Tumbuh bersama di lingkungan TreeNest.
         </span>
       </div>
 
