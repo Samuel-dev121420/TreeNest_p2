@@ -1,0 +1,441 @@
+import { Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    Images,
+    Sprout,
+    Home,
+    Users,
+    User,
+    TreePine,
+    PanelLeftClose,
+    PanelLeft,
+    FileText,
+    Layers,
+    Clock,
+    CheckSquare,
+    Search,
+    UserPlus,
+    MessageSquare,
+    UserCheck,
+    ChevronRight,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+
+const navItems = [
+    {
+        to: '/',
+        label: 'Home',
+        icon: Home,
+        iconClass: 'group-hover:scale-115 group-hover:-translate-y-0.5',
+    },
+    {
+        to: '/treegallery',
+        label: 'TreeGallery',
+        icon: Images,
+        iconClass: 'group-hover:scale-115 group-hover:-rotate-6 group-hover:-translate-y-0.5',
+    },
+    {
+        to: '/grow',
+        label: 'Grow',
+        icon: Sprout,
+        iconClass: 'group-hover:scale-120 group-hover:-translate-y-1 group-hover:rotate-6',
+    },
+    {
+        to: '/friend-club',
+        label: 'Friend Club',
+        icon: Users,
+        iconClass: 'group-hover:scale-115 group-hover:-translate-y-0.5 group-hover:-rotate-3',
+    },
+    {
+        to: '/account',
+        label: 'Account',
+        icon: User,
+        iconClass: 'group-hover:scale-115 group-hover:-translate-y-1',
+    },
+] as const;
+
+const growSubItems = [
+    { to: '/grow/pinote', label: 'PiNote', icon: FileText },
+    { to: '/grow/flashcard', label: 'FlashCard', icon: Layers },
+    { to: '/grow/study', label: 'Study Session', icon: Clock },
+    { to: '/grow/dailytask', label: 'Reminder', icon: CheckSquare },
+] as const;
+
+const friendClubSubItems = [
+    { to: '/friend-club', search: 'tab=search', label: 'Cari Teman', tab: 'search', icon: Search },
+    { to: '/friend-club', search: 'tab=requests', label: 'Informasi Lanjut', tab: 'requests', icon: UserPlus },
+    { to: '/friend-club', search: 'tab=incoming_contacts', label: 'Kontak Masuk', tab: 'incoming_contacts', icon: MessageSquare },
+    { to: '/friend-club', search: 'tab=list', label: 'Daftar Teman', tab: 'list', icon: UserCheck },
+] as const;
+
+function useSidebar() {
+    const [isCollapsed, setIsCollapsed] = useState(() => {
+        try {
+            return localStorage.getItem('treenest_sidebar_collapsed') === 'true';
+        } catch {
+            return false;
+        }
+    });
+    const toggleSidebar = () => {
+        setIsCollapsed((prev) => {
+            const next = !prev;
+            try { localStorage.setItem('treenest_sidebar_collapsed', String(next)); } catch {}
+            return next;
+        });
+    };
+    return { isCollapsed, toggleSidebar };
+}
+
+export default function BottomNav() {
+    const { url, props } = usePage() as any;
+    const user = props.auth?.user;
+    const username = user?.username || user?.name || 'Pengguna';
+    const initials = username.slice(0, 2).toUpperCase();
+    const avatarUrl = user?.avatar_url || null;
+    const accountId = user?.account_id || 'TN-0000';
+
+    const { isCollapsed, toggleSidebar } = useSidebar();
+    const [hoveredNav, setHoveredNav] = useState<string | null>(null);
+    const [isToggleHovered, setIsToggleHovered] = useState(false);
+
+    // Jangan tampilkan di halaman login/admin
+    if (url === '/login' || url.startsWith('/admin')) {
+        return null;
+    }
+
+    const isActive = (to: string) => {
+        if (to === '/') return url === '/';
+        return url.startsWith(to);
+    };
+
+    return (
+        <>
+            {/* ── 1. SIDEBAR NAVIGASI SAMPING KIRI (DESKTOP & TABLET / md:flex) ── */}
+            <aside
+                className={`fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col justify-between border-r border-border/70 bg-white/90 dark:bg-card/95 backdrop-blur-xl shadow-xs select-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    isCollapsed ? 'w-[76px]' : 'w-60'
+                }`}
+            >
+                {/* Header / Brand Logo TreeNest */}
+                <div className="flex flex-col shrink-0">
+                    <Link
+                        href="/"
+                        className="flex h-[64px] sm:h-[72px] items-center border-b border-border/60 hover:bg-neutral-50/80 dark:hover:bg-white/5 transition-colors cursor-pointer group px-4 gap-3.5 overflow-hidden"
+                    >
+                        <motion.div
+                            whileHover={{ scale: 1.1, rotate: [0, -6, 6, 0] }}
+                            transition={{ duration: 0.4 }}
+                            className="relative flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-emerald-600 text-white shadow-soft ring-2 ring-primary/20 shrink-0"
+                        >
+                            <TreePine className="size-5.5" strokeWidth={2.4} />
+                            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-card animate-pulse" />
+                        </motion.div>
+                        <div
+                            className={`flex flex-col min-w-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap overflow-hidden ${
+                                isCollapsed
+                                    ? 'max-w-0 opacity-0 -translate-x-4 pointer-events-none'
+                                    : 'max-w-[140px] opacity-100 translate-x-0'
+                            }`}
+                        >
+                            <span className="font-display text-xl font-black tracking-tight bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent leading-tight">
+                                TreeNest
+                            </span>
+                        </div>
+                    </Link>
+                </div>
+
+                {/* Menu Navigasi Utama */}
+                <div className={`flex-1 overflow-y-auto py-5 space-y-1.5 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isCollapsed ? 'px-2.5' : 'px-3.5'}`}>
+                    <div
+                        className={`px-3.5 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground/70 ${
+                            isCollapsed
+                                ? 'max-h-0 opacity-0 pb-0 -translate-y-2 pointer-events-none'
+                                : 'max-h-6 opacity-100 pb-2 translate-y-0'
+                        }`}
+                    >
+                        Menu Utama
+                    </div>
+
+                    <nav className="space-y-1.5">
+                        {navItems.map((item) => {
+                            const subItems =
+                                item.to === '/grow'
+                                    ? growSubItems
+                                    : item.to === '/friend-club'
+                                    ? friendClubSubItems
+                                    : undefined;
+                            const isHovered = hoveredNav === item.to;
+                            const active = isActive(item.to);
+
+                            return (
+                                <div
+                                    key={item.to}
+                                    onMouseEnter={() => setHoveredNav(item.to)}
+                                    onMouseLeave={() => setHoveredNav(null)}
+                                    className="relative group/navblock"
+                                >
+                                    <Link
+                                        href={item.to}
+                                        title={isCollapsed ? item.label : undefined}
+                                        className={`group relative flex items-center h-11 rounded-2xl text-sm font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none active:scale-[0.98] px-3.5 gap-3.5 overflow-hidden ${
+                                            active
+                                                ? 'text-primary bg-primary/15 dark:bg-primary/25 dark:text-emerald-300 font-black shadow-xs ring-1 ring-primary/20'
+                                                : 'text-muted-foreground hover:bg-neutral-100/90 dark:hover:bg-white/8 hover:text-foreground'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                            <div className="relative flex items-center justify-center size-5 shrink-0">
+                                                <item.icon
+                                                    className={`size-5 transition-transform duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                                        item.iconClass ?? 'group-hover:scale-120 group-hover:-translate-y-0.5'
+                                                    }`}
+                                                    strokeWidth={2.2}
+                                                />
+                                            </div>
+                                            <span
+                                                className={`truncate transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
+                                                    isCollapsed
+                                                        ? 'max-w-0 opacity-0 -translate-x-4 pointer-events-none'
+                                                        : 'max-w-[120px] opacity-100 translate-x-0'
+                                                }`}
+                                            >
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                    </Link>
+
+                                    {/* Sub-menu Accordion */}
+                                    <AnimatePresence>
+                                        {subItems && isHovered && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                                className={`overflow-hidden space-y-1 pt-1 pb-0.5 ${
+                                                    isCollapsed ? 'px-0' : 'pl-3 pr-1'
+                                                }`}
+                                            >
+                                                {subItems.map((sub: any) => {
+                                                    const isSubActive = url.startsWith(sub.to);
+                                                    return (
+                                                        <Link
+                                                            key={sub.label}
+                                                            href={sub.to}
+                                                            title={isCollapsed ? sub.label : undefined}
+                                                            className={`group/sub relative flex items-center h-9 rounded-xl text-xs font-semibold transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none active:scale-[0.97] overflow-hidden ${
+                                                                isCollapsed ? 'justify-center p-2' : 'px-3 gap-2.5'
+                                                            } ${
+                                                                isSubActive
+                                                                    ? 'text-primary bg-primary/15 dark:bg-primary/25 font-bold shadow-2xs ring-1 ring-primary/20'
+                                                                    : 'text-muted-foreground hover:bg-neutral-100/80 dark:hover:bg-white/6 hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            <div className={`flex items-center min-w-0 ${isCollapsed ? 'justify-center' : 'gap-2.5 flex-1'}`}>
+                                                                <sub.icon
+                                                                    className={`size-4 transition-transform duration-200 ${
+                                                                        isSubActive
+                                                                            ? 'scale-110 text-primary'
+                                                                            : 'group-hover/sub:scale-115 group-hover/sub:text-primary'
+                                                                    }`}
+                                                                    strokeWidth={2}
+                                                                />
+                                                                <span
+                                                                    className={`truncate transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
+                                                                        isCollapsed
+                                                                            ? 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
+                                                                            : 'max-w-[110px] opacity-100 translate-x-0'
+                                                                    }`}
+                                                                >
+                                                                    {sub.label}
+                                                                </span>
+                                                            </div>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            );
+                        })}
+                    </nav>
+                </div>
+
+                {/* Tombol Expand/Collapse Sidebar */}
+                <div
+                    className={`relative shrink-0 pb-2.5 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        isCollapsed ? 'px-2.5 h-[50px]' : 'px-3.5 h-[50px]'
+                    }`}
+                >
+                    <motion.button
+                        type="button"
+                        onMouseEnter={() => setIsToggleHovered(true)}
+                        onMouseLeave={() => setIsToggleHovered(false)}
+                        whileTap={{ scale: 0.94 }}
+                        onClick={() => {
+                            setIsToggleHovered(false);
+                            toggleSidebar();
+                        }}
+                        title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                        aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                        className={`flex items-center h-10 rounded-2xl border border-border/80 hover:border-primary/60 text-muted-foreground hover:text-foreground bg-white dark:bg-card transition-all duration-300 ease-out cursor-pointer select-none shadow-xs group ${
+                            isCollapsed
+                                ? isToggleHovered
+                                    ? 'absolute left-2.5 top-0 w-[212px] justify-between px-3.5 z-50 shadow-xl ring-2 ring-primary/30'
+                                    : 'w-full justify-center px-2'
+                                : 'w-full justify-between px-3.5 hover:bg-neutral-50/80 dark:hover:bg-white/5'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span
+                                className={`text-xs font-bold text-muted-foreground group-hover:text-foreground transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap overflow-hidden ${
+                                    !isCollapsed
+                                        ? 'max-w-[100px] opacity-100 translate-x-0'
+                                        : 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
+                                }`}
+                            >
+                                Collapse
+                            </span>
+                            {isCollapsed && (
+                                <PanelLeft
+                                    className="size-4.5 text-primary shrink-0 group-hover:scale-115 group-hover:rotate-6 transition-transform duration-300"
+                                    strokeWidth={2.2}
+                                />
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {!isCollapsed && (
+                                <PanelLeftClose
+                                    className="size-4.5 text-primary shrink-0 group-hover:scale-115 group-hover:-rotate-6 transition-transform duration-300"
+                                    strokeWidth={2.2}
+                                />
+                            )}
+                            {isCollapsed && isToggleHovered && (
+                                <motion.span
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                                    className="text-xs font-bold text-primary select-none whitespace-nowrap drop-shadow-xs"
+                                >
+                                    Expand
+                                </motion.span>
+                            )}
+                        </div>
+                    </motion.button>
+                </div>
+
+                {/* Footer Sidebar: Kartu Profil Pengguna */}
+                <div className="border-t border-border/60 bg-secondary/15 shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] p-2.5">
+                    <Link
+                        href="/account"
+                        title={isCollapsed ? username : undefined}
+                        className="group flex items-center gap-3 p-2 rounded-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white dark:hover:bg-card hover:shadow-soft border border-transparent hover:border-border/60 cursor-pointer w-full overflow-hidden"
+                    >
+                        <motion.div
+                            whileHover={{ scale: 1.08 }}
+                            className="relative flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-600 text-white font-black text-sm shadow-xs shrink-0 overflow-hidden ring-1 ring-primary/20"
+                        >
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt={username} className="size-full object-cover" />
+                            ) : (
+                                <span>{initials}</span>
+                            )}
+                        </motion.div>
+                        <div
+                            className={`flex flex-col min-w-0 flex-1 whitespace-nowrap overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                isCollapsed
+                                    ? 'max-w-0 opacity-0 -translate-x-4 pointer-events-none'
+                                    : 'max-w-[130px] opacity-100 translate-x-0'
+                            }`}
+                        >
+                            <span className="text-xs font-black text-foreground truncate group-hover:text-primary transition-colors">
+                                {username}
+                            </span>
+                            <span className="text-[10px] font-semibold text-muted-foreground truncate">
+                                {accountId}
+                            </span>
+                        </div>
+                    </Link>
+                </div>
+            </aside>
+
+            {/* ── 2. BILAH NAVIGASI BAWAH KHUSUS MOBILE (md:hidden) ── */}
+            <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex md:hidden justify-center pb-3 px-3">
+                <div className="pointer-events-auto relative flex w-full max-w-md items-end justify-between gap-1 rounded-3xl border border-border/60 bg-card/85 px-3 pb-2 pt-2 shadow-float backdrop-blur-md">
+                    {/* TreeGallery & Grow (kiri Home) */}
+                    {navItems.slice(1, 3).map((item) => (
+                        <MobileNavItem key={item.to} {...item} currentUrl={url} />
+                    ))}
+
+                    {/* Home — Tombol Tengah Ditinggikan */}
+                    <Link
+                        href="/"
+                        aria-label="Home"
+                        className="group -mt-8 flex shrink-0 flex-col items-center gap-1 cursor-pointer select-none"
+                    >
+                        <span className={`flex size-[60px] items-center justify-center rounded-full shadow-float ring-4 ring-card transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-105 group-active:scale-90 ${
+                            url === '/'
+                                ? 'bg-gradient-to-br from-primary to-emerald-600 text-white'
+                                : 'bg-gradient-to-br from-primary to-emerald-600 text-white'
+                        }`}>
+                            <Home
+                                className="size-6.5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5 group-hover:scale-110"
+                                strokeWidth={2.2}
+                            />
+                        </span>
+                        <span className="text-[10px] font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
+                            Home
+                        </span>
+                    </Link>
+
+                    {/* Friend Club & Account (kanan Home) */}
+                    {navItems.slice(3, 5).map((item) => (
+                        <MobileNavItem key={item.to} {...item} currentUrl={url} />
+                    ))}
+                </div>
+            </nav>
+        </>
+    );
+}
+
+function MobileNavItem({
+    to,
+    label,
+    icon: Icon,
+    iconClass,
+    currentUrl,
+}: {
+    to: string;
+    label: string;
+    icon: LucideIcon;
+    iconClass?: string;
+    currentUrl: string;
+}) {
+    const active = to === '/' ? currentUrl === '/' : currentUrl.startsWith(to);
+    return (
+        <Link
+            href={to}
+            className={`group relative flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition-all duration-200 cursor-pointer select-none active:scale-95 ${
+                active
+                    ? 'text-primary bg-primary/15 font-bold shadow-xs dark:bg-primary/25 dark:text-emerald-300'
+                    : 'text-muted-foreground hover:bg-primary/12 hover:text-primary dark:hover:bg-white/10 dark:hover:text-white'
+            }`}
+        >
+            <div className="relative flex items-center justify-center">
+                <Icon
+                    className={`size-5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                        iconClass ?? 'group-hover:scale-115 group-hover:-translate-y-0.5'
+                    }`}
+                    strokeWidth={2.2}
+                />
+            </div>
+            <span className="text-[10px] font-semibold leading-none transition-colors duration-200 truncate max-w-[54px] text-center">
+                {label}
+            </span>
+        </Link>
+    );
+}

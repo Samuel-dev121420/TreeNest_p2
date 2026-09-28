@@ -1,0 +1,556 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * TreeNest design system — Flat Illustration + Soft Gradient.
+ * Palette: langit lembut, hijau daun, coklat kayu, coklat tanah, putih awan.
+ * Semua warna oklch persis seperti versi TypeScript TreeNest.
+ */
+
+:root {
+  color-scheme: light;
+  --radius: 1.25rem;
+
+  --sky: oklch(0.9 0.045 220);
+  --sky-deep: oklch(0.78 0.075 226);
+  --leaf: oklch(0.72 0.13 145);
+  --leaf-soft: oklch(0.86 0.09 140);
+  --grass: oklch(0.8 0.12 138);
+  --wood: oklch(0.55 0.075 62);
+  --soil: oklch(0.46 0.14 150);
+  --cloud: oklch(0.985 0.005 240);
+  --sun: oklch(0.9 0.09 88);
+
+  --background: oklch(0.895 0.045 148);
+  --foreground: oklch(0.26 0.04 150);
+  --card: oklch(0.995 0.005 145);
+  --card-foreground: oklch(0.26 0.04 150);
+  --popover: oklch(0.995 0.005 145);
+  --popover-foreground: oklch(0.26 0.04 150);
+  --primary: oklch(0.62 0.14 148);
+  --primary-foreground: oklch(0.99 0.01 150);
+  --secondary: oklch(0.85 0.04 145);
+  --secondary-foreground: oklch(0.28 0.04 150);
+  --muted: oklch(0.85 0.035 145);
+  --muted-foreground: oklch(0.44 0.035 150);
+  --accent: oklch(0.85 0.05 220);
+  --accent-foreground: oklch(0.30 0.05 230);
+  --destructive: oklch(0.63 0.17 25);
+  --destructive-foreground: oklch(0.99 0.01 25);
+  --border: oklch(0.81 0.038 145);
+  --input: oklch(0.82 0.038 145);
+  --ring: oklch(0.62 0.13 148);
+
+  --gradient-sky: linear-gradient(
+    180deg,
+    var(--sky-deep) 0%,
+    var(--sky) 45%,
+    oklch(0.90 0.04 160) 100%
+  );
+  --gradient-ground: linear-gradient(
+    180deg,
+    oklch(0.82 0.14 138) 0%,
+    oklch(0.72 0.15 145) 30%,
+    oklch(0.58 0.16 148) 65%,
+    oklch(0.44 0.15 150) 100%
+  );
+  --gradient-soft: linear-gradient(
+    160deg,
+    oklch(0.87 0.085 145) 0%,
+    oklch(0.82 0.10 150) 50%,
+    oklch(0.88 0.065 162) 100%
+  );
+  --gradient-leaf: linear-gradient(135deg, var(--leaf) 0%, var(--leaf-soft) 100%);
+  --gradient-wood: linear-gradient(180deg, oklch(0.62 0.07 62) 0%, var(--soil) 100%);
+
+  --shadow-soft: 0 8px 24px -12px oklch(0.28 0.05 150 / 0.28);
+  --shadow-float: 0 16px 40px -18px oklch(0.28 0.05 150 / 0.38);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.13 0.025 260);
+  --foreground: oklch(0.96 0.01 150);
+  --card: oklch(0.18 0.028 260);
+  --card-foreground: oklch(0.96 0.01 150);
+  --popover: oklch(0.18 0.028 260);
+  --popover-foreground: oklch(0.96 0.01 150);
+  --primary: oklch(0.72 0.13 148);
+  --primary-foreground: oklch(0.16 0.03 150);
+  --secondary: oklch(0.24 0.028 260);
+  --secondary-foreground: oklch(0.96 0.01 150);
+  --muted: oklch(0.22 0.025 260);
+  --muted-foreground: oklch(0.76 0.02 170);
+  --accent: oklch(0.32 0.04 220);
+  --accent-foreground: oklch(0.96 0.01 150);
+  --destructive: oklch(0.62 0.20 25);
+  --destructive-foreground: oklch(0.99 0.01 25);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.70 0.12 148);
+
+  --gradient-soft: linear-gradient(
+    160deg,
+    oklch(0.16 0.055 160) 0%,
+    oklch(0.12 0.035 220) 28%,
+    oklch(0.10 0.020 260) 55%,
+    oklch(0.13 0.040 180) 78%,
+    oklch(0.17 0.060 148) 100%
+  );
+}
+
+html {
+  background-image: var(--gradient-soft);
+  background-attachment: fixed;
+  color: var(--foreground);
+  overflow-x: hidden;
+}
+
+body {
+  background-image: var(--gradient-soft);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Base input text colors to match TypeScript */
+input,
+textarea,
+select {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+}
+
+/* Dark mode input text colors */
+.dark input,
+.dark textarea,
+.dark select {
+  color: oklch(0.96 0.01 150) !important;
+  -webkit-text-fill-color: currentColor !important;
+  caret-color: oklch(0.96 0.01 150) !important;
+}
+
+::placeholder,
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: oklch(0.48 0.035 150);
+  opacity: 0.95 !important;
+}
+
+.dark ::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark select::placeholder {
+  color: oklch(0.80 0.02 170) !important;
+  opacity: 0.95 !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--background) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.bg-gradient-soft {
+  background-image: var(--gradient-soft) !important;
+}
+
+.bg-gradient-sky {
+  background-image: var(--gradient-sky) !important;
+}
+
+.bg-gradient-ground {
+  background-image: var(--gradient-ground) !important;
+}
+
+.bg-gradient-leaf {
+  background-image: var(--gradient-leaf) !important;
+}
+
+.bg-card {
+  background-color: var(--card) !important;
+}
+
+.text-card-foreground {
+  color: var(--card-foreground) !important;
+}
+
+.text-foreground {
+  color: var(--foreground) !important;
+}
+
+.text-muted-foreground {
+  color: var(--muted-foreground) !important;
+}
+
+.text-primary {
+  color: var(--primary) !important;
+}
+
+.border-border {
+  border-color: var(--border) !important;
+}
+
+.shadow-soft {
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.shadow-float {
+  box-shadow: var(--shadow-float) !important;
+}
+
+.treenest-theme-transition,
+.treenest-theme-transition .theme-smooth {
+  transition: background-color 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* OKLCH opacity utilities for Tailwind v3 compatibility */
+.bg-card\/95,
+button.bg-card\/95 {
+  background-color: oklch(0.995 0.005 145 / 0.95) !important;
+  border-color: oklch(0.81 0.038 145 / 0.8) !important;
+}
+.dark .bg-card\/95,
+.dark button.bg-card\/95 {
+  background-color: oklch(0.18 0.028 260 / 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+button.bg-card\/95:hover {
+  background-color: oklch(0.995 0.005 145) !important;
+}
+.dark button.bg-card\/95:hover {
+  background-color: oklch(0.18 0.028 260) !important;
+}
+
+/* Logo "Tree" text color */
+.text-emerald-800 {
+  color: #065f46 !important;
+}
+.dark .text-emerald-800,
+.dark .dark\:text-emerald-400 {
+  color: #34d399 !important;
+}
+
+/* Kolom Ketik (Inputs) di Mode Gelap */
+.dark .theme-smooth.bg-white,
+.dark div.bg-white,
+.dark .dark\:bg-secondary\/50 {
+  background-color: oklch(0.24 0.028 260 / 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: oklch(0.96 0.01 150) !important;
+}
+
+.dark .theme-smooth.bg-white:hover,
+.dark div.bg-white:hover,
+.dark .dark\:bg-secondary\/50:hover {
+  border-color: oklch(0.72 0.13 148 / 0.4) !important;
+}
+
+.dark .theme-smooth.bg-white:focus-within,
+.dark div.bg-white:focus-within,
+.dark .dark\:bg-secondary\/50:focus-within {
+  border-color: oklch(0.72 0.13 148) !important;
+  box-shadow: 0 0 0 2px oklch(0.72 0.13 148 / 0.25) !important;
+}
+
+/* Google OAuth Button di Mode Gelap */
+.dark button.bg-white {
+  background-color: oklch(0.24 0.028 260 / 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: oklch(0.96 0.01 150) !important;
+}
+.dark button.bg-white:hover {
+  background-color: oklch(0.24 0.028 260 / 0.7) !important;
+}
+
+.border-border\/80 {
+  border-color: oklch(0.81 0.038 145 / 0.8) !important;
+}
+.dark .border-border\/80 {
+  border-color: oklch(1 0 0 / 14%) !important;
+}
+
+.border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dark .border-white\/10,
+.dark .dark\:border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.bg-secondary\/50 {
+  background-color: oklch(0.85 0.04 145 / 0.5) !important;
+}
+.dark .bg-secondary\/50,
+.dark .dark\:bg-secondary\/50 {
+  background-color: oklch(0.24 0.028 260 / 0.5) !important;
+}
+
+.bg-secondary\/40 {
+  background-color: oklch(0.85 0.04 145 / 0.4) !important;
+}
+.dark .bg-secondary\/40,
+.dark .dark\:bg-secondary\/40 {
+  background-color: oklch(0.24 0.028 260 / 0.4) !important;
+}
+
+.hover\:bg-secondary\/70:hover {
+  background-color: oklch(0.85 0.04 145 / 0.7) !important;
+}
+.dark .hover\:bg-secondary\/70:hover,
+.dark .dark\:hover\:bg-secondary\/70:hover {
+  background-color: oklch(0.24 0.028 260 / 0.7) !important;
+}
+
+.dark .dark\:text-foreground {
+  color: oklch(0.96 0.01 150) !important;
+}
+
+.dark .dark\:placeholder\:text-muted-foreground::placeholder {
+  color: oklch(0.76 0.02 170) !important;
+}
+
+.dark .dark\:bg-emerald-600 {
+  background-color: #059669 !important;
+}
+.dark .dark\:hover\:bg-emerald-500:hover {
+  background-color: #10b981 !important;
+}
+
+.hover\:border-primary\/40:hover {
+  border-color: oklch(0.62 0.14 148 / 0.4) !important;
+}
+.dark .hover\:border-primary\/40:hover {
+  border-color: oklch(0.72 0.13 148 / 0.4) !important;
+}
+
+.focus-within\:border-primary:focus-within {
+  border-color: var(--primary) !important;
+}
+
+.focus-within\:ring-primary\/20:focus-within {
+  --tw-ring-color: oklch(0.62 0.14 148 / 0.2) !important;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 0 0 2px oklch(0.62 0.14 148 / 0.2) !important;
+}
+.dark .focus-within\:ring-primary\/20:focus-within {
+  --tw-ring-color: oklch(0.72 0.13 148 / 0.25) !important;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 0 0 2px oklch(0.72 0.13 148 / 0.25) !important;
+}
+
+.bg-primary\/10 {
+  background-color: oklch(0.62 0.14 148 / 0.1) !important;
+}
+.dark .bg-primary\/10 {
+  background-color: oklch(0.72 0.13 148 / 0.1) !important;
+}
+
+.border-primary\/20 {
+  border-color: oklch(0.62 0.14 148 / 0.2) !important;
+}
+.dark .border-primary\/20 {
+  border-color: oklch(0.72 0.13 148 / 0.2) !important;
+}
+
+.border-primary\/30 {
+  border-color: oklch(0.62 0.14 148 / 0.3) !important;
+}
+.dark .border-primary\/30 {
+  border-color: oklch(0.72 0.13 148 / 0.3) !important;
+}
+
+.bg-muted\/40 {
+  background-color: oklch(0.85 0.035 145 / 0.4) !important;
+}
+.dark .bg-muted\/40 {
+  background-color: oklch(0.22 0.025 260 / 0.4) !important;
+}
+
+.bg-muted\/50 {
+  background-color: oklch(0.85 0.035 145 / 0.5) !important;
+}
+.dark .bg-muted\/50 {
+  background-color: oklch(0.22 0.025 260 / 0.5) !important;
+}
+
+.bg-muted\/60 {
+  background-color: oklch(0.85 0.035 145 / 0.6) !important;
+}
+.dark .bg-muted\/60 {
+  background-color: oklch(0.22 0.025 260 / 0.6) !important;
+}
+
+.bg-destructive\/10 {
+  background-color: oklch(0.63 0.17 25 / 0.1) !important;
+}
+.dark .bg-destructive\/10 {
+  background-color: oklch(0.62 0.20 25 / 0.1) !important;
+}
+
+.border-destructive\/30 {
+  border-color: oklch(0.63 0.17 25 / 0.3) !important;
+}
+.dark .border-destructive\/30 {
+  border-color: oklch(0.62 0.20 25 / 0.3) !important;
+}
+
+/* Ensure clean input behavior in cards without unwanted browser / plugin outlines */
+.theme-smooth input {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.theme-smooth input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: none !important;
+}
+
+/* ─── Animasi Lengkap TreeNest (Port dari TypeScript) ─── */
+
+/* Awan bergerak */
+@keyframes drift {
+  from { transform: translateX(-20vw); }
+  to   { transform: translateX(120vw); }
+}
+.animate-drift {
+  animation: drift linear infinite;
+}
+
+/* Orb naik turun */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.animate-float-y {
+  animation: float-y 3.2s ease-in-out infinite;
+}
+.animate-float {
+  animation: float-y 4s ease-in-out infinite;
+}
+
+/* Orb jalan bolak-balik */
+@keyframes stroll {
+  0%   { left: var(--stroll-from, 8%); }
+  50%  { left: var(--stroll-to, 78%); }
+  100% { left: var(--stroll-from, 8%); }
+}
+.animate-stroll {
+  animation: stroll linear infinite alternate;
+}
+
+/* Burung terbang melintasi layar */
+@keyframes fly-by {
+  0%   { transform: translate(-10vw, 0); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: translate(50vw, -24px); }
+  90%  { opacity: 1; }
+  100% { transform: translate(115vw, 8px); opacity: 0; }
+}
+.animate-fly-by {
+  animation: fly-by linear infinite;
+}
+
+/* Tubuh burung bergoyang */
+@keyframes bird-body-bob {
+  0%, 100% { transform: translateY(1.5px) rotate(1.5deg); }
+  50%       { transform: translateY(-2.5px) rotate(-2.5deg); }
+}
+.animate-bird-body {
+  animation: bird-body-bob 0.38s ease-in-out infinite;
+  transform-origin: 25px 15px;
+}
+
+/* Sayap depan burung */
+@keyframes bird-wing-near {
+  0%, 100% { transform: rotate(-38deg) translateY(-2px) scaleY(1.05); }
+  50%       { transform: rotate(34deg) translateY(4px) scaleY(0.7) scaleX(0.92); }
+}
+.animate-bird-wing-near {
+  animation: bird-wing-near 0.38s ease-in-out infinite;
+  transform-origin: 25px 14px;
+}
+
+/* Sayap belakang burung */
+@keyframes bird-wing-far {
+  0%, 100% { transform: rotate(-42deg) translateY(-3px) scaleY(1.05); }
+  50%       { transform: rotate(30deg) translateY(3px) scaleY(0.75) scaleX(0.92); }
+}
+.animate-bird-wing-far {
+  animation: bird-wing-far 0.38s ease-in-out infinite;
+  transform-origin: 22px 13px;
+}
+
+/* Sway pohon cemara */
+@keyframes sway {
+  0%, 100% { transform: rotate(-1.6deg) translateY(0); }
+  50%       { transform: rotate(1.6deg) translateY(-1px); }
+}
+.animate-sway {
+  animation: sway 5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* Breeze semak */
+@keyframes breeze {
+  0%, 100% { transform: rotate(0deg) skewX(0deg); }
+  50%       { transform: rotate(2.5deg) skewX(1deg); }
+}
+.animate-breeze {
+  animation: breeze 4.2s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+@keyframes breeze-r {
+  0%, 100% { transform: rotate(0deg) skewX(0deg); }
+  50%       { transform: rotate(-2deg) skewX(-0.8deg); }
+}
+.animate-breeze-r {
+  animation: breeze-r 5.1s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* Matahari bersinar */
+@keyframes sun-glow {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.04); }
+}
+.animate-sun-glow {
+  animation: sun-glow 6s ease-in-out infinite;
+}
+
+/* Banner slide */
+@keyframes banner-slide-down {
+  0%   { transform: translate3d(0, -100%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+.animate-banner-slide {
+  animation: banner-slide-down 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

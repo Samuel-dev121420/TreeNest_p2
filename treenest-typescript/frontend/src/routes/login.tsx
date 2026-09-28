@@ -575,7 +575,7 @@ function LoginPage() {
                       >
                         {authMode === "register"
                           ? "Lengkapi formulir di bawah untuk membuat akun baru."
-                          : "Silahkan mengisi formulir dibawah untuk login."}
+                          : "Silahkan lengkapi formulir dibawah untuk login."}
                       </motion.p>
                     </AnimatePresence>
                   </div>
