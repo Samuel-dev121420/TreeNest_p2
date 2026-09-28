@@ -7,6 +7,8 @@ import {
   signOut,
   deleteUser,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
 } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "./firebase";
@@ -30,6 +32,7 @@ interface AuthContextType {
     email: string,
     pass: string,
   ) => Promise<{ success: boolean; profile?: UserProfile; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; profile?: UserProfile; error?: string }>;
   signup: (
     username: string,
     email: string,
@@ -70,7 +73,7 @@ export function formatAuthError(err: unknown, defaultMsg = "Gagal memproses perm
       case "auth/user-not-found":
         return "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.";
       case "auth/invalid-email":
-        return "Format alamat email tidak valid. Pastikan penulisan email sudah benar.";
+        return "Format alamat email tidak valid.";
       case "auth/email-already-in-use":
         return "Alamat email ini sudah terdaftar di TreeNest. Silakan gunakan tab Masuk atau Lupa Password.";
       case "auth/weak-password":
@@ -98,7 +101,7 @@ export function formatAuthError(err: unknown, defaultMsg = "Gagal memproses perm
       return "Email atau kata sandi yang kamu masukkan salah. Silakan periksa kembali.";
     }
     if (msg.includes("auth/invalid-email")) {
-      return "Format alamat email tidak valid. Pastikan penulisan email sudah benar.";
+      return "Format alamat email tidak valid.";
     }
     if (msg.includes("auth/too-many-requests")) {
       return "Terlalu banyak percobaan masuk yang gagal. Harap tunggu beberapa saat sebelum mencoba lagi.";
@@ -330,6 +333,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function loginWithGoogle() {
+    if (!isFirebaseConfigured || !auth) {
+      // Mock Fallback Login Google
+      const mockUid = `google-mock-${Date.now()}`;
+      const email = "googleuser@treenest.com";
+      const username = "Google User";
+      let p = await getUserProfile(mockUid);
+      if (!p) {
+        p = await createUserProfile(mockUid, username, email, "user");
+      }
+      setProfile(p);
+      localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(p));
+      return { success: true, profile: p };
+    }
+
+    // Intercept window.open untuk mendeteksi penutupan popup secara instan (~400ms)
+    // daripada menunggu timeout bawaan Firebase SDK yang lambat (7-8 detik).
+    let popupWindow: Window | null = null;
+    const originalOpen = typeof window !== "undefined" ? window.open : null;
+
+    if (typeof window !== "undefined" && originalOpen) {
+      window.open = function (...args: Parameters<typeof window.open>) {
+        const win = originalOpen.apply(window, args);
+        popupWindow = win;
+        window.open = originalOpen; // Langsung kembalikan ke fungsi bawaan
+        return win;
+      };
+    }
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let closeGraceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const popupClosedPromise = new Promise<never>((_, reject) => {
+        pollInterval = setInterval(() => {
+          try {
+            if (popupWindow && popupWindow.closed) {
+              if (pollInterval) clearInterval(pollInterval);
+              // Grace period 350ms agar tidak mendahului proses autentikasi sukses
+              closeGraceTimeout = setTimeout(() => {
+                reject({ code: "auth/popup-closed-by-user" });
+              }, 350);
+            }
+          } catch {
+            // Ignore potential cross-origin window inspection errors
+          }
+        }, 150);
+      });
+
+      const res = await Promise.race([
+        signInWithPopup(auth, provider),
+        popupClosedPromise,
+      ]);
+      const googleUser = res.user;
+
+      let p = await getUserProfile(googleUser.uid);
+      if (!p) {
+        const username =
+          googleUser.displayName?.trim() ||
+          googleUser.email?.split("@")[0] ||
+          "Pengguna TreeNest";
+        const email = googleUser.email || `${googleUser.uid}@gmail.com`;
+        const role: UserRole =
+          (googleUser.email && isAdminEmail(googleUser.email)) ||
+          username.toLowerCase().includes("admin")
+            ? "admin"
+            : "user";
+        p = await createUserProfile(googleUser.uid, username, email, role);
+      }
+
+      setUser(googleUser);
+      await loadProfileForUser(googleUser.uid, googleUser.email || undefined, true);
+      const updatedProfile = profileRef.current || p;
+      return { success: true, profile: updatedProfile };
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "code" in err) {
+        const code = (err as { code: string }).code;
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+          return { success: false };
+        }
+        if (code === "auth/popup-blocked") {
+          return {
+            success: false,
+            error: "Jendela popup Google diblokir oleh browser. Harap izinkan popup untuk situs ini.",
+          };
+        }
+      }
+      return {
+        success: false,
+        error: formatAuthError(err, "Gagal masuk dengan Google. Silakan coba kembali."),
+      };
+    } finally {
+      if (pollInterval) clearInterval(pollInterval);
+      if (closeGraceTimeout) clearTimeout(closeGraceTimeout);
+      if (typeof window !== "undefined" && originalOpen) {
+        window.open = originalOpen;
+      }
+    }
+  }
+
   async function signup(username: string, email: string, pass: string) {
     const role: UserRole =
       email.toLowerCase().includes("admin") || username.toLowerCase().includes("admin")
@@ -492,6 +598,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         login,
+        loginWithGoogle,
         signup,
         sendVerificationEmail,
         completeVerification,
